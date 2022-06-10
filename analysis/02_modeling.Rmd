@@ -1,0 +1,85 @@
+---
+title: "01_dataset_creation"
+output: html_document
+---
+
+# Environment
+
+```{r}
+library(survival)
+library(survminer)
+library(forestmodel)
+library(skimr)
+library(mgcv)
+library(parallel)
+library(sjPlot)
+library(parglm)
+```
+
+# survival model
+
+```{r}
+#TODO evaluate efficiency
+# event as numeric
+estudio_vacunas_final_selected$estancia_hospitalaria<-as.numeric(estudio_vacunas_final_selected$estancia_hospitalaria)
+
+res.cox <- coxph(Surv(estancia_hospitalaria_dias, estancia_hospitalaria) ~ DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + age + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_groupB, data =  estudio_vacunas_final_selected)
+```
+
+
+## Plotting
+
+```{r}
+ggsurvplot(res.cox, data = estudio_vacunas_final_selected)
+```
+
+# logreg_hosp_stay_bin
+
+## Fitting the model
+
+```{r}
+print('glm')
+print(Sys.time())
+logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ age + DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_COV_Neumo_Gripe, data =  estudio_vacunas_final_selected,family=binomial() )
+print(Sys.time())
+```
+
+```{r}
+summary(logreg_hosp_stay_bin)
+```
+
+## Odds ratio
+
+```{r fig.height=16, fig.width=10}
+print(Sys.time())
+print(forest_model(logreg_hosp_stay_bin))
+print(Sys.time())
+```
+
+
+# logreg_icu_stay_bin
+
+## Fitting the model
+
+```{r}
+print('glm')
+print(Sys.time())
+logreg_icu_stay_bin <- glm(icu_stay_bin ~ age + DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_COV_Neumo_Gripe, data =  estudio_vacunas_final_selected,family=binomial() )
+print(Sys.time())
+```
+
+```{r}
+summary(logreg_icu_stay_bin)
+```
+
+## Odds ratio
+
+```{r fig.height=16, fig.width=10}
+print(Sys.time())
+print(forest_model(logreg_icu_stay_bin))
+print(Sys.time())
+```
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
