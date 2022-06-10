@@ -1,2 +1,2 @@
 # vacunas_primario
-Code repo for the vaccines primario project
+Code repo for the vaccines primary project
