@@ -14,6 +14,27 @@ library(mgcv)
 library(parallel)
 library(sjPlot)
 library(parglm)
+library(pROC)
+library(ggplot2)
+
+# metric performance
+
+precision <- function(matrix) {
+	# True positive
+    tp <- matrix[2, 2]
+	# false positive
+    fp <- matrix[1, 2]
+    return (tp / (tp + fp))
+}
+
+recall <- function(matrix) {
+# true positive
+    tp <- matrix[2, 2]# false positive
+    fn <- matrix[2, 1]
+    return (tp / (tp + fn))
+}
+
+
 ```
 
 # survival model
@@ -43,6 +64,7 @@ print(Sys.time())
 logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ age + DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_COV_Neumo_Gripe, data =  estudio_vacunas_final_selected,family=binomial() )
 print(Sys.time())
 ```
+## Summary of the model
 
 ```{r}
 summary(logreg_hosp_stay_bin)
@@ -54,6 +76,51 @@ summary(logreg_hosp_stay_bin)
 print(Sys.time())
 print(forest_model(logreg_hosp_stay_bin))
 print(Sys.time())
+```
+
+## Model Performance
+
+```{r fig.height=5, fig.width=2}
+y_test<-estudio_vacunas_final_selected$hosp_stay_bin
+  
+predict <- predict(logreg_hosp_stay_bin, estudio_vacunas_final_selected, type = 'response')
+# confusion matrix
+table_mat <- table(y_test, predict > 0.85)
+table_mat
+
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.1))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
 ```
 
 
@@ -80,6 +147,47 @@ print(forest_model(logreg_icu_stay_bin))
 print(Sys.time())
 ```
 
+## Model Performance
 
+```{r fig.height=5, fig.width=2}
+y_test<-estudio_vacunas_final_selected$icu_stay_bin
+  
+predict <- predict(logreg_icu_stay_bin, estudio_vacunas_final_selected, type = 'response')
+# confusion matrix
+table_mat <- table(y_test, predict > 0.1)
+table_mat
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.3))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
+```
