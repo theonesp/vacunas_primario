@@ -191,3 +191,78 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
 ```
+
+#logreg_mortality
+
+##Fitting the model
+```{r}
+print('glm')
+print(Sys.time())
+logreg_mortality <- glm(mortality ~ age + DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_COV_Neumo_Gripe, data =  estudio_vacunas_final_selected,family=binomial() )
+print(Sys.time())
+
+```
+
+##Summary the model
+
+```{r}
+
+summary(logreg_mortality)
+
+```
+
+##Odds ratio
+
+```{r}
+
+print(Sys.time())
+print(forest_model(logreg_mortality))
+print(Sys.time())
+
+```
+
+##Model Performance
+
+````{r}
+
+y_test<-estudio_vacunas_final_selected$icu_stay_bin
+  
+predict <- predict(logreg_mortality, estudio_vacunas_final_selected, type = 'response')
+
+# confusion matrix
+table_mat <- table(y_test, predict > 0.1)
+table_mat
+
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.3))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()

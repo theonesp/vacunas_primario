@@ -107,7 +107,7 @@ poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉ
 ## resultados_pruebas_COVID
 
 ```{r}
-resultados_pruebas_COVID <- fread("../data/04_Resultados_pruebas_COVID.txt",header = T,encoding = 'UTF-8');resultados_pruebas_COVID<-as.data.frame(resultados_pruebas_COVID)
+resultados_pruebas_COVID <- fread("/opt/datos_compartidos/vacunas_data/04_Resultados_pruebas_COVID.txt",header = T,encoding = 'UTF-8');resultados_pruebas_COVID<-as.data.frame(resultados_pruebas_COVID)
 # dates need to be converted from the original source, missing means NO
 
 resultados_pruebas_COVID$FECHA_MUESTRA<-as.Date(as.character(resultados_pruebas_COVID$FECHA_MUESTRA),format="%d/%m/%Y")
@@ -175,7 +175,7 @@ icd_ofinterest<-c('U07.1','J18.9','J12.89','J22','J96.00','J96.01','J96.02','J96
 
 # TODO ingreso UCI dic
 # TODO no hay fecha de ingreso en UCI. Mirar traslados
-episodios_cmbd <- fread("../data/02_Episodios_CMBD.txt",header = T,encoding = 'UTF-8');episodios_cmbd<-as.data.frame(episodios_cmbd)
+episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/02_Episodios_CMBD.txt",header = T,encoding = 'UTF-8');episodios_cmbd<-as.data.frame(episodios_cmbd)
 
 # dates need to be converted from the original source, missing means NO
 episodios_cmbd$FECHA_INGRESO<-as.Date(as.character(episodios_cmbd$FECHA_INGRESO),format="%Y%m%d")
@@ -227,7 +227,7 @@ TODO *Pedir campañas 2019-20.*
 TODO hay varias vacunas de neumo y gripe por paciente.
 TODO estudiar numero de infecciones
 ```{r}
-vacunas <- fread("../data/03_Vacunas.txt",header = T,encoding = 'UTF-8');vacunas<-as.data.frame(vacunas)
+vacunas <- fread("/opt/datos_compartidos/vacunas_data/03_Vacunas.txt",header = T,encoding = 'UTF-8');vacunas<-as.data.frame(vacunas)
 # dates need to be converted from the original source, missing means NO
 vacunas$FEC_VACUNACION<-as.Date(as.character(vacunas$FEC_VACUNACION),format="%Y%m%d")
 
@@ -400,7 +400,6 @@ nrow(estudio_vacunas_final_selected)
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-view(dfSummary(estudio_vacunas_final_selected%>%select(estancia_hospitalaria_dias, hosp_stay_bin, DESC_SEXO , RESIDE_RESIDENCIA , GRUPO_7 , age , cancer , VIH , EPOC , ASMA , INSUF_CARDIACA , CARDIOPATÍA_ISQUÉMCIA , HEPATOPATIA_CRÓNICA , CIRROSIS , INSUF_RENAL_CRÓNICA , vac_groupB)))
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
