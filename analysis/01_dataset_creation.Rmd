@@ -19,6 +19,7 @@ special_date = function(number){
   date = if_else(number%in%c(-1,0,NA), as.Date(NA), as.Date(as.character(number),format="%Y%m%d"))
   return(date)
 }
+# linea de prueba alvaro
 ```
 
 
