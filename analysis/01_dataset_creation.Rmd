@@ -103,6 +103,9 @@ poblacion_diana_opt$cancer<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_BRON
 poblacion_diana_opt<-cbind(poblacion_diana_opt,poblacion_diana[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")])
 
 poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-as.factor(apply(poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) if_else(is.na(x),0,1) ))
+
+
+# ALVARO: to consider whether each comorbidity was diagnosed prior/after the infection, one must start by not executing the last code line (otherwise, date info will be lost).
 ```
 
 ## resultados_pruebas_COVID
