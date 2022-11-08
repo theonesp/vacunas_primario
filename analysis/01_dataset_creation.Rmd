@@ -303,6 +303,32 @@ vacunas_gripe<-unique(vacunas_gripe)
 # foo<-str_replace_all(vacunas$NOM_VACUNA,"[^[:graph:]]", " ") 
 ```
 
+## periodos pandemicos
+
+Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente [enlace](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
+
+```{r}
+# ondas_pandemicas_andalucia <-
+#   data.frame(
+#     nombre_periodo = c("Periodo 1", "Periodo 2", "Periodo 3", "Periodo 4", "Periodo 5", "Periodo 6", "Periodo 7"),
+#     fecha_inicio = c("2020-01-01", "2020-05-11", "2020-12-21", "2021-03-08", "2021-06-21", "2021-10-11", "2022-03-28"),
+#     fecha_fin = c("2020-05-10", "2020-12-20", "2021-03-07", "2021-06-20", "2021-10-10", "2022-03-27", "2022-11-01"))
+# 
+# 
+# write.csv2(
+#   ondas_pandemicas_andalucia,
+#   file = "/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv",
+#   row.names = FALSE)
+
+
+periodos_pandemicos_andalucia <- 
+  read.csv2("/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv") %>% 
+  mutate(nombre_periodo = factor(nombre_periodo,
+                                 ordered = TRUE),
+         fecha_inicio = as.Date(fecha_inicio),
+         fecha_fin = as.Date(fecha_fin))
+```
+
 
 
 # Final dataset
