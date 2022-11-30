@@ -19,6 +19,7 @@ special_date = function(number){
   date = if_else(number%in%c(-1,0,NA), as.Date(NA), as.Date(as.character(number),format="%Y%m%d"))
   return(date)
 }
+# linea de prueba alvaro
 ```
 
 
@@ -92,24 +93,19 @@ poblacion_diana_opt$age<-trunc((poblacion_diana_opt$COD_FEC_NACIMIENTO %--% '202
 # we create an optimized mortality field
 poblacion_diana_opt$mortality<-as.factor(if_else(is.na(poblacion_diana$COD_FEC_FALLECIMIENTO)|is.na(poblacion_diana$FEC_BAJA_EXITUS), 0,1))
 
-# FEC_BAJA_EXITUS tiene menos missing
-poblacion_diana_opt$mortality_date<-coalesce(poblacion_diana$FEC_BAJA_EXITUS,poblacion_diana$COD_FEC_FALLECIMIENTO)
+# TODO !!! ¿qué fecha prevalece en el coalesce?
+poblacion_diana_opt$mortality_date<-coalesce(poblacion_diana$COD_FEC_FALLECIMIENTO,poblacion_diana$FEC_BAJA_EXITUS)
 
-# diferenciado por tipo de cáncer en estudio además del hemato
-
+# TODO diferenciar tipo de cáncer en estudio
 poblacion_diana_opt$cancer<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN) & is.na(poblacion_diana$CÁNCER_CABEZA_CUELLO) & is.na(poblacion_diana$CÁNCER_COLORRECTAL) & is.na(poblacion_diana$CÁNCER_CUELLO_UTERINO) & is.na(poblacion_diana$CÁNCER_ESTÓMAGO) & is.na(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES) & is.na(poblacion_diana$CÁNCER_HUESO_TEJIDOS_BLANDOS) & is.na(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO) & is.na(poblacion_diana$CÁNCER_MAMA) & is.na(poblacion_diana$CÁNCER_OVARIO) & is.na(poblacion_diana$CÁNCER_PÁNCREAS) & is.na(poblacion_diana$CÁNCER_PRÓSTATA) & is.na(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL) & is.na(poblacion_diana$CÁNCER_TESTÍCULO) & is.na(poblacion_diana$CÁNCER_TIROIDES) & is.na(poblacion_diana$CÁNCER_ÚTERO) & is.na(poblacion_diana$CÁNCER_VEJIGA) & is.na(poblacion_diana$MELANOMA_PIEL) & is.na(poblacion_diana$ENFERMEDAD_HODGKIN) & is.na(poblacion_diana$LINFOMA_NO_HODGKIN) & is.na(poblacion_diana$LEUCEMIA) & is.na(poblacion_diana$SARCOMA_KAPOSI),0,1))
-
-poblacion_diana_opt$cancer_solido<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN) & is.na(poblacion_diana$CÁNCER_CABEZA_CUELLO) & is.na(poblacion_diana$CÁNCER_COLORRECTAL) & is.na(poblacion_diana$CÁNCER_CUELLO_UTERINO) & is.na(poblacion_diana$CÁNCER_ESTÓMAGO) & is.na(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES) & is.na(poblacion_diana$CÁNCER_MAMA) & is.na(poblacion_diana$CÁNCER_OVARIO) & is.na(poblacion_diana$CÁNCER_PÁNCREAS) & is.na(poblacion_diana$CÁNCER_PRÓSTATA) & is.na(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL) & is.na(poblacion_diana$CÁNCER_TESTÍCULO) & is.na(poblacion_diana$CÁNCER_TIROIDES) & is.na(poblacion_diana$CÁNCER_ÚTERO) & is.na(poblacion_diana$CÁNCER_VEJIGA) & is.na(poblacion_diana$MELANOMA_PIEL),0,1))
-
-poblacion_diana_opt$cancer_hemato<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO) & is.na(poblacion_diana$ENFERMEDAD_HODGKIN) & is.na(poblacion_diana$LINFOMA_NO_HODGKIN) & is.na(poblacion_diana$LEUCEMIA) & is.na(poblacion_diana$SARCOMA_KAPOSI),0,1))
 
 # TODO no se está teniendo en cuenta la fecha de las comorbilidades en el análisis
 poblacion_diana_opt<-cbind(poblacion_diana_opt,poblacion_diana[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")])
 
-poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-as.factor(apply(poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) if_else(is.na(x),0,1) ))
+# poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-as.factor(apply(poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) if_else(is.na(x),0,1) ))
 
 
-# ALVARO: to consider whether each comorbidity was diagnosed prior to the infection, one must start by not executing the last code line (otherwise, date info will be lost). Check RMarkdown "01b..." to see the proposed alternative.
+# ALVARO: to consider whether each comorbidity was diagnosed prior to the infection, one must start by not executing previous code line (otherwise, date info will be lost). I propose a way of doing so, that you may find in line 358.
 ```
 
 ## resultados_pruebas_COVID
@@ -358,6 +354,24 @@ estudio_vacunas_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
 ))
 print(Sys.time())
 
+
+# ALVARO: code line #105 is commented out. Instead, I propose bringing here poblacion_diana_opt (without executing #105), joining it with the rest of the datasets (as seen in code just above) and using infect_COVID_first_date to guess which comorbidity was present upon infection. We could design something similar for cancer, in order to discard those diagnosed after COVID infection. Also, this process refines NAs.
+comorbidities <- c("VIH",
+                   "EPOC",
+                   "ASMA",
+                   "INSUF_CARDIACA",
+                   "CARDIOPATÍA_ISQUÉMCIA",
+                   "HEPATOPATIA_CRÓNICA",
+                   "CIRROSIS",
+                   "INSUF_RENAL_CRÓNICA")
+
+estudio_vacunas_final <- 
+  estudio_vacunas_final %>% 
+  mutate_at(comorbidities,
+            ~ case_when(is.na(.) ~ 0,
+                        !is.na(.) & (. > infect_COVID_first_date) ~ 0,
+                        !is.na(.) & (. <= infect_COVID_first_date) ~ 1,
+                        TRUE ~ 0))
 ```
 
 ## Columns NA filling
