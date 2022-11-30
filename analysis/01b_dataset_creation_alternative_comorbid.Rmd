@@ -105,7 +105,7 @@ poblacion_diana_opt<-cbind(poblacion_diana_opt,poblacion_diana[,c("VIH","EPOC","
 # poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-as.factor(apply(poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) if_else(is.na(x),0,1) ))
 
 
-# ALVARO: to consider whether each comorbidity was diagnosed prior to the infection, one must start by not executing previous code line (otherwise, date info will be lost).
+# ALVARO: to consider whether each comorbidity was diagnosed prior to the infection, one must start by not executing previous code line (otherwise, date info will be lost). I propose a way of doing so, that you may find in line 358.
 ```
 
 ## resultados_pruebas_COVID
@@ -355,14 +355,14 @@ estudio_vacunas_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
 print(Sys.time())
 
 
-# ALVARO: code line #105 is commented out. Instead, I propose bringing here poblacion_diana_opt (without executing #105), joining it with the rest of the datasets and using infect_COVID_first_date to guess which comorbidity was present upon infection. We could design something similar for cancer, in order to discard those diagnosed after COVID infection. Also, this process refines NAs.
+# ALVARO: code line #105 is commented out. Instead, I propose bringing here poblacion_diana_opt (without executing #105), joining it with the rest of the datasets (as seen in code just above) and using infect_COVID_first_date to guess which comorbidity was present upon infection. We could design something similar for cancer, in order to discard those diagnosed after COVID infection. Also, this process refines NAs.
 comorbidities <- c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")
 estudio_vacunas_final <- 
   estudio_vacunas_final %>% 
   mutate_at(comorbidities,
             ~ case_when(is.na(.) ~ 0,
                         !is.na(.) & (. > infect_COVID_first_date) ~ 0,
-                        !is.na(.) & (. < infect_COVID_first_date) ~ 1,
+                        !is.na(.) & (. <= infect_COVID_first_date) ~ 1,
                         TRUE ~ 0))
 ```
 
