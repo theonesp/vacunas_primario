@@ -19,7 +19,6 @@ special_date = function(number){
   date = if_else(number%in%c(-1,0,NA), as.Date(NA), as.Date(as.character(number),format="%Y%m%d"))
   return(date)
 }
-# linea de prueba alvaro
 ```
 
 
@@ -105,7 +104,7 @@ poblacion_diana_opt<-cbind(poblacion_diana_opt,poblacion_diana[,c("VIH","EPOC","
 poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-as.factor(apply(poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) if_else(is.na(x),0,1) ))
 
 
-# ALVARO: to consider whether each comorbidity was diagnosed prior/after the infection, one must start by not executing the last code line (otherwise, date info will be lost).
+# ALVARO: to consider whether each comorbidity was diagnosed prior to the infection, one must start by not executing the last code line (otherwise, date info will be lost). Check RMarkdown "01b..." to see the proposed alternative.
 ```
 
 ## resultados_pruebas_COVID
