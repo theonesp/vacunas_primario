@@ -92,11 +92,16 @@ poblacion_diana_opt$age<-trunc((poblacion_diana_opt$COD_FEC_NACIMIENTO %--% '202
 # we create an optimized mortality field
 poblacion_diana_opt$mortality<-as.factor(if_else(is.na(poblacion_diana$COD_FEC_FALLECIMIENTO)|is.na(poblacion_diana$FEC_BAJA_EXITUS), 0,1))
 
-# TODO !!! ¿qué fecha prevalece en el coalesce?
-poblacion_diana_opt$mortality_date<-coalesce(poblacion_diana$COD_FEC_FALLECIMIENTO,poblacion_diana$FEC_BAJA_EXITUS)
+# FEC_BAJA_EXITUS tiene menos missing
+poblacion_diana_opt$mortality_date<-coalesce(poblacion_diana$FEC_BAJA_EXITUS,poblacion_diana$COD_FEC_FALLECIMIENTO)
 
-# TODO diferenciar tipo de cáncer en estudio
+# diferenciado por tipo de cáncer en estudio además del hemato
+
 poblacion_diana_opt$cancer<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN) & is.na(poblacion_diana$CÁNCER_CABEZA_CUELLO) & is.na(poblacion_diana$CÁNCER_COLORRECTAL) & is.na(poblacion_diana$CÁNCER_CUELLO_UTERINO) & is.na(poblacion_diana$CÁNCER_ESTÓMAGO) & is.na(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES) & is.na(poblacion_diana$CÁNCER_HUESO_TEJIDOS_BLANDOS) & is.na(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO) & is.na(poblacion_diana$CÁNCER_MAMA) & is.na(poblacion_diana$CÁNCER_OVARIO) & is.na(poblacion_diana$CÁNCER_PÁNCREAS) & is.na(poblacion_diana$CÁNCER_PRÓSTATA) & is.na(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL) & is.na(poblacion_diana$CÁNCER_TESTÍCULO) & is.na(poblacion_diana$CÁNCER_TIROIDES) & is.na(poblacion_diana$CÁNCER_ÚTERO) & is.na(poblacion_diana$CÁNCER_VEJIGA) & is.na(poblacion_diana$MELANOMA_PIEL) & is.na(poblacion_diana$ENFERMEDAD_HODGKIN) & is.na(poblacion_diana$LINFOMA_NO_HODGKIN) & is.na(poblacion_diana$LEUCEMIA) & is.na(poblacion_diana$SARCOMA_KAPOSI),0,1))
+
+poblacion_diana_opt$cancer_solido<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN) & is.na(poblacion_diana$CÁNCER_CABEZA_CUELLO) & is.na(poblacion_diana$CÁNCER_COLORRECTAL) & is.na(poblacion_diana$CÁNCER_CUELLO_UTERINO) & is.na(poblacion_diana$CÁNCER_ESTÓMAGO) & is.na(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES) & is.na(poblacion_diana$CÁNCER_MAMA) & is.na(poblacion_diana$CÁNCER_OVARIO) & is.na(poblacion_diana$CÁNCER_PÁNCREAS) & is.na(poblacion_diana$CÁNCER_PRÓSTATA) & is.na(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL) & is.na(poblacion_diana$CÁNCER_TESTÍCULO) & is.na(poblacion_diana$CÁNCER_TIROIDES) & is.na(poblacion_diana$CÁNCER_ÚTERO) & is.na(poblacion_diana$CÁNCER_VEJIGA) & is.na(poblacion_diana$MELANOMA_PIEL),0,1))
+
+poblacion_diana_opt$cancer_hemato<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO) & is.na(poblacion_diana$ENFERMEDAD_HODGKIN) & is.na(poblacion_diana$LINFOMA_NO_HODGKIN) & is.na(poblacion_diana$LEUCEMIA) & is.na(poblacion_diana$SARCOMA_KAPOSI),0,1))
 
 # TODO no se está teniendo en cuenta la fecha de las comorbilidades en el análisis
 poblacion_diana_opt<-cbind(poblacion_diana_opt,poblacion_diana[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")])
