@@ -84,6 +84,9 @@ poblacion_diana$DESC_SEXO<-relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "
 We are creating an optimized version of poblacion diana
 
 ```{r}
+# STAGI: ¿Criterio usado para definir Grupo 7?
+# Creemos que son pacientes de riesgo (según las categorias del G7) en el momento de la vacucanación, ¿pero en qué vacunación? ¿al inicio de la campaña de vacunación?
+
 poblacion_diana_opt<-poblacion_diana%>%select(COD_NUHSA_ENCRIPTADO,COD_FEC_NACIMIENTO,COD_FEC_FALLECIMIENTO,FEC_BAJA_EXITUS,DESC_SEXO,MAYORES_60,MENORES_PATOLOGIAS,RESIDE_RESIDENCIA,GRUPO_7)
 
 # we create an age field on the day of the beginning of 2020, right before the the pandemic began.
@@ -103,13 +106,28 @@ poblacion_diana_opt$cancer_solido<-as.factor(if_else(is.na(poblacion_diana$CÁNC
 
 poblacion_diana_opt$cancer_hemato<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO) & is.na(poblacion_diana$ENFERMEDAD_HODGKIN) & is.na(poblacion_diana$LINFOMA_NO_HODGKIN) & is.na(poblacion_diana$LEUCEMIA) & is.na(poblacion_diana$SARCOMA_KAPOSI),0,1))
 
-# TODO no se está teniendo en cuenta la fecha de las comorbilidades en el análisis
-poblacion_diana_opt<-cbind(poblacion_diana_opt,poblacion_diana[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")])
+# TODO asegurarse que funciona desde aquí
 
-poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-as.factor(apply(poblacion_diana_opt[,c("VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) if_else(is.na(x),0,1) ))
+comorbidities <- c("VIH",
+                   "EPOC",
+                   "ASMA",
+                   "INSUF_CARDIACA",
+                   "CARDIOPATÍA_ISQUÉMCIA",
+                   "HEPATOPATIA_CRÓNICA",
+                   "CIRROSIS",
+                   "INSUF_RENAL_CRÓNICA",
+                   "DIABETES",
+                   "HTA")
 
+  poblacion_diana_opt %<>% 
+  mutate_at(comorbidities,
+            ~ case_when(is.na(.) ~ 0,
+                        !is.na(.) & (. > infect_COVID_first_date) ~ 0,
+                        !is.na(.) & (. <= infect_COVID_first_date) ~ 1,
+                        TRUE ~ 0))
 
-# ALVARO: to consider whether each comorbidity was diagnosed prior to the infection, one must start by not executing the last code line (otherwise, date info will be lost). Check RMarkdown "01b..." to see the proposed alternative.
+# TODO crear subgrupos del grupo 7 a partir de aquí
+  
 ```
 
 ## resultados_pruebas_COVID
@@ -181,7 +199,7 @@ TODO puede ser que ya estuvieran ingresados.
 
 icd_ofinterest<-c('U07.1','J18.9','J12.89','J22','J96.00','J96.01','J96.02','J96.20','J90','J47.0','J96.21','J98.01','J18.0','J84.9','J96.91','J96.90','J96.92','J84.89','J81.0','I26.99','J06.9','J98.9','J95.89','J12.9','O98.52','J84.111','O98.513','J20.8','J96.11','J00','J12.81','J84.114','J39.8','J84.115','J84.113','B34.2')
 
-# TODO ingreso UCI dic
+# TODO ingreso UCI bin
 # TODO no hay fecha de ingreso en UCI. Mirar traslados
 episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/02_Episodios_CMBD.txt",header = T,encoding = 'UTF-8');episodios_cmbd<-as.data.frame(episodios_cmbd)
 
@@ -230,7 +248,7 @@ Criterios de exclusión: pacientes de 5 dosis.
 -	Vacunas de neumococo en cualquier momento hasta el 31/03/2022.
 -	Todas las vacunas relacionadas con el COVID 19 hasta el 31/03/2022.
 
-TODO *Pedir campañas 2019-20.* 
+TODO STAGI: *Pedir campañas 2019-20.* 
 
 TODO hay varias vacunas de neumo y gripe por paciente.
 TODO estudiar numero de infecciones
