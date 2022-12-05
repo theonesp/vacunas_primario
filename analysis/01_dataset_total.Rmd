@@ -27,59 +27,15 @@ special_date = function(number){
 ## poblacion_diana
 
 ```{r}
-poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/01_Poblacion_Diana_Pat_BPS.txt",header = T,encoding = 'UTF-8');poblacion_diana<-as.data.frame(poblacion_diana);names(poblacion_diana)<-c("COD_NUHSA_ENCRIPTADO","COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")
-
-poblacion_diana[,c("DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7")]<-apply(poblacion_diana[,c("DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7")],2, function(x) as.factor(x) )
-
 # '_t' means total population, second data load
 
+poblacion_diana_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt",header = T,encoding = 'UTF-8');poblacion_diana<-as.data.frame(poblacion_diana_t);
 
-
+#names(poblacion_diana)<-c("COD_NUHSA_ENCRIPTADO","COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")
 
 # dates need to be converted from the original source, missing means NO
 
-poblacion_diana[,c("COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-apply(poblacion_diana[,c("COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) special_date(x) )
-
-poblacion_diana$COD_FEC_NACIMIENTO<-as.Date(poblacion_diana$COD_FEC_NACIMIENTO) 
-poblacion_diana$COD_FEC_FALLECIMIENTO<-as.Date(poblacion_diana$COD_FEC_FALLECIMIENTO)
-poblacion_diana$FEC_BAJA_EXITUS<-as.Date(poblacion_diana$FEC_BAJA_EXITUS)
-poblacion_diana$DIABETES<-as.Date(poblacion_diana$DIABETES)
-poblacion_diana$HTA<-as.Date(poblacion_diana$HTA)
-poblacion_diana$CÁNCER_CABEZA_CUELLO<-as.Date(poblacion_diana$CÁNCER_CABEZA_CUELLO)
-poblacion_diana$CÁNCER_ESTÓMAGO<-as.Date(poblacion_diana$CÁNCER_ESTÓMAGO)
-poblacion_diana$CÁNCER_COLORRECTAL<-as.Date(poblacion_diana$CÁNCER_COLORRECTAL)
-poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES<-as.Date(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES)
-poblacion_diana$CÁNCER_PÁNCREAS<-as.Date(poblacion_diana$CÁNCER_PÁNCREAS)
-poblacion_diana$CÁNCER_BRONQUIO_PULMÓN<-as.Date(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN)
-poblacion_diana$CÁNCER_TIROIDES<-as.Date(poblacion_diana$CÁNCER_TIROIDES)
-poblacion_diana$CÁNCER_HUESO_TEJIDOS_BLANDOS<-as.Date(poblacion_diana$CÁNCER_HUESO_TEJIDOS_BLANDOS)
-poblacion_diana$MELANOMA_PIEL<-as.Date(poblacion_diana$MELANOMA_PIEL)
-poblacion_diana$CÁNCER_MAMA<-as.Date(poblacion_diana$CÁNCER_MAMA)
-poblacion_diana$CÁNCER_ÚTERO<-as.Date(poblacion_diana$CÁNCER_ÚTERO)
-poblacion_diana$CÁNCER_CUELLO_UTERINO<-as.Date(poblacion_diana$CÁNCER_CUELLO_UTERINO)
-poblacion_diana$CÁNCER_OVARIO<-as.Date(poblacion_diana$CÁNCER_OVARIO)
-poblacion_diana$CÁNCER_PRÓSTATA<-as.Date(poblacion_diana$CÁNCER_PRÓSTATA)
-poblacion_diana$CÁNCER_TESTÍCULO<-as.Date(poblacion_diana$CÁNCER_TESTÍCULO)
-poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL<-as.Date(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL)
-poblacion_diana$CÁNCER_VEJIGA<-as.Date(poblacion_diana$CÁNCER_VEJIGA)
-poblacion_diana$ENFERMEDAD_HODGKIN<-as.Date(poblacion_diana$ENFERMEDAD_HODGKIN)
-poblacion_diana$LINFOMA_NO_HODGKIN<-as.Date(poblacion_diana$LINFOMA_NO_HODGKIN)
-poblacion_diana$LEUCEMIA<-as.Date(poblacion_diana$LEUCEMIA)
-poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO<-as.Date(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO)
-poblacion_diana$SARCOMA_KAPOSI<-as.Date(poblacion_diana$SARCOMA_KAPOSI)
-poblacion_diana$VIH<-as.Date(poblacion_diana$VIH)
-poblacion_diana$EPOC<-as.Date(poblacion_diana$EPOC)
-poblacion_diana$ASMA<-as.Date(poblacion_diana$ASMA)
-poblacion_diana$INSUF_CARDIACA<-as.Date(poblacion_diana$INSUF_CARDIACA)
-poblacion_diana$CARDIOPATÍA_ISQUÉMCIA<-as.Date(poblacion_diana$CARDIOPATÍA_ISQUÉMCIA)
-poblacion_diana$HEPATOPATIA_CRÓNICA<-as.Date(poblacion_diana$HEPATOPATIA_CRÓNICA)
-poblacion_diana$CIRROSIS<-as.Date(poblacion_diana$CIRROSIS)
-poblacion_diana$INSUF_RENAL_CRÓNICA<-as.Date(poblacion_diana$INSUF_RENAL_CRÓNICA)
-
-
 # changing reference in sex
-
-
 poblacion_diana$DESC_SEXO<-relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
 
 ```
@@ -138,6 +94,10 @@ comorbidities <- c("VIH",
 ## resultados_pruebas_COVID
 
 ```{r}
+resultados_pruebas_COVID_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",header = T,encoding = 'UTF-8')
+
+resultados_pruebas_COVID_t$FECHA_MUESTRA<-as.Date(as.character(resultados_pruebas_COVID_t$FECHA_MUESTRA),format="%d/%m/%Y")
+
 resultados_pruebas_COVID <- fread("/opt/datos_compartidos/vacunas_data/04_Resultados_pruebas_COVID.txt",header = T,encoding = 'UTF-8');resultados_pruebas_COVID<-as.data.frame(resultados_pruebas_COVID)
 # dates need to be converted from the original source, missing means NO
 
@@ -204,14 +164,18 @@ TODO puede ser que ya estuvieran ingresados.
 
 icd_ofinterest<-c('U07.1','J18.9','J12.89','J22','J96.00','J96.01','J96.02','J96.20','J90','J47.0','J96.21','J98.01','J18.0','J84.9','J96.91','J96.90','J96.92','J84.89','J81.0','I26.99','J06.9','J98.9','J95.89','J12.9','O98.52','J84.111','O98.513','J20.8','J96.11','J00','J12.81','J84.114','J39.8','J84.115','J84.113','B34.2')
 
+episodios_cmbd_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt",header = T,encoding = 'UTF-8');cmbd_t<-as.data.frame(episodios_cmbd_t);
+
+# 0BH17EZ 
+
 # TODO ingreso UCI bin
 # TODO no hay fecha de ingreso en UCI. Mirar traslados
-episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/02_Episodios_CMBD.txt",header = T,encoding = 'UTF-8');episodios_cmbd<-as.data.frame(episodios_cmbd)
 
 # dates need to be converted from the original source, missing means NO
-episodios_cmbd$FECHA_INGRESO<-as.Date(as.character(episodios_cmbd$FECHA_INGRESO),format="%Y%m%d")
-episodios_cmbd$FECHA_ALTA<-as.Date(as.character(episodios_cmbd$FECHA_ALTA),format="%Y%m%d")
-episodios_cmbd<-left_join(episodios_cmbd,infect_COVID_first)
+episodios_cmbd_t$COD_FEC_INGRESO <-as.Date(as.character(episodios_cmbd_t$COD_FEC_INGRESO ),format="%Y%m%d")
+
+episodios_cmbd_t$COD_FEC_ALTA<-as.Date(as.character(episodios_cmbd_t$COD_FEC_ALTA),format="%Y%m%d")
+
 
 # dias estancia hospitalaria
 episodios_cmbd$estancia_hospitalaria_dias<-trunc((episodios_cmbd$FECHA_INGRESO %--% episodios_cmbd$FECHA_ALTA ) / days(1))
@@ -258,7 +222,8 @@ TODO STAGI: *Pedir campañas 2019-20.*
 TODO hay varias vacunas de neumo y gripe por paciente.
 TODO estudiar numero de infecciones
 ```{r}
-vacunas <- fread("/opt/datos_compartidos/vacunas_data/03_Vacunas.txt",header = T,encoding = 'UTF-8');vacunas<-as.data.frame(vacunas)
+vacunas_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_VACUNAS_TODO.txt",header = T,encoding = 'UTF-8');vacunas_t<-as.data.frame(vacunas_t);
+
 # dates need to be converted from the original source, missing means NO
 vacunas$FEC_VACUNACION<-as.Date(as.character(vacunas$FEC_VACUNACION),format="%Y%m%d")
 
