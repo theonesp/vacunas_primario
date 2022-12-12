@@ -26,6 +26,8 @@ special_date = function(number){
 
 ## poblacion_diana
 
+? jaime Cordero
+
 ```{r}
 # '_t' means total population, second data load
 
@@ -91,7 +93,27 @@ comorbidities <- c("VIH",
   
 ```
 
+## Pupa
+
+Miguel transformar.
+
+```{r}
+# '_t' means total population, second data load
+
+puppa <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt",header = T,encoding = 'UTF-8');puppa<-as.data.frame(puppa);
+
+#names(poblacion_diana)<-c("COD_NUHSA_ENCRIPTADO","COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")
+
+# dates need to be converted from the original source, missing means NO
+
+# changing reference in sex
+poblacion_diana$DESC_SEXO<-relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
+
+```
+
 ## resultados_pruebas_COVID
+
+* Álvaro
 
 ```{r}
 resultados_pruebas_COVID_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",header = T,encoding = 'UTF-8')
@@ -118,6 +140,8 @@ infect_COVID_first<-infect_COVID_first %>%
 ```
 
 ## episodios_cmbd
+
+ * Rafa
 
 One of the first 5 admission diagnoses, should be in this list
 
@@ -209,6 +233,8 @@ episodios_cmbd_first<-episodios_cmbd %>%
 
 ## vacunas
 
+Jaime M
+
 TODO address non european shots: grepl('COVID-19 Sinopharm|COVID-19 Sputnik V|COVID-19 Covishield|COVID-19 CoronaVac (Sinovac Biotech)|COVID-19 CanSinoBIO|COVID-19 Covaxin|COVID-19 HIPRA')
 
 Criterios de exclusión: pacientes de 5 dosis.
@@ -298,7 +324,7 @@ vacunas_gripe<-unique(vacunas_gripe)
 # foo<-str_replace_all(vacunas$NOM_VACUNA,"[^[:graph:]]", " ") 
 ```
 
-## periodos pandemicos
+## periodos pandemicos ?
 
 Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente [enlace (exige red corporativa)](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
 
