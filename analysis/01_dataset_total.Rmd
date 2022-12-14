@@ -185,7 +185,6 @@ TODO hay 92k pacientes sin fecha de ingreso
 TODO puede ser que ya estuvieran ingresados.
 
 ```{r}
-
 icd_ofinterest<-c('U07.1','J18.9','J12.89','J22','J96.00','J96.01','J96.02','J96.20','J90','J47.0','J96.21','J98.01','J18.0','J84.9','J96.91','J96.90','J96.92','J84.89','J81.0','I26.99','J06.9','J98.9','J95.89','J12.9','O98.52','J84.111','O98.513','J20.8','J96.11','J00','J12.81','J84.114','J39.8','J84.115','J84.113','B34.2')
 
 episodios_cmbd_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt",header = T,encoding = 'UTF-8');cmbd_t<-as.data.frame(episodios_cmbd_t);
