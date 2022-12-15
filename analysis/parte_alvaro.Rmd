@@ -21,7 +21,6 @@ special_date = function(number){
 }
 ```
 
-
 # Data Load
 
 ## poblacion_diana
@@ -40,24 +39,18 @@ Miguel transformar.
 
 # '_t' means total population, second data load
 
+# database importation and tidying
 resultados_pruebas_COVID_t <-
   fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",
         header = T,
         encoding = 'UTF-8') %>% 
   as.data.frame() %>% 
   rename(COD_NUHSA_ENCRIPTADO = NUHSA_ENCRIPTADO) %>% 
-  select(COD_NUHSA_ENCRIPTADO, DESC_T_PRUEBA, FECHA_MUESTRA, RESULTADO) %>% 
+  select(-TIPO_PRUEBA) %>% 
   mutate(FECHA_MUESTRA = as.Date(as.character(FECHA_MUESTRA),
                                  format = "%d/%m/%Y"))
 
-
-
-# resultados_pruebas_COVID <- fread("/opt/datos_compartidos/vacunas_data/04_Resultados_pruebas_COVID.txt",header = T,encoding = 'UTF-8');resultados_pruebas_COVID<-as.data.frame(resultados_pruebas_COVID)
-# 
-# resultados_pruebas_COVID$FECHA_MUESTRA<-as.Date(as.character(resultados_pruebas_COVID$FECHA_MUESTRA),format="%d/%m/%Y")
-
-
-
+# infection count per person
 infect_COVID_num <-
   resultados_pruebas_COVID_t %>%
   group_by(COD_NUHSA_ENCRIPTADO) %>%
@@ -67,12 +60,9 @@ infect_COVID_num <-
 infect_COVID_first <-
   resultados_pruebas_COVID_t %>%
   group_by(COD_NUHSA_ENCRIPTADO) %>%
-  filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA))
-
-infect_COVID_first <- 
-  infect_COVID_first %>%
+  filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA)) %>% 
   rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
-  select(COD_NUHSA_ENCRIPTADO,infect_COVID_first_date)
+  select(COD_NUHSA_ENCRIPTADO, infect_COVID_first_date)
 ```
 
 ## episodios_cmbd
@@ -84,104 +74,3 @@ infect_COVID_first <-
 Jaime M
 
 ## periodos pandemicos ?
-
-
-# Final dataset
-
-## Joining across datasets
-
-```{r}
-print('base::merge')
-print(Sys.time())
-estudio_vacunas_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
-    infect_COVID_first
-  , episodios_cmbd_first  
-  , poblacion_diana_opt
-  , vacunas_covid_first
-  , vacunas_covid_full
-  , vacunas_covid_pautas
-  , vacunas_neumococo
-  , vacunas_gripe
-  , infect_COVID_num
-))
-print(Sys.time())
-
-```
-
-## Columns NA filling
-
-```{r}
-estudio_vacunas_final$pautas_covid<-if_else(is.na(estudio_vacunas_final$pautas_covid),as.integer(0),estudio_vacunas_final$pautas_covid)
-
-estudio_vacunas_final$hosp_stay_bin<-factor(if_else(is.na(estudio_vacunas_final$hosp_stay_bin),as.character(0), as.character(estudio_vacunas_final$hosp_stay_bin)))
-
-estudio_vacunas_final$hosp_stay_bin<-as.factor(estudio_vacunas_final$hosp_stay_bin)
-
-
-estudio_vacunas_final$icu_stay_bin<-factor(if_else(is.na(estudio_vacunas_final$icu_stay_bin),as.character(0), as.character(estudio_vacunas_final$icu_stay_bin)))
-estudio_vacunas_final$icu_stay_bin<-as.factor(estudio_vacunas_final$icu_stay_bin)
-
-
-estudio_vacunas_final$estancia_hospitalaria_dias<-if_else(is.na(estudio_vacunas_final$estancia_hospitalaria_dias),0,estudio_vacunas_final$estancia_hospitalaria_dias)
-
-estudio_vacunas_final$covid_first_name<-if_else(is.na(estudio_vacunas_final$covid_first_name),'0',estudio_vacunas_final$covid_first_name)
-
-estudio_vacunas_final$covid_full_name<-if_else(is.na(estudio_vacunas_final$covid_full_name),'0',estudio_vacunas_final$covid_full_name)
-
-estudio_vacunas_final$vacuna_neumo<-if_else(is.na(estudio_vacunas_final$vacuna_neumo),as.character(0),as.character(estudio_vacunas_final$vacuna_neumo))
-
-estudio_vacunas_final$vacuna_gripe<-if_else(is.na(estudio_vacunas_final$vacuna_gripe),as.character(0),as.character(estudio_vacunas_final$vacuna_gripe))
-
-estudio_vacunas_final$infecc_covid<-if_else(is.na(estudio_vacunas_final$infecc_covid),as.character(0),as.character(estudio_vacunas_final$infecc_covid))
-
-```
-
-
-## New variables creation
-
-sacar la gripe y el neumococo como variable independiente.
-Hay que restar fechas. comprobar que la vacunación de gripe y de neumococo han sido
-
-```{r}
-estudio_vacunas_final<-estudio_vacunas_final%>%
-mutate(
-  vac_groupA=paste(pautas_covid,covid_first_name,vacuna_neumo,vacuna_gripe,sep='|'),
-  vac_groupB=paste(pautas_covid,'vac',infecc_covid,'infec',vacuna_neumo,vacuna_gripe,sep='|'),
-  covid_vacunado=as.factor(if_else(pautas_covid==0,0,1)),
-  vac_COV_Neumo_Gripe=as.factor(paste0(covid_vacunado,vacuna_neumo,vacuna_gripe))
-  # neumovac_bef_adm=as.factor(if_else())
-)
-```
-
-(Coalesce de fallecimiento y fecha de ingreso)
-
-# Exclusion criteria
-
-TIPO_ALTA
-1 = Destino al domicilio; 2 = Traslado a otro hospital; 3 = Traslado a residencia social; 4 = Alta voluntaria; 5 = Defunción; 6 = Hospitalización a domicilio; 7 = In Extremis; 8 = Fuga
-
-TODO Stagi: preguntar por por tipo_alto
-
-```{r}
-print('Número pacientes con infección COVID confirmada por PCR y fecha de infección disponible')
-a<-nrow(estudio_vacunas_final)
-a
-
-estudio_vacunas_final_selected<-estudio_vacunas_final%>%filter(pautas_covid <5 )
-print('Pacientes excluídos con más de 4 dosis')
-b<-nrow(estudio_vacunas_final_selected)
-a-b
-
-print('Número final de pacientes')
-nrow(estudio_vacunas_final_selected)
-
-```
-
-# Descriptive
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
