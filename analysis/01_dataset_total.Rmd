@@ -141,6 +141,9 @@ infect_COVID_first<-infect_COVID_first %>%
 
 ## episodios_cmbd
 
+Episodios CMBD del 03/03/2019 al 01/04/2022.
+
+
  * Rafa
 
 One of the first 5 admission diagnoses, should be in this list
@@ -181,53 +184,50 @@ J84.114	42	Neumonitis intersticial aguda
 J39.8	41	Otras enfermedades especificadas del tracto respiratorio superior
 J84.115	15	Enfermedad pulmonar intersticial asociada a bronquiolitis respiratoria
 
-TODO hay 92k pacientes sin fecha de ingreso
+TODO hay 92k pacientes sin fecha de ingreso. rafa: a mi ma salen todos con Fecha ingreso y alta.
 TODO puede ser que ya estuvieran ingresados.
 
 ```{r}
-icd_ofinterest<-c('U07.1','J18.9','J12.89','J22','J96.00','J96.01','J96.02','J96.20','J90','J47.0','J96.21','J98.01','J18.0','J84.9','J96.91','J96.90','J96.92','J84.89','J81.0','I26.99','J06.9','J98.9','J95.89','J12.9','O98.52','J84.111','O98.513','J20.8','J96.11','J00','J12.81','J84.114','J39.8','J84.115','J84.113','B34.2')
+icd_ofinterest <- c('U07.1', 'J18.9', 'J12.89', 'J22', 'J96.00', 'J96.01', 'J96.02', 'J96.20', 'J90', 'J47.0', 'J96.21', 'J98.01', 'J18.0', 'J84.9', 'J96.91', 'J96.90', 'J96.92', 'J84.89', 'J81.0', 'I26.99', 'J06.9', 'J98.9', 'J95.89', 'J12.9', 'O98.52', 'J84.111', 'O98.513', 'J20.8', 'J96.11', 'J00', 'J12.81', 'J84.114', 'J39.8', 'J84.115', 'J84.113', 'B34.2')
 
-episodios_cmbd_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt",header = T,encoding = 'UTF-8');cmbd_t<-as.data.frame(episodios_cmbd_t);
+episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt", header = T, encoding = "UTF-8") %>% 
+  as.data.frame()
+cmbd_t <- as.data.frame(episodios_cmbd)
 
-# 0BH17EZ 
-
-# TODO ingreso UCI bin
-# TODO no hay fecha de ingreso en UCI. Mirar traslados
+# TODO no hay fecha de ingreso en UCI. No podemos calcular dias UCIA. Mirar traslados. rafa: no creo que tengamos acceso a esto.
 
 # dates need to be converted from the original source, missing means NO
-episodios_cmbd_t$COD_FEC_INGRESO <-as.Date(as.character(episodios_cmbd_t$COD_FEC_INGRESO ),format="%Y%m%d")
-
-episodios_cmbd_t$COD_FEC_ALTA<-as.Date(as.character(episodios_cmbd_t$COD_FEC_ALTA),format="%Y%m%d")
-
+episodios_cmbd$COD_FEC_INGRESO <- as.Date(as.character(episodios_cmbd$COD_FEC_INGRESO),format="%Y%m%d")
+episodios_cmbd$COD_FEC_ALTA <- as.Date(as.character(episodios_cmbd$COD_FEC_ALTA),format="%Y%m%d")
 
 # dias estancia hospitalaria
-episodios_cmbd$estancia_hospitalaria_dias<-trunc((episodios_cmbd$FECHA_INGRESO %--% episodios_cmbd$FECHA_ALTA ) / days(1))
+episodios_cmbd <- episodios_cmbd %>% 
+  mutate(estancia_hospitalaria_dias = as.numeric(COD_FEC_ALTA - COD_FEC_INGRESO))
 
 # dias entre infeccion e ingreso
-episodios_cmbd$infeccion_ingreso_dias<-trunc((episodios_cmbd$infect_COVID_first_date %--% episodios_cmbd$FECHA_INGRESO ) / days(1))
+episodios_cmbd <- episodios_cmbd %>% 
+  mutate(infeccion_ingreso_dias = as.numeric(infect_COVID_first_date - COD_FEC_INGRESO))
 
-# estancia uci
-episodios_cmbd$icu_stay_bin<-if_else(episodios_cmbd$ESTANCIAS_UCI == 0 | is.na(episodios_cmbd$ESTANCIAS_UCI ) ,0,1)
+# estancia uci si/no
+episodios_cmbd <- episodios_cmbd %>% 
+  mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
 
-# dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo 
-# si no, no lo considero ingreso hospitalario por COVID
-episodios_cmbd$hosp_stay_bin<-as.character(if_else(episodios_cmbd$infeccion_ingreso_dias <= 30, 1 ,0))
-
-
-#TODO los aún ingresados en el período de análisis habrían de tenerse en cuenta
-
-
+# dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo. si no, no lo considero ingreso hospitalario por COVID
+#los aún ingresados en el período de análisis habrían de tenerse en cuenta. Es menor de 30 si sale negativo también se cuenta.
+episodios_cmbd <- episodios_cmbd %>% 
+  mutate(hosp_stay_bin = if_else(infeccion_ingreso_dias <= 30, 1 ,0))
 
 #we are just going to take into account first hospitalization
-
-#filtramos los 5 códigas principales sólo por ICD relacionados con COVID, según conteo
+#filtramos los 5 códigos principales sólo por ICD relacionados con COVID, según conteo
 # we are only selecting fist admission per patient
-episodios_cmbd_first<-episodios_cmbd %>%
-  select(COD_NUHSA_ENCRIPTADO,FECHA_INGRESO,FECHA_ALTA,ESTANCIAS_UCI,ESTANCIAS,TIPO_INGRESO,TIPO_ALTA,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,D1,D2,D3,D4,D5,infeccion_ingreso_dias) %>%
-  group_by(COD_NUHSA_ENCRIPTADO)  %>%
-  filter(row_number()==1 & (D1 %in% icd_ofinterest | D2 %in% icd_ofinterest| D3 %in% icd_ofinterest| D4 %in% icd_ofinterest| D5 %in% icd_ofinterest) ) %>%
-  select(COD_NUHSA_ENCRIPTADO,FECHA_INGRESO,FECHA_ALTA,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,infeccion_ingreso_dias)
 
+episodios_cmbd_first <- episodios_cmbd %>%
+  select(COD_NUHSA_ENCRIPTADO, COD_FEC_INGRESO, COD_FEC_ALTA, COD_TIPO_ALTA, DESC_TIPO_ALTA, hosp_stay_bin, estancia_hospitalaria_dias, icu_stay_bin, NUM_DIAS_UCI, COD_D1, COD_D2, COD_D3, COD_D4, COD_D5, infeccion_ingreso_dias) %>%
+  filter(hosp_stay_bin == 1) %>% 
+  filter(D1 %in% icd_ofinterest | D2 %in% icd_ofinterest| D3 %in% icd_ofinterest| D4 %in% icd_ofinterest| D5 %in% icd_ofinterest) %>%
+  group_by(COD_NUHSA_ENCRIPTADO) %>%
+  filter(row_number() == 1) %>% 
+  select(COD_NUHSA_ENCRIPTADO, COD_FEC_INGRESO, COD_FEC_ALTA, estancia_hospitalaria_dias, hosp_stay_bin, icu_stay_bin, infeccion_ingreso_dias)
 ```
 
 ## vacunas
