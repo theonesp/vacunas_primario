@@ -12,7 +12,8 @@ library(zoo)
 library(dplyr)
 library(magrittr)
 library(lubridate)
-library(lazy_dt)
+library(dtplyr)
+library(vroom)
 
 # defining functions
 
@@ -20,6 +21,8 @@ special_date = function(number){
   date = if_else(number%in%c(-1,0,NA), as.Date(NA), as.Date(as.character(number),format="%Y%m%d"))
   return(date)
 }
+
+convertir_valores <- function(x) {ifelse(x == -1, 0, 1)}
 ```
 
 
@@ -28,16 +31,23 @@ special_date = function(number){
 ## poblacion_diana
 
 ```{r}
-# '_t' means total population, second data load
 
-poblacion_diana_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt",header = T,encoding = 'UTF-8');poblacion_diana<-as.data.frame(poblacion_diana_t);
+poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt",header = T,encoding = 'UTF-8')
 
-#names(poblacion_diana)<-c("COD_NUHSA_ENCRIPTADO","COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")
+poblacion_diana$COD_FEC_NACIMIENTO<-as.Date(as.character(poblacion_diana$COD_FEC_NACIMIENTO), format = "%Y%m%d") 
 
-# dates need to be converted from the original source, missing means NO
 
 # changing reference in sex
-poblacion_diana_t$DESC_SEXO<-relevel(as.factor(poblacion_diana_t$DESC_SEXO), ref = "Mujer" )
+
+poblacion_diana$DESC_SEXO<-relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
+
+# age at 2020 field
+poblacion_diana$age<-trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-01' ) / years(1))
+
+# mortality field
+
+poblacion_diana$mortality <- convertir_valores(poblacion_diana$FEC_FALLECIMIENTO)
+
 
 ```
 
@@ -52,6 +62,14 @@ pupa <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt",h
 
 # dates need to be converted from the original source, missing means NO
 pupa$COD_FEC_INI_PATOLOGIA<-as.Date(as.character(pupa$COD_FEC_INI_PATOLOGIA),format="%Y%m%d")
+
+# First, we convert the "category" column into several binary columns
+pupa <- pupa %>%
+  mutate(across(DESC_PATOLOGIA_CRONICA, make.names))
+
+
+df <- df %>%
+  filter(reference_date - category_date <= x)
 
 ```
 ## resultados_pruebas_COVID
@@ -135,23 +153,30 @@ icd_ofinterest <- c('U07.1', 'J18.9', 'J12.89', 'J22', 'J96.00', 'J96.01', 'J96.
 episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt", header = T, encoding = "UTF-8") %>% 
   as.data.frame()
 cmbd_t <- as.data.frame(episodios_cmbd)
+
 # TODO no hay fecha de ingreso en UCI. No podemos calcular dias UCIA. Mirar traslados. rafa: no creo que tengamos acceso a esto.
+
 # dates need to be converted from the original source, missing means NO
 episodios_cmbd$COD_FEC_INGRESO <- as.Date(as.character(episodios_cmbd$COD_FEC_INGRESO),format="%Y%m%d")
 episodios_cmbd$COD_FEC_ALTA <- as.Date(as.character(episodios_cmbd$COD_FEC_ALTA),format="%Y%m%d")
+
 # dias estancia hospitalaria
 episodios_cmbd <- episodios_cmbd %>% 
   mutate(estancia_hospitalaria_dias = as.numeric(COD_FEC_ALTA - COD_FEC_INGRESO))
+
 # dias entre infeccion e ingreso
 episodios_cmbd <- episodios_cmbd %>% 
   mutate(infeccion_ingreso_dias = as.numeric(infect_COVID_first_date - COD_FEC_INGRESO))
+
 # estancia uci si/no
 episodios_cmbd <- episodios_cmbd %>% 
   mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
+
 # dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo. si no, no lo considero ingreso hospitalario por COVID
 #los aún ingresados en el período de análisis habrían de tenerse en cuenta. Es menor de 30 si sale negativo también se cuenta.
 episodios_cmbd <- episodios_cmbd %>% 
   mutate(hosp_stay_bin = if_else(infeccion_ingreso_dias <= 30, 1 ,0))
+
 #we are just going to take into account first hospitalization
 #filtramos los 5 códigos principales sólo por ICD relacionados con COVID, según conteo
 # we are only selecting fist admission per patient
