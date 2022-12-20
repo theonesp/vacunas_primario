@@ -116,27 +116,35 @@ poblacion_diana$DESC_SEXO<-relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "
 * Álvaro
 
 ```{r}
-resultados_pruebas_COVID_t <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",header = T,encoding = 'UTF-8')
+resultados_pruebas_COVID <-
+  fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",
+        header = T,
+        encoding = 'UTF-8') %>% 
+  as.data.frame() %>% 
+  rename(COD_NUHSA_ENCRIPTADO = NUHSA_ENCRIPTADO) %>% 
+  select(-TIPO_PRUEBA) %>%
+  mutate(FECHA_MUESTRA = as.Date(as.character(FECHA_MUESTRA), format = "%d/%m/%Y"))
 
-resultados_pruebas_COVID_t$FECHA_MUESTRA<-as.Date(as.character(resultados_pruebas_COVID_t$FECHA_MUESTRA),format="%d/%m/%Y")
+# TODO: Sólo hay PCR. No hay PRDA.
+resultados_pruebas_COVID$RESULTADO %>% as.factor() %>% summary()
+resultados_pruebas_COVID$DESC_T_PRUEBA %>% as.factor() %>% summary()
 
-resultados_pruebas_COVID <- fread("/opt/datos_compartidos/vacunas_data/04_Resultados_pruebas_COVID.txt",header = T,encoding = 'UTF-8');resultados_pruebas_COVID<-as.data.frame(resultados_pruebas_COVID)
-# dates need to be converted from the original source, missing means NO
+resultados_pruebas_COVID <- resultados_pruebas_COVID %>%
+  filter(RESULTADO == "Positivo" | RESULTADO == "ositivo") %>% 
+  filter(FECHA_MUESTRA > "2020-01-01")
 
-resultados_pruebas_COVID$FECHA_MUESTRA<-as.Date(as.character(resultados_pruebas_COVID$FECHA_MUESTRA),format="%d/%m/%Y")
-
-infect_COVID_num<-resultados_pruebas_COVID%>%
+# infection count per person
+infect_COVID_num <- resultados_pruebas_COVID %>%
   group_by(COD_NUHSA_ENCRIPTADO) %>%
   summarise(infecc_covid = n())
-
+  
 # first COVID infection with date available
-infect_COVID_first<-resultados_pruebas_COVID %>%
-  group_by(COD_NUHSA_ENCRIPTADO)  %>%
-  filter(row_number()==1 & DESC_T_PRUEBA=='PCR' & !is.na(FECHA_MUESTRA))
-
-infect_COVID_first<-infect_COVID_first %>%
-  rename(infect_COVID_first_date = FECHA_MUESTRA)%>%
-  select(COD_NUHSA_ENCRIPTADO,infect_COVID_first_date)
+infect_COVID_first <- resultados_pruebas_COVID %>%
+  arrange(FECHA_MUESTRA) %>% 
+  group_by(COD_NUHSA_ENCRIPTADO) %>%
+  filter(row_number() == 1) %>% 
+  rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
+  select(COD_NUHSA_ENCRIPTADO, infect_COVID_first_date)
 ```
 
 ## episodios_cmbd
