@@ -54,7 +54,7 @@ res.cox <- coxph(Surv(estancia_hospitalaria_dias, estancia_hospitalaria) ~ DESC_
 ggsurvplot(res.cox, data = estudio_vacunas_final_selected)
 ```
 
-# logreg_hosp_stay_bin
+# logreg hosp_stay_bin
 
 ## Fitting the model
 
