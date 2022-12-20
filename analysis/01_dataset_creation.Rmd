@@ -14,6 +14,9 @@ library(magrittr)
 library(lubridate)
 library(dtplyr)
 library(vroom)
+library(stringi)
+library(tidyr)
+library(parallel)
 
 # defining functions
 
@@ -60,17 +63,58 @@ Periodo-Usuario PAtologías
 ```{r}
 pupa <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt",header = T,encoding = 'Latin-1');pupa<-as.data.frame(pupa);
 
+# Remove duplicates
+pupa %<>% distinct()
+
 # dates need to be converted from the original source, missing means NO
 pupa$COD_FEC_INI_PATOLOGIA<-as.Date(as.character(pupa$COD_FEC_INI_PATOLOGIA),format="%Y%m%d")
 
-# First, we convert the "category" column into several binary columns
-pupa <- pupa %>%
-  mutate(across(DESC_PATOLOGIA_CRONICA, make.names))
+# First, we convert the categorical variables to one without capital letters and accents
+pupa$DESC_PATOLOGIA_CRONICA<-tolower(make.names(stri_trans_general(pupa$DESC_PATOLOGIA_CRONICA, "latin-ascii")))
 
 
-df <- df %>%
-  filter(reference_date - category_date <= x)
 
+#TODO, FILTER by admission or infection date?
+# Join the two data sets by the id column
+# df_joined <- df1 %>%
+#   left_join(df2, by = "id")
+# 
+# # Filter the joined data frame to select rows where the date difference between the two date columns is 59 days
+# df_filtered <- df_joined %>%
+#   filter(abs(as.numeric(difftime(date1, date2, units = "days"))) == 60)
+# 
+# # Select only the categorical column from the filtered data frame
+# df_final <- df_filtered %>%
+#   select(categorical_column)
+
+#This will create a new column for each unique element in the DESC_PATOLOGIA_CRONICA column, and fill the cells with a value of 1 for rows where the DESC_PATOLOGIA_CRONICA value matches the column name, and 0 for all other rows.
+
+# Convert the data frame to a data.table since dplyr is not efficent enough
+pupa_dt <- setDT(pupa)
+
+# Group by and mutate in a single step
+pupa_opt <- pupa_dt[, value := 1, by = c("NUHSA_ENCRIPTADO", "DESC_PATOLOGIA_CRONICA")]
+
+# Spread in a single step
+pupa_opt <- dcast(pupa_opt, NUHSA_ENCRIPTADO ~ DESC_PATOLOGIA_CRONICA, value.var = "value", fill = 0)
+
+
+
+# Replace the values in the original data frame with 1 if any value in the row is greater than 0, and 0 otherwise
+
+# Select the first column
+df_first <- pupa_opt[, 1]
+
+# Select the columns starting from the second column
+df_selected <- pupa_opt[, 2:ncol(pupa_opt)]
+
+# Replace the values in the selected columns with 1 if they are greater than 0, and 0 otherwise
+df_selected <- apply(df_selected, 2, function(x) ifelse(x > 0, 1, 0))
+
+# Append the transformed columns to the first column
+pupa_opt <- cbind(df_first, df_selected)
+
+remove(df_first); remove(df_selected)
 ```
 ## resultados_pruebas_COVID
 
@@ -164,9 +208,18 @@ episodios_cmbd$COD_FEC_ALTA <- as.Date(as.character(episodios_cmbd$COD_FEC_ALTA)
 episodios_cmbd <- episodios_cmbd %>% 
   mutate(estancia_hospitalaria_dias = as.numeric(COD_FEC_ALTA - COD_FEC_INGRESO))
 
+
+
 # dias entre infeccion e ingreso
+
+# MIGUEL joining  the df containing infect_COVID_first_date
+result <- merge(datasetA, datasetB, by = "id", all.x = TRUE)
+
 episodios_cmbd <- episodios_cmbd %>% 
   mutate(infeccion_ingreso_dias = as.numeric(infect_COVID_first_date - COD_FEC_INGRESO))
+
+# MIGUEL select only cols from names(episodios_cmbd)
+result <- select(result, id, ref_date)
 
 # estancia uci si/no
 episodios_cmbd <- episodios_cmbd %>% 
