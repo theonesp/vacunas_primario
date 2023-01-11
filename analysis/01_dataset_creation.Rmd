@@ -6,17 +6,24 @@ output: html_document
 # Environment
 
 ```{r}
-library(data.table)
-library(summarytools)
-library(zoo)
-library(dplyr)
-library(magrittr)
-library(lubridate)
-library(dtplyr)
-library(vroom)
-library(stringi)
-library(tidyr)
-library(parallel)
+
+# Packages to load
+
+packages_to_load <- c(
+  "data.table",
+  "dplyr",
+  "dtplyr",
+  "lubridate",
+  "magrittr",
+  "parallel",
+  "stringi",
+  "summarytools",
+  "tidyr",
+  "vroom",
+  "zoo"
+)
+
+lapply(packages_to_load, library, character.only = TRUE)
 
 # defining functions
 
@@ -242,7 +249,7 @@ episodios_cmbd<-result %>% select(NUHSA_ENCRIPTADO,COD_FEC_INGRESO,COD_FEC_ALTA,
 
 # estancia uci si/no
 episodios_cmbd %<>% 
-mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
+  mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
 
 # dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo. si no, no lo considero ingreso hospitalario por COVID
 #los aún ingresados en el período de análisis habrían de tenerse en cuenta. Es menor de 30 si sale negativo también se cuenta.
@@ -312,46 +319,48 @@ vacunas_t <- vroom(
   left_join(.,infect_COVID_first,by = "NUHSA_ENCRIPTADO") %>% 
   mutate(
     FEC_VACUNACION = ymd(FEC_VACUNACION), # dates need to be converted from the original source, missing means NO
-    vac_infecc_umbral = trunc((FEC_VACUNACION %--% infect_COVID_first_date) / days(1)) 
-    # dias entre vacunacion e infeccion
-    )
+    vac_infecc_umbral = trunc((FEC_VACUNACION %--% infect_COVID_first_date) / days(1)) # dias entre vacunacion e infeccion
+  )
 
 
 # what shot was first per patient?
 vacunas_t_covid_first <- vacunas_t %>%
-  # dias entre vacunacion e infeccion ha de ser >= 14 días
-  filter(vac_infecc_umbral >= 14) %>% 
-  filter(grepl(
-    'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
-    NOM_VACUNA
-  )) %>%
+  filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
+  filter(
+    grepl(
+      'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
+      NOM_VACUNA
+    )
+  ) %>%
   group_by(NUHSA_ENCRIPTADO) %>%
+  arrange(FEC_VACUNACION) %>% 
   filter(row_number() == 1) %>% 
   transmute(
     NUHSA_ENCRIPTADO,
     covid_first_name = NOM_VACUNA,
     covid_first_date = FEC_VACUNACION
-)
+  )
 
- 
+
 
 # TODO cómo afecta el umbral de 14 días a la pauta completa?
 
 # full shots
 vacunas_t_covid_full <- vacunas_t %>%
-  filter(grepl(
+  filter(
+    grepl(
       'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
       NOM_VACUNA
-    )) %>%
+    )
+  ) %>%
   group_by(NUHSA_ENCRIPTADO) %>%
-  order_by(FEC_VACUNACION)
+  arrange(FEC_VACUNACION) %>% 
   filter(row_number()==3) %>% 
   transmute(
     NUHSA_ENCRIPTADO,
     covid_full_name = NOM_VACUNA,
     covid_full_date = FEC_VACUNACION
-)
-
+  )
 
 # number of shots ?
 vacunas_t_covid_pautas <- vacunas_t %>%
@@ -360,8 +369,8 @@ vacunas_t_covid_pautas <- vacunas_t %>%
     grepl(
       'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
       NOM_VACUNA
-      )
-    ) %>% 
+    )
+  ) %>% 
   summarise(pautas_covid = n())
 
 # neumococo simple version, was the patient vaccinated? (bin)
@@ -369,7 +378,7 @@ vacunas_neumococo <- vacunas_t %>%
   filter(vac_infecc_umbral >= 14)%>%
   filter(
     grepl('Neumococo', NOM_VACUNA)
-    ) %>% 
+  ) %>% 
   transmute(
     NUHSA_ENCRIPTADO,
     vacuna_neumo = 1
@@ -402,7 +411,7 @@ vacunas_gripe <- vacunas_t %>%
 ```{r}
 print(Sys.time())
 estudio_vacunas_t_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
-    infect_COVID_first_date
+  infect_COVID_first_date
   , poblacion_diana #select(NUHSA_ENCRIPTADO,DESC_SEXO,age, mortality)
   , pupa_opt
   , infect_COVID_num  
@@ -479,13 +488,13 @@ Hay que restar fechas. comprobar que la vacunación de gripe y de neumococo han 
 
 ```{r}
 estudio_vacunas_final<-estudio_vacunas_final%>%
-mutate(
-  vac_groupA=paste(pautas_covid,covid_first_name,vacuna_neumo,vacuna_gripe,sep='|'),
-  vac_groupB=paste(pautas_covid,'vac',infecc_covid,'infec',vacuna_neumo,vacuna_gripe,sep='|'),
-  covid_vacunado=as.factor(if_else(pautas_covid==0,0,1)),
-  vac_COV_Neumo_Gripe=as.factor(paste0(covid_vacunado,vacuna_neumo,vacuna_gripe))
-  # neumovac_bef_adm=as.factor(if_else())
-)
+  mutate(
+    vac_groupA=paste(pautas_covid,covid_first_name,vacuna_neumo,vacuna_gripe,sep='|'),
+    vac_groupB=paste(pautas_covid,'vac',infecc_covid,'infec',vacuna_neumo,vacuna_gripe,sep='|'),
+    covid_vacunado=as.factor(if_else(pautas_covid==0,0,1)),
+    vac_COV_Neumo_Gripe=as.factor(paste0(covid_vacunado,vacuna_neumo,vacuna_gripe))
+    # neumovac_bef_adm=as.factor(if_else())
+  )
 ```
 
 (Coalesce de fallecimiento y fecha de ingreso)
