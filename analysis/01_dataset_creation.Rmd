@@ -6,12 +6,24 @@ output: html_document
 # Environment
 
 ```{r}
-library(data.table)
-library(summarytools)
-library(zoo)
-library(dplyr)
-library(magrittr)
-library(lubridate)
+
+# Packages to load
+
+packages_to_load <- c(
+  "data.table",
+  "dplyr",
+  "dtplyr",
+  "lubridate",
+  "magrittr",
+  "parallel",
+  "stringi",
+  "summarytools",
+  "tidyr",
+  "vroom",
+  "zoo"
+)
+
+lapply(packages_to_load, library, character.only = TRUE)
 
 # defining functions
 
@@ -19,6 +31,8 @@ special_date = function(number){
   date = if_else(number%in%c(-1,0,NA), as.Date(NA), as.Date(as.character(number),format="%Y%m%d"))
   return(date)
 }
+
+convertir_valores <- function(x) {ifelse(x == -1, 0, 1)}
 ```
 
 
@@ -27,132 +41,140 @@ special_date = function(number){
 ## poblacion_diana
 
 ```{r}
-poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/01_Poblacion_Diana_Pat_BPS.txt",header = T,encoding = 'UTF-8');poblacion_diana<-as.data.frame(poblacion_diana);names(poblacion_diana)<-c("COD_NUHSA_ENCRIPTADO","COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")
+poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt",header = T,encoding = 'Latin-1')
 
-poblacion_diana[,c("DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7")]<-apply(poblacion_diana[,c("DESC_SEXO","MAYORES_60","MENORES_PATOLOGIAS","RESIDE_RESIDENCIA","GRUPO_7","COLECTIVO_G7")],2, function(x) as.factor(x) )
-
-# dates need to be converted from the original source, missing means NO
-
-poblacion_diana[,c("COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")]<-apply(poblacion_diana[,c("COD_FEC_NACIMIENTO","COD_FEC_FALLECIMIENTO","FEC_BAJA_EXITUS","DIABETES","HTA","CÁNCER_CABEZA_CUELLO","CÁNCER_ESTÓMAGO","CÁNCER_COLORRECTAL","CÁNCER_HÍGADO_VÍAS_BILIARES","CÁNCER_PÁNCREAS","CÁNCER_BRONQUIO_PULMÓN","CÁNCER_TIROIDES","CÁNCER_HUESO_TEJIDOS_BLANDOS","MELANOMA_PIEL","CÁNCER_MAMA","CÁNCER_ÚTERO","CÁNCER_CUELLO_UTERINO","CÁNCER_OVARIO","CÁNCER_PRÓSTATA","CÁNCER_TESTÍCULO","CÁNCER_RIÑÓN_PELVIS_RENAL","CÁNCER_VEJIGA","ENFERMEDAD_HODGKIN","LINFOMA_NO_HODGKIN","LEUCEMIA","CÁNCER_INMUNOPROLIFERATIVO","SARCOMA_KAPOSI","VIH","EPOC","ASMA","INSUF_CARDIACA","CARDIOPATÍA_ISQUÉMCIA","HEPATOPATIA_CRÓNICA","CIRROSIS","INSUF_RENAL_CRÓNICA")],2, function(x) special_date(x) )
-
-poblacion_diana$COD_FEC_NACIMIENTO<-as.Date(poblacion_diana$COD_FEC_NACIMIENTO) 
-poblacion_diana$COD_FEC_FALLECIMIENTO<-as.Date(poblacion_diana$COD_FEC_FALLECIMIENTO)
-poblacion_diana$FEC_BAJA_EXITUS<-as.Date(poblacion_diana$FEC_BAJA_EXITUS)
-poblacion_diana$DIABETES<-as.Date(poblacion_diana$DIABETES)
-poblacion_diana$HTA<-as.Date(poblacion_diana$HTA)
-poblacion_diana$CÁNCER_CABEZA_CUELLO<-as.Date(poblacion_diana$CÁNCER_CABEZA_CUELLO)
-poblacion_diana$CÁNCER_ESTÓMAGO<-as.Date(poblacion_diana$CÁNCER_ESTÓMAGO)
-poblacion_diana$CÁNCER_COLORRECTAL<-as.Date(poblacion_diana$CÁNCER_COLORRECTAL)
-poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES<-as.Date(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES)
-poblacion_diana$CÁNCER_PÁNCREAS<-as.Date(poblacion_diana$CÁNCER_PÁNCREAS)
-poblacion_diana$CÁNCER_BRONQUIO_PULMÓN<-as.Date(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN)
-poblacion_diana$CÁNCER_TIROIDES<-as.Date(poblacion_diana$CÁNCER_TIROIDES)
-poblacion_diana$CÁNCER_HUESO_TEJIDOS_BLANDOS<-as.Date(poblacion_diana$CÁNCER_HUESO_TEJIDOS_BLANDOS)
-poblacion_diana$MELANOMA_PIEL<-as.Date(poblacion_diana$MELANOMA_PIEL)
-poblacion_diana$CÁNCER_MAMA<-as.Date(poblacion_diana$CÁNCER_MAMA)
-poblacion_diana$CÁNCER_ÚTERO<-as.Date(poblacion_diana$CÁNCER_ÚTERO)
-poblacion_diana$CÁNCER_CUELLO_UTERINO<-as.Date(poblacion_diana$CÁNCER_CUELLO_UTERINO)
-poblacion_diana$CÁNCER_OVARIO<-as.Date(poblacion_diana$CÁNCER_OVARIO)
-poblacion_diana$CÁNCER_PRÓSTATA<-as.Date(poblacion_diana$CÁNCER_PRÓSTATA)
-poblacion_diana$CÁNCER_TESTÍCULO<-as.Date(poblacion_diana$CÁNCER_TESTÍCULO)
-poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL<-as.Date(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL)
-poblacion_diana$CÁNCER_VEJIGA<-as.Date(poblacion_diana$CÁNCER_VEJIGA)
-poblacion_diana$ENFERMEDAD_HODGKIN<-as.Date(poblacion_diana$ENFERMEDAD_HODGKIN)
-poblacion_diana$LINFOMA_NO_HODGKIN<-as.Date(poblacion_diana$LINFOMA_NO_HODGKIN)
-poblacion_diana$LEUCEMIA<-as.Date(poblacion_diana$LEUCEMIA)
-poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO<-as.Date(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO)
-poblacion_diana$SARCOMA_KAPOSI<-as.Date(poblacion_diana$SARCOMA_KAPOSI)
-poblacion_diana$VIH<-as.Date(poblacion_diana$VIH)
-poblacion_diana$EPOC<-as.Date(poblacion_diana$EPOC)
-poblacion_diana$ASMA<-as.Date(poblacion_diana$ASMA)
-poblacion_diana$INSUF_CARDIACA<-as.Date(poblacion_diana$INSUF_CARDIACA)
-poblacion_diana$CARDIOPATÍA_ISQUÉMCIA<-as.Date(poblacion_diana$CARDIOPATÍA_ISQUÉMCIA)
-poblacion_diana$HEPATOPATIA_CRÓNICA<-as.Date(poblacion_diana$HEPATOPATIA_CRÓNICA)
-poblacion_diana$CIRROSIS<-as.Date(poblacion_diana$CIRROSIS)
-poblacion_diana$INSUF_RENAL_CRÓNICA<-as.Date(poblacion_diana$INSUF_RENAL_CRÓNICA)
+poblacion_diana$COD_FEC_NACIMIENTO<-as.Date(as.character(poblacion_diana$COD_FEC_NACIMIENTO), format = "%Y%m%d") 
 
 
 # changing reference in sex
-
-
 poblacion_diana$DESC_SEXO<-relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
 
+# age at 2020-03-01 field
+poblacion_diana$age<-trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-01' ) / years(1))
+
+# mortality field
+poblacion_diana$mortality <- convertir_valores(poblacion_diana$FEC_FALLECIMIENTO)
 ```
+## pupa
 
-## poblacion_diana_opt
-
-We are creating an optimized version of poblacion diana
+Periodo-Usuario PAtologías
 
 ```{r}
-# STAGI: ¿Criterio usado para definir Grupo 7?
-# Creemos que son pacientes de riesgo (según las categorias del G7) en el momento de la vacucanación, ¿pero en qué vacunación? ¿al inicio de la campaña de vacunación?
+pupa <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt",header = T,encoding = 'Latin-1');pupa<-as.data.frame(pupa);
 
-poblacion_diana_opt<-poblacion_diana%>%select(COD_NUHSA_ENCRIPTADO,COD_FEC_NACIMIENTO,COD_FEC_FALLECIMIENTO,FEC_BAJA_EXITUS,DESC_SEXO,MAYORES_60,MENORES_PATOLOGIAS,RESIDE_RESIDENCIA,GRUPO_7)
+# Remove duplicates
+pupa %<>% distinct()
 
-# we create an age field on the day of the beginning of 2020, right before the the pandemic began.
-poblacion_diana_opt$age<-trunc((poblacion_diana_opt$COD_FEC_NACIMIENTO %--% '2020-01-01' ) / years(1))
+# dates need to be converted from the original source, missing means NO
+pupa$COD_FEC_INI_PATOLOGIA<-as.Date(as.character(pupa$COD_FEC_INI_PATOLOGIA),format="%Y%m%d")
 
-# we create an optimized mortality field
-poblacion_diana_opt$mortality<-as.factor(if_else(is.na(poblacion_diana$COD_FEC_FALLECIMIENTO)|is.na(poblacion_diana$FEC_BAJA_EXITUS), 0,1))
+# First, we convert the categorical variables to one without capital letters and accents
+pupa$DESC_PATOLOGIA_CRONICA<-tolower(make.names(stri_trans_general(pupa$DESC_PATOLOGIA_CRONICA, "latin-ascii")))
 
-# FEC_BAJA_EXITUS tiene menos missing
-poblacion_diana_opt$mortality_date<-coalesce(poblacion_diana$FEC_BAJA_EXITUS,poblacion_diana$COD_FEC_FALLECIMIENTO)
 
-# diferenciado por tipo de cáncer en estudio además del hemato
 
-poblacion_diana_opt$cancer<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN) & is.na(poblacion_diana$CÁNCER_CABEZA_CUELLO) & is.na(poblacion_diana$CÁNCER_COLORRECTAL) & is.na(poblacion_diana$CÁNCER_CUELLO_UTERINO) & is.na(poblacion_diana$CÁNCER_ESTÓMAGO) & is.na(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES) & is.na(poblacion_diana$CÁNCER_HUESO_TEJIDOS_BLANDOS) & is.na(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO) & is.na(poblacion_diana$CÁNCER_MAMA) & is.na(poblacion_diana$CÁNCER_OVARIO) & is.na(poblacion_diana$CÁNCER_PÁNCREAS) & is.na(poblacion_diana$CÁNCER_PRÓSTATA) & is.na(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL) & is.na(poblacion_diana$CÁNCER_TESTÍCULO) & is.na(poblacion_diana$CÁNCER_TIROIDES) & is.na(poblacion_diana$CÁNCER_ÚTERO) & is.na(poblacion_diana$CÁNCER_VEJIGA) & is.na(poblacion_diana$MELANOMA_PIEL) & is.na(poblacion_diana$ENFERMEDAD_HODGKIN) & is.na(poblacion_diana$LINFOMA_NO_HODGKIN) & is.na(poblacion_diana$LEUCEMIA) & is.na(poblacion_diana$SARCOMA_KAPOSI),0,1))
+#TODO, FILTER by admission or infection date?
+# Join the two data sets by the id column
+# df_joined <- df1 %>%
+#   left_join(df2, by = "id")
+# 
+# # Filter the joined data frame to select rows where the date difference between the two date columns is 59 days
+# df_filtered <- df_joined %>%
+#   filter(abs(as.numeric(difftime(date1, date2, units = "days"))) == 60)
+# 
+# # Select only the categorical column from the filtered data frame
+# df_final <- df_filtered %>%
+#   select(categorical_column)
 
-poblacion_diana_opt$cancer_solido<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_BRONQUIO_PULMÓN) & is.na(poblacion_diana$CÁNCER_CABEZA_CUELLO) & is.na(poblacion_diana$CÁNCER_COLORRECTAL) & is.na(poblacion_diana$CÁNCER_CUELLO_UTERINO) & is.na(poblacion_diana$CÁNCER_ESTÓMAGO) & is.na(poblacion_diana$CÁNCER_HÍGADO_VÍAS_BILIARES) & is.na(poblacion_diana$CÁNCER_MAMA) & is.na(poblacion_diana$CÁNCER_OVARIO) & is.na(poblacion_diana$CÁNCER_PÁNCREAS) & is.na(poblacion_diana$CÁNCER_PRÓSTATA) & is.na(poblacion_diana$CÁNCER_RIÑÓN_PELVIS_RENAL) & is.na(poblacion_diana$CÁNCER_TESTÍCULO) & is.na(poblacion_diana$CÁNCER_TIROIDES) & is.na(poblacion_diana$CÁNCER_ÚTERO) & is.na(poblacion_diana$CÁNCER_VEJIGA) & is.na(poblacion_diana$MELANOMA_PIEL),0,1))
+#This will create a new column for each unique element in the DESC_PATOLOGIA_CRONICA column, and fill the cells with a value of 1 for rows where the DESC_PATOLOGIA_CRONICA value matches the column name, and 0 for all other rows.
 
-poblacion_diana_opt$cancer_hemato<-as.factor(if_else(is.na(poblacion_diana$CÁNCER_INMUNOPROLIFERATIVO) & is.na(poblacion_diana$ENFERMEDAD_HODGKIN) & is.na(poblacion_diana$LINFOMA_NO_HODGKIN) & is.na(poblacion_diana$LEUCEMIA) & is.na(poblacion_diana$SARCOMA_KAPOSI),0,1))
+# Convert the data frame to a data.table since dplyr is not efficent enough
+pupa_dt <- setDT(pupa)
 
-# TODO asegurarse que funciona desde aquí
+# Group by and mutate in a single step
+pupa_opt <- pupa_dt[, value := 1, by = c("NUHSA_ENCRIPTADO", "DESC_PATOLOGIA_CRONICA")]
 
-comorbidities <- c("VIH",
-                   "EPOC",
-                   "ASMA",
-                   "INSUF_CARDIACA",
-                   "CARDIOPATÍA_ISQUÉMCIA",
-                   "HEPATOPATIA_CRÓNICA",
-                   "CIRROSIS",
-                   "INSUF_RENAL_CRÓNICA",
-                   "DIABETES",
-                   "HTA")
+# Spread in a single step
+pupa_opt <- dcast(pupa_opt, NUHSA_ENCRIPTADO ~ DESC_PATOLOGIA_CRONICA, value.var = "value", fill = 0)
 
-  poblacion_diana_opt %<>% 
-  mutate_at(comorbidities,
-            ~ case_when(is.na(.) ~ 0,
-                        !is.na(.) & (. > infect_COVID_first_date) ~ 0,
-                        !is.na(.) & (. <= infect_COVID_first_date) ~ 1,
-                        TRUE ~ 0))
 
-# TODO crear subgrupos del grupo 7 a partir de aquí
-  
+
+# Replace the values in the original data frame with 1 if any value in the row is greater than 0, and 0 otherwise
+
+# Select the first column
+df_first <- pupa_opt[, 1]
+
+# Select the columns starting from the second column
+df_selected <- pupa_opt[, 2:ncol(pupa_opt)]
+
+# Replace the values in the selected columns with 1 if they are greater than 0, and 0 otherwise
+df_selected <- apply(df_selected, 2, function(x) ifelse(x > 0, 1, 0))
+
+# Append the transformed columns to the first column
+pupa_opt <- cbind(df_first, df_selected)
+
+remove(df_first); remove(df_selected)
+```
+## periodos pandemicos
+
+Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente [enlace (exige red corporativa)](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
+
+```{r}
+# ondas_pandemicas_andalucia <-
+#   data.frame(
+#     nombre_periodo = c("Periodo 1", "Periodo 2", "Periodo 3", "Periodo 4", "Periodo 5", "Periodo 6", "Periodo 7"),
+#     fecha_inicio = c("2020-01-01", "2020-05-11", "2020-12-21", "2021-03-08", "2021-06-21", "2021-10-11", "2022-03-28"),
+#     fecha_fin = c("2020-05-10", "2020-12-20", "2021-03-07", "2021-06-20", "2021-10-10", "2022-03-27", "2022-11-01"))
+# 
+# 
+# write.csv2(
+#   ondas_pandemicas_andalucia,
+#   file = "/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv",
+#   row.names = FALSE)
+
+
+periodos_pandemicos_andalucia <- 
+  read.csv2("/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv") %>% 
+  mutate(nombre_periodo = factor(nombre_periodo,
+                                 ordered = TRUE),
+         fecha_inicio = as.Date(fecha_inicio),
+         fecha_fin = as.Date(fecha_fin))
 ```
 
 ## resultados_pruebas_COVID
 
-```{r}
-resultados_pruebas_COVID <- fread("/opt/datos_compartidos/vacunas_data/04_Resultados_pruebas_COVID.txt",header = T,encoding = 'UTF-8');resultados_pruebas_COVID<-as.data.frame(resultados_pruebas_COVID)
-# dates need to be converted from the original source, missing means NO
-
-resultados_pruebas_COVID$FECHA_MUESTRA<-as.Date(as.character(resultados_pruebas_COVID$FECHA_MUESTRA),format="%d/%m/%Y")
-
-infect_COVID_num<-resultados_pruebas_COVID%>%
-  group_by(COD_NUHSA_ENCRIPTADO) %>%
-  summarise(infecc_covid = n())
+```{r RESULTADOS_PRUEBAS_COVID}
+# '_t' means total population, second data load
+# database importation and tidying
+resultados_pruebas_COVID <-
+  fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",
+        header = T,
+        encoding = 'UTF-8') %>% 
+  as.data.frame() %>% 
+  select(-TIPO_PRUEBA) %>% 
+  mutate(FECHA_MUESTRA = as.Date(as.character(FECHA_MUESTRA),
+                                 format = "%d/%m/%Y"))
+# infection count per person
+infect_COVID_num <-
+  resultados_pruebas_COVID %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  summarise(infecc_covid_num = n())
 
 # first COVID infection with date available
-infect_COVID_first<-resultados_pruebas_COVID %>%
-  group_by(COD_NUHSA_ENCRIPTADO)  %>%
-  filter(row_number()==1 & DESC_T_PRUEBA=='PCR' & !is.na(FECHA_MUESTRA))
+infect_COVID_first <-
+  resultados_pruebas_COVID %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA)) %>% 
+  rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
+  select(NUHSA_ENCRIPTADO, infect_COVID_first_date)
 
-infect_COVID_first<-infect_COVID_first %>%
-  rename(infect_COVID_first_date = FECHA_MUESTRA)%>%
-  select(COD_NUHSA_ENCRIPTADO,infect_COVID_first_date)
+
+
 ```
 
 ## episodios_cmbd
+
+Episodios CMBD del 03/03/2019 al 01/04/2022.
 
 One of the first 5 admission diagnoses, should be in this list
 
@@ -192,53 +214,89 @@ J84.114	42	Neumonitis intersticial aguda
 J39.8	41	Otras enfermedades especificadas del tracto respiratorio superior
 J84.115	15	Enfermedad pulmonar intersticial asociada a bronquiolitis respiratoria
 
-TODO hay 92k pacientes sin fecha de ingreso
+TODO hay 92k pacientes sin fecha de ingreso. rafa: a mi ma salen todos con Fecha ingreso y alta.
 TODO puede ser que ya estuvieran ingresados.
 
 ```{r}
+icd_ofinterest <- c('U07.1', 'J18.9', 'J12.89', 'J22', 'J96.00', 'J96.01', 'J96.02', 'J96.20', 'J90', 'J47.0', 'J96.21', 'J98.01', 'J18.0', 'J84.9', 'J96.91', 'J96.90', 'J96.92', 'J84.89', 'J81.0', 'I26.99', 'J06.9', 'J98.9', 'J95.89', 'J12.9', 'O98.52', 'J84.111', 'O98.513', 'J20.8', 'J96.11', 'J00', 'J12.81', 'J84.114', 'J39.8', 'J84.115', 'J84.113', 'B34.2')
+episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt", header = T, encoding = "Latin-1") %>% 
+  as.data.frame()
+cmbd_t <- as.data.frame(episodios_cmbd)
 
-icd_ofinterest<-c('U07.1','J18.9','J12.89','J22','J96.00','J96.01','J96.02','J96.20','J90','J47.0','J96.21','J98.01','J18.0','J84.9','J96.91','J96.90','J96.92','J84.89','J81.0','I26.99','J06.9','J98.9','J95.89','J12.9','O98.52','J84.111','O98.513','J20.8','J96.11','J00','J12.81','J84.114','J39.8','J84.115','J84.113','B34.2')
-
-# TODO ingreso UCI bin
-# TODO no hay fecha de ingreso en UCI. Mirar traslados
-episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/02_Episodios_CMBD.txt",header = T,encoding = 'UTF-8');episodios_cmbd<-as.data.frame(episodios_cmbd)
+# TODO no hay fecha de ingreso en UCI. No podemos calcular dias UCIA. Mirar traslados. rafa: no creo que tengamos acceso a esto.
 
 # dates need to be converted from the original source, missing means NO
-episodios_cmbd$FECHA_INGRESO<-as.Date(as.character(episodios_cmbd$FECHA_INGRESO),format="%Y%m%d")
-episodios_cmbd$FECHA_ALTA<-as.Date(as.character(episodios_cmbd$FECHA_ALTA),format="%Y%m%d")
-episodios_cmbd<-left_join(episodios_cmbd,infect_COVID_first)
+episodios_cmbd$COD_FEC_INGRESO <- as.Date(as.character(episodios_cmbd$COD_FEC_INGRESO),format="%Y%m%d")
+episodios_cmbd$COD_FEC_ALTA <- as.Date(as.character(episodios_cmbd$COD_FEC_ALTA),format="%Y%m%d")
 
 # dias estancia hospitalaria
-episodios_cmbd$estancia_hospitalaria_dias<-trunc((episodios_cmbd$FECHA_INGRESO %--% episodios_cmbd$FECHA_ALTA ) / days(1))
+episodios_cmbd <- episodios_cmbd %>% 
+  mutate(estancia_hospitalaria_dias = as.numeric(COD_FEC_ALTA - COD_FEC_INGRESO))
+
+
 
 # dias entre infeccion e ingreso
-episodios_cmbd$infeccion_ingreso_dias<-trunc((episodios_cmbd$infect_COVID_first_date %--% episodios_cmbd$FECHA_INGRESO ) / days(1))
 
-# estancia uci
-episodios_cmbd$icu_stay_bin<-if_else(episodios_cmbd$ESTANCIAS_UCI == 0 | is.na(episodios_cmbd$ESTANCIAS_UCI ) ,0,1)
+# joining  the df containing infect_COVID_first_date
 
-# dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo 
-# si no, no lo considero ingreso hospitalario por COVID
-episodios_cmbd$hosp_stay_bin<-as.character(if_else(episodios_cmbd$infeccion_ingreso_dias <= 30, 1 ,0))
+result <- left_join(episodios_cmbd, infect_COVID_first)
 
+result %<>% 
+  mutate(infeccion_ingreso_dias = infect_COVID_first_date - COD_FEC_INGRESO)
 
-#TODO los aún ingresados en el período de análisis habrían de tenerse en cuenta
+#  select only cols from names(episodios_cmbd)
+episodios_cmbd<-result %>% select(NUHSA_ENCRIPTADO,COD_FEC_INGRESO,COD_FEC_ALTA,COD_TIPO_INGRESO,DESC_TIPO_INGRESO,COD_TIPO_ALTA,DESC_TIPO_ALTA,COD_D1,COD_D2,COD_D3,COD_D4,COD_D5,COD_D6,COD_D7,COD_D8,COD_D9,COD_D10,COD_D11,COD_D12,COD_D13,COD_D14,COD_D15,COD_D16,COD_D17,COD_D18,COD_D19,COD_D20,COD_P1,COD_P2,COD_P3,COD_P4,COD_P5,COD_P6,COD_P7,COD_P8,COD_P9,COD_P10,COD_P11,COD_P12,COD_P13,COD_P14,COD_P15,COD_P16,COD_P17,COD_P18,COD_P19,COD_P20,NUM_DIAS_UCI,estancia_hospitalaria_dias,infeccion_ingreso_dias)
 
+# estancia uci si/no
+episodios_cmbd %<>% 
+  mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
 
+# dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo. si no, no lo considero ingreso hospitalario por COVID
+#los aún ingresados en el período de análisis habrían de tenerse en cuenta. Es menor de 30 si sale negativo también se cuenta.
+episodios_cmbd <- episodios_cmbd %>% 
+  mutate(hosp_stay_bin = if_else(infeccion_ingreso_dias <= 30, 1 ,0))
 
 #we are just going to take into account first hospitalization
-
-#filtramos los 5 códigas principales sólo por ICD relacionados con COVID, según conteo
+#filtramos los 5 códigos principales sólo por ICD relacionados con COVID, según conteo
 # we are only selecting fist admission per patient
-episodios_cmbd_first<-episodios_cmbd %>%
-  select(COD_NUHSA_ENCRIPTADO,FECHA_INGRESO,FECHA_ALTA,ESTANCIAS_UCI,ESTANCIAS,TIPO_INGRESO,TIPO_ALTA,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,D1,D2,D3,D4,D5,infeccion_ingreso_dias) %>%
-  group_by(COD_NUHSA_ENCRIPTADO)  %>%
-  filter(row_number()==1 & (D1 %in% icd_ofinterest | D2 %in% icd_ofinterest| D3 %in% icd_ofinterest| D4 %in% icd_ofinterest| D5 %in% icd_ofinterest) ) %>%
-  select(COD_NUHSA_ENCRIPTADO,FECHA_INGRESO,FECHA_ALTA,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,infeccion_ingreso_dias)
-
+episodios_cmbd_first <- episodios_cmbd %>%
+  select(
+    NUHSA_ENCRIPTADO,
+    COD_FEC_INGRESO,
+    COD_FEC_ALTA,
+    COD_TIPO_ALTA,
+    DESC_TIPO_ALTA,
+    hosp_stay_bin,
+    estancia_hospitalaria_dias,
+    icu_stay_bin,
+    NUM_DIAS_UCI,
+    COD_D1,
+    COD_D2,
+    COD_D3,
+    COD_D4,
+    COD_D5,
+    infeccion_ingreso_dias
+  ) %>%
+  filter(hosp_stay_bin == 1) %>%
+  filter(
+    COD_D1 %in% icd_ofinterest | COD_D2 %in% icd_ofinterest | COD_D3 %in% icd_ofinterest | COD_D4 %in% icd_ofinterest | COD_D5 %in% icd_ofinterest
+  ) %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  filter(row_number() == 1) %>%
+  select(
+    NUHSA_ENCRIPTADO,
+    COD_FEC_INGRESO,
+    COD_FEC_ALTA,
+    estancia_hospitalaria_dias,
+    hosp_stay_bin,
+    icu_stay_bin,
+    infeccion_ingreso_dias
+  )
 ```
 
 ## vacunas
+
+Jaime M
 
 TODO address non european shots: grepl('COVID-19 Sinopharm|COVID-19 Sputnik V|COVID-19 Covishield|COVID-19 CoronaVac (Sinovac Biotech)|COVID-19 CanSinoBIO|COVID-19 Covaxin|COVID-19 HIPRA')
 
@@ -253,106 +311,96 @@ TODO STAGI: *Pedir campañas 2019-20.*
 TODO hay varias vacunas de neumo y gripe por paciente.
 TODO estudiar numero de infecciones
 ```{r}
-vacunas <- fread("/opt/datos_compartidos/vacunas_data/03_Vacunas.txt",header = T,encoding = 'UTF-8');vacunas<-as.data.frame(vacunas)
-# dates need to be converted from the original source, missing means NO
-vacunas$FEC_VACUNACION<-as.Date(as.character(vacunas$FEC_VACUNACION),format="%Y%m%d")
+vacunas_t <- vroom(
+  "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_VACUNAS_TODO.txt"
+) %>%
+  lazy_dt() %>%
+  as.data.frame() %>% 
+  left_join(.,infect_COVID_first,by = "NUHSA_ENCRIPTADO") %>% 
+  mutate(
+    FEC_VACUNACION = ymd(FEC_VACUNACION), # dates need to be converted from the original source, missing means NO
+    vac_infecc_umbral = trunc((FEC_VACUNACION %--% infect_COVID_first_date) / days(1)) # dias entre vacunacion e infeccion
+  )
 
-# ordering by date shot was received
-vacunas<-vacunas%>%arrange(COD_NUHSA_ENCRIPTADO,FEC_VACUNACION)
-
-vacunas<-left_join(vacunas,infect_COVID_first)
-
-# dias entre vacunacion e infeccion 
-vacunas$vac_infecc_umbral <-trunc((vacunas$FEC_VACUNACION %--% vacunas$infect_COVID_first_date ) / days(1))
-
-
-# dias entre vacunacion e infeccion ha de >= 14 días
 
 # what shot was first per patient?
-vacunas_covid_first<-vacunas %>%
-  filter(vac_infecc_umbral>=14) %>%
-  filter(grepl('COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax', NOM_VACUNA)) %>%
-  group_by(COD_NUHSA_ENCRIPTADO)  %>%
-  filter(row_number()==1)
+vacunas_t_covid_first <- vacunas_t %>%
+  filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
+  filter(
+    grepl(
+      'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
+      NOM_VACUNA
+    )
+  ) %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  arrange(FEC_VACUNACION) %>% 
+  filter(row_number() == 1) %>% 
+  transmute(
+    NUHSA_ENCRIPTADO,
+    covid_first_name = NOM_VACUNA,
+    covid_first_date = FEC_VACUNACION
+  )
 
-vacunas_covid_first<-vacunas_covid_first %>%
-  rename(covid_first_name = NOM_VACUNA)%>%
-  rename(covid_first_date = FEC_VACUNACION)%>%
-  select(COD_NUHSA_ENCRIPTADO,covid_first_name,covid_first_date)
+
 
 # TODO cómo afecta el umbral de 14 días a la pauta completa?
+
 # full shots
-vacunas_covid_full<-vacunas %>%
-  filter(grepl('COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax', NOM_VACUNA)) %>%
-  group_by(COD_NUHSA_ENCRIPTADO)  %>%
-  filter(row_number()==3)
+vacunas_t_covid_full <- vacunas_t %>%
+  filter(
+    grepl(
+      'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
+      NOM_VACUNA
+    )
+  ) %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  arrange(FEC_VACUNACION) %>% 
+  filter(row_number()==3) %>% 
+  transmute(
+    NUHSA_ENCRIPTADO,
+    covid_full_name = NOM_VACUNA,
+    covid_full_date = FEC_VACUNACION
+  )
 
-vacunas_covid_full<-vacunas_covid_full %>%
-  rename(covid_full_name = NOM_VACUNA)%>%
-  rename(covid_full_date = FEC_VACUNACION)%>%
-  select(COD_NUHSA_ENCRIPTADO,covid_full_name,covid_full_date)
-
-
-# number of shots
-vacunas_covid_pautas<-vacunas%>%
-  group_by(COD_NUHSA_ENCRIPTADO) %>%
-  filter(grepl('COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax', NOM_VACUNA)) %>% 
+# number of shots ?
+vacunas_t_covid_pautas <- vacunas_t %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  filter(
+    grepl(
+      'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
+      NOM_VACUNA
+    )
+  ) %>% 
   summarise(pautas_covid = n())
 
-#TODO hay varias vacunas de neumo y gripe por paciente.
+# neumococo simple version, was the patient vaccinated? (bin)
+vacunas_neumococo <- vacunas_t %>%
+  filter(vac_infecc_umbral >= 14)%>%
+  filter(
+    grepl('Neumococo', NOM_VACUNA)
+  ) %>% 
+  transmute(
+    NUHSA_ENCRIPTADO,
+    vacuna_neumo = 1
+  ) %>% 
+  distinct()
 
-# neumococo simple version, was the patien vaccinated (bin)
-vacunas_neumococo<-vacunas %>%
-  filter(vac_infecc_umbral>=14)%>%
-  filter(grepl('Neumococo', NOM_VACUNA)) 
+# gripe simple version, was the patient vaccinated? (bin)
+vacunas_gripe <- vacunas_t %>%
+  filter(vac_infecc_umbral >= 14)%>%
+  filter(
+    grepl('Gripe', NOM_VACUNA)
+  ) %>% 
+  transmute(
+    NUHSA_ENCRIPTADO,
+    vacuna_gripe = 1
+  ) %>% 
+  distinct()
 
-vacunas_neumococo$vacuna_neumo<-1
-vacunas_neumococo<-vacunas_neumococo%>%select(COD_NUHSA_ENCRIPTADO,vacuna_neumo)
-vacunas_neumococo<-unique(vacunas_neumococo)
-
-# gripe simple version, was the patien vaccinated (bin)
-vacunas_gripe<-vacunas %>%
-  filter(vac_infecc_umbral>=14) %>%
-  filter(grepl('Gripe', NOM_VACUNA))
-  
-vacunas_gripe$vacuna_gripe<-1
-
-vacunas_gripe<-vacunas_gripe%>%select(COD_NUHSA_ENCRIPTADO,vacuna_gripe)
-vacunas_gripe<-unique(vacunas_gripe)
-
-# # nomralizing names
-# 
-# vacunas$NOM_VACUNA<-toupper(vacunas$NOM_VACUNA)
-# 
-# 
-# foo<-str_replace_all(vacunas$NOM_VACUNA,"[^[:graph:]]", " ") 
+# TODO hay varias vacunas de neumo y gripe por paciente.
 ```
 
-## periodos pandemicos
 
-Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente [enlace (exige red corporativa)](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
-
-```{r}
-# ondas_pandemicas_andalucia <-
-#   data.frame(
-#     nombre_periodo = c("Periodo 1", "Periodo 2", "Periodo 3", "Periodo 4", "Periodo 5", "Periodo 6", "Periodo 7"),
-#     fecha_inicio = c("2020-01-01", "2020-05-11", "2020-12-21", "2021-03-08", "2021-06-21", "2021-10-11", "2022-03-28"),
-#     fecha_fin = c("2020-05-10", "2020-12-20", "2021-03-07", "2021-06-20", "2021-10-10", "2022-03-27", "2022-11-01"))
-# 
-# 
-# write.csv2(
-#   ondas_pandemicas_andalucia,
-#   file = "/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv",
-#   row.names = FALSE)
-
-
-periodos_pandemicos_andalucia <- 
-  read.csv2("/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv") %>% 
-  mutate(nombre_periodo = factor(nombre_periodo,
-                                 ordered = TRUE),
-         fecha_inicio = as.Date(fecha_inicio),
-         fecha_fin = as.Date(fecha_fin))
-```
 
 
 
@@ -361,24 +409,50 @@ periodos_pandemicos_andalucia <-
 ## Joining across datasets
 
 ```{r}
-print('base::merge')
 print(Sys.time())
-estudio_vacunas_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
-    infect_COVID_first
-  , episodios_cmbd_first  
-  , poblacion_diana_opt
-  , vacunas_covid_first
-  , vacunas_covid_full
-  , vacunas_covid_pautas
-  , vacunas_neumococo
-  , vacunas_gripe
-  , infect_COVID_num
+estudio_vacunas_t_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
+  infect_COVID_first_date
+  , poblacion_diana #select(NUHSA_ENCRIPTADO,DESC_SEXO,age, mortality)
+  , pupa_opt
+  , infect_COVID_num  
+  , episodios_cmbd_first # select(NUHSA_ENCRIPTADO,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,infeccion_ingreso_dias) 
+  , vacunas_t_covid_first
+  , vacunas_t_covid_full
+  , vacunas_t_covid_pautas
 ))
 print(Sys.time())
 
+saveRDS(estudio_vacunas_t_final, file = "estudio_vacunas_t_final.rds")
 ```
 
-## Columns NA filling
+## Selecting only required columns
+
+```{r}
+cols_to_exclude <- c("col1", "col2")
+cols_to_include <- setdiff(names(df), cols_to_exclude)
+estudio_vacunas_t_final_selected<-estudio_vacunas_t_final %>% select(cols_to_include)
+```
+
+
+## Adressing missingness
+
+### Mapping missingness
+
+```{r}
+# Count the number of missing values in each column of the data frame `df`
+miss_count <- colSums(is.na(estudio_vacunas_t_final))
+
+# Calculate the percentage of missing values in each column
+miss_percent <- round(miss_count / nrow(estudio_vacunas_t_final) * 100,2)
+
+# Order the results by the column names in the original data frame
+ordered_miss_percent <- miss_percent[order(names(estudio_vacunas_t_final))]
+
+# Save the results in a new data frame
+miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Percent = ordered_miss_percent)
+```
+
+### Columns NA filling
 
 ```{r}
 estudio_vacunas_final$pautas_covid<-if_else(is.na(estudio_vacunas_final$pautas_covid),as.integer(0),estudio_vacunas_final$pautas_covid)
@@ -414,13 +488,13 @@ Hay que restar fechas. comprobar que la vacunación de gripe y de neumococo han 
 
 ```{r}
 estudio_vacunas_final<-estudio_vacunas_final%>%
-mutate(
-  vac_groupA=paste(pautas_covid,covid_first_name,vacuna_neumo,vacuna_gripe,sep='|'),
-  vac_groupB=paste(pautas_covid,'vac',infecc_covid,'infec',vacuna_neumo,vacuna_gripe,sep='|'),
-  covid_vacunado=as.factor(if_else(pautas_covid==0,0,1)),
-  vac_COV_Neumo_Gripe=as.factor(paste0(covid_vacunado,vacuna_neumo,vacuna_gripe))
-  # neumovac_bef_adm=as.factor(if_else())
-)
+  mutate(
+    vac_groupA=paste(pautas_covid,covid_first_name,vacuna_neumo,vacuna_gripe,sep='|'),
+    vac_groupB=paste(pautas_covid,'vac',infecc_covid,'infec',vacuna_neumo,vacuna_gripe,sep='|'),
+    covid_vacunado=as.factor(if_else(pautas_covid==0,0,1)),
+    vac_COV_Neumo_Gripe=as.factor(paste0(covid_vacunado,vacuna_neumo,vacuna_gripe))
+    # neumovac_bef_adm=as.factor(if_else())
+  )
 ```
 
 (Coalesce de fallecimiento y fecha de ingreso)
