@@ -323,7 +323,7 @@ print(Sys.time())
 
 ##Model Performance
 
-````{r}
+```{r}
 
 y_test<-estudio_vacunas_final_selected$icu_stay_bin
   
@@ -366,3 +366,4 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
   geom_bar(stat="identity", fill="steelblue")+
   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
+```
