@@ -11,11 +11,12 @@ library(survminer)
 library(forestmodel)
 library(skimr)
 library(mgcv)
+library(randomForest)
 library(parallel)
-library(sjPlot)
 library(parglm)
 library(pROC)
 library(ggplot2)
+library(feather)
 
 # metric performance
 
@@ -61,7 +62,8 @@ ggsurvplot(res.cox, data = estudio_vacunas_final_selected)
 ```{r}
 print('glm')
 print(Sys.time())
-logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ age + DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_COV_Neumo_Gripe, data =  estudio_vacunas_final_selected,family=binomial() )
+logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ DESC_SEXO+ age+ asma +cancer.colorrectal+ cancer.de.bronquio.y.pulmon+cancer.de.cabeza.y.cuello + cancer.de.cuello.uterino +cancer.de.estomago+cancer.de.higado.y.vias.biliares+cancer.de.hueso.y.tejidos.blandos+cancer.de.mama+cancer.de.ovario+cancer.de.pancreas+cancer.de.prostata+cancer.de.rinon.y.pelvis.renal+cancer.de.testiculo+cancer.de.tiroides+cancer.de.utero+cancer.de.vejiga+cancer.inmunoproliferativo+cardiopatia.isquemica+cirrosis.hepatica+diabetes+enfermedad.de.hodgkin+epoc+hepatopatia.cronica.excepto.cirrosis+hipertension+insuficiencia.cardiaca+insuficiencia.renal.cronica+leucemia+linfoma.no.hodgkin+melanoma.de.piel+sarcoma.de.kaposi+vih+infecc_covid_num, pautas_covid,
+data =  estudio_vacunas_t_final_selected,family=binomial() )
 print(Sys.time())
 ```
 ## Summary of the model
@@ -77,6 +79,49 @@ print(Sys.time())
 print(forest_model(logreg_hosp_stay_bin))
 print(Sys.time())
 ```
+## Odds ratio II
+
+```{r}
+library(parallel)
+
+# Create a cluster with two cores for parallel processing
+cl <- makeCluster(2)
+
+# Wrap the calculation of predictions and confidence intervals in a function
+calculate <- function(logreg_hosp_stay_bin, estudio_vacunas_t_final_selected) {
+  pred_probs <- predict(logreg_hosp_stay_bin, estudio_vacunas_t_final_selected, type="response")
+  conf_int <- confint(logreg_hosp_stay_bin, level=0.95)
+  
+  list(pred_probs, conf_int)
+}
+
+# Split the data into two chunks and send one chunk to each core for processing
+split_data <- split(estudio_vacunas_t_final_selected, rep(1:2, length.out = nrow(estudio_vacunas_t_final_selected)))
+results <- parSapply(cl, split_data, calculate, logreg_hosp_stay_bin = logreg_hosp_stay_bin)
+
+# Combine the results from the two cores
+pred_probs_combined <- do.call(rbind, lapply(results, function(x) x[[1]]))
+conf_int_combined <- do.call(rbind, lapply(results, function(x) x[[2]]))
+
+# Convert the results to a data frame
+results_df <- data.frame(variable = names(logreg_hosp_stay_bin$coefficients),
+                         coef = logreg_hosp_stay_bin$coefficients,
+                         lower = conf_int_combined[,1],
+                         upper = conf_int_combined[,2])
+
+# Plot the forest plot
+ggplot(results_df, aes(x=reorder(variable, coef), ymin=lower, ymax=upper, y=coef)) +
+  geom_pointrange(alpha=0.7) + 
+  geom_hline(yintercept=0, color="red") +
+  xlab("Variable") + 
+  ylab("Coeficiente (IC 95%)") + 
+  ggtitle("Forest plot del modelo GLM") + 
+  coord_flip()
+
+# Stop the cluster
+stopCluster(cl)
+```
+
 
 ## Model Performance
 
@@ -121,6 +166,61 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
   geom_bar(stat="identity", fill="steelblue")+
   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
+```
+
+# random forest
+
+## Fitting the model
+
+```{r}
+# Selecciona número de núcleos para paralelización
+ncores <- detectCores() - 1
+cl <- makeCluster(ncores)
+clusterExport(cl, c("estudio_vacunas_t_final_selected", "hosp_stay_bin"))
+
+# Crear modelo de Random Forest
+rf_model <- foreach(ntree = rep(500, ncores), .combine = combine, .packages = "randomForest") %dopar% {
+  set.seed(123)
+  randomForest(hosp_stay_bin ~ DESC_SEXO+ age+ asma +cancer.colorrectal+ cancer.de.bronquio.y.pulmon+cancer.de.cabeza.y.cuello + cancer.de.cuello.uterino +cancer.de.estomago+cancer.de.higado.y.vias.biliares+cancer.de.hueso.y.tejidos.blandos+cancer.de.mama+cancer.de.ovario+cancer.de.pancreas+cancer.de.prostata+cancer.de.rinon.y.pelvis.renal+cancer.de.testiculo+cancer.de.tiroides+cancer.de.utero+cancer.de.vejiga+cancer.inmunoproliferativo+cardiopatia.isquemica+cirrosis.hepatica+diabetes+enfermedad.de.hodgkin+epoc+hepatopatia.cronica.excepto.cirrosis+hipertension+insuficiencia.cardiaca+insuficiencia.renal.cronica+leucemia+linfoma.no.hodgkin+melanoma.de.piel+sarcoma.de.kaposi+vih+infecc_covid_num,
+  data = estudio_vacunas_t_final_selected,
+  ntree = ntree,
+  importance = TRUE)
+}
+
+# Cerrar clúster
+stopCluster(cl)
+
+# Tomar el promedio de los modelos para tener un solo modelo final
+rf_model_final <- mean(rf_model)
+
+```
+
+## Explaining the model
+
+```{r}
+library(ggplot2)
+library(caret)
+
+# calcular la importancia de las variables
+imp <- varImp(rf_model, scale=FALSE)
+
+# graficar la importancia de las variables
+ggplot(imp, aes(x=reorder(variable, Overall), y=Overall)) +
+  geom_bar(stat="identity") + 
+  xlab("Variable") + 
+  ylab("Importance") + 
+  ggtitle("Importancia de las variables en el modelo Random Forest")
+
+# predecir las probabilidades con el modelo Random Forest
+pred_probs <- predict(rf_model, estudio_vacunas_t_final_selected, type="prob")
+
+# graficar las decisiones del modelo
+ggplot(estudio_vacunas_t_final_selected, aes(x=age, y=pred_probs[,2], color=hosp_stay_bin)) +
+  geom_point() + 
+  xlab("Edad") + 
+  ylab("Probabilidad de permanencia en el hospital") + 
+  ggtitle("Decisiones del modelo Random Forest")
+
 ```
 
 
@@ -223,7 +323,7 @@ print(Sys.time())
 
 ##Model Performance
 
-````{r}
+```{r}
 
 y_test<-estudio_vacunas_final_selected$icu_stay_bin
   
@@ -266,3 +366,4 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
   geom_bar(stat="identity", fill="steelblue")+
   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
+```
