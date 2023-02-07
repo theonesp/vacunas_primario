@@ -32,15 +32,23 @@ convertir_valores <- function(x) {ifelse(x == -1, 0, 1)}
 # Data Load
 
 ## poblacion_diana
+Se filtra el sexo en dos posibles categorías: hombre y mujer. Otros eran menor al 0.1%.
 
 ```{r}
-poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt",header = T,encoding = 'Latin-1')
+poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt", 
+                         header = T, 
+                         encoding = 'Latin-1')
 
-poblacion_diana$COD_FEC_NACIMIENTO<-as.Date(as.character(poblacion_diana$COD_FEC_NACIMIENTO), format = "%Y%m%d") 
+poblacion_diana$COD_FEC_NACIMIENTO <- as.Date(as.character(poblacion_diana$COD_FEC_NACIMIENTO), format = "%Y%m%d") 
 
+# filtering in two sexes.
+poblacion_diana <- poblacion_diana %>% as_tibble()
+poblacion_diana <- poblacion_diana %>% 
+  dplyr::filter(DESC_SEXO == "Hombre" |
+           DESC_SEXO == "Mujer")
 
 # changing reference in sex
-poblacion_diana$DESC_SEXO<-relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
+poblacion_diana$DESC_SEXO <- relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
 
 # age at 2020-03-01 field
 poblacion_diana$age<-trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-01' ) / years(1))
@@ -59,10 +67,10 @@ pupa <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt",h
 pupa %<>% distinct()
 
 # dates need to be converted from the original source, missing means NO
-pupa$COD_FEC_INI_PATOLOGIA<-as.Date(as.character(pupa$COD_FEC_INI_PATOLOGIA),format="%Y%m%d")
+pupa$COD_FEC_INI_PATOLOGIA <- as.Date(as.character(pupa$COD_FEC_INI_PATOLOGIA), format="%Y%m%d")
 
 # First, we convert the categorical variables to one without capital letters and accents
-pupa$DESC_PATOLOGIA_CRONICA<-tolower(make.names(stri_trans_general(pupa$DESC_PATOLOGIA_CRONICA, "latin-ascii")))
+pupa$DESC_PATOLOGIA_CRONICA <- tolower(make.names(stri_trans_general(pupa$DESC_PATOLOGIA_CRONICA, "latin-ascii")))
 
 
 
@@ -154,15 +162,13 @@ infect_COVID_num <-
   summarise(infecc_covid_num = n())
 
 # first COVID infection with date available
+# TODO: pendientes de PRDA
 infect_COVID_first <-
   resultados_pruebas_COVID %>%
   group_by(NUHSA_ENCRIPTADO) %>%
   filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA)) %>% 
   rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
   select(NUHSA_ENCRIPTADO, infect_COVID_first_date)
-
-
-
 ```
 
 ## episodios_cmbd
@@ -225,8 +231,6 @@ episodios_cmbd$COD_FEC_ALTA <- as.Date(as.character(episodios_cmbd$COD_FEC_ALTA)
 # dias estancia hospitalaria
 episodios_cmbd <- episodios_cmbd %>% 
   mutate(estancia_hospitalaria_dias = as.numeric(COD_FEC_ALTA - COD_FEC_INGRESO))
-
-
 
 # dias entre infeccion e ingreso
 
@@ -356,6 +360,7 @@ vacunas_t_covid_full <- vacunas_t %>%
   )
 
 # number of shots ?
+
 vacunas_t_covid_pautas <- vacunas_t %>%
   group_by(NUHSA_ENCRIPTADO) %>%
   filter(
@@ -365,6 +370,10 @@ vacunas_t_covid_pautas <- vacunas_t %>%
     )
   ) %>% 
   summarise(pautas_covid_totales = n())
+
+# Delete 5 and 6 shots in that moment was not possible. transcription error.
+vacunas_t_covid_pautas <- vacunas_t_covid_pautas %>% 
+  filter(pautas_covid_totales <=4)
 
 # neumococo simple version, was the patient vaccinated? (bin)
 vacunas_neumococo <- vacunas_t %>%
