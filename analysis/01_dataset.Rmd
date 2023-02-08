@@ -41,22 +41,8 @@ poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_
 
 poblacion_diana$COD_FEC_NACIMIENTO <- as.Date(as.character(poblacion_diana$COD_FEC_NACIMIENTO), format = "%Y%m%d") 
 
-# filtering in two sexes.
-poblacion_diana <- poblacion_diana %>% as_tibble()
-poblacion_diana <- poblacion_diana %>% 
-  dplyr::filter(DESC_SEXO == "Hombre" |
-                  DESC_SEXO == "Mujer")
-
 # changing reference in sex
 poblacion_diana$DESC_SEXO <- relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
-
-poblacion_diana <- poblacion_diana %>% 
-  mutate(
-    sex = case_when(
-      DESC_SEXO == "Mujer" ~ "Mujer",
-      DESC_SEXO == "Hombre" ~ "Hombre"
-    )
-  )
 
 # age at 2020-03-01 field
 poblacion_diana$age<-trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-01' ) / years(1))
@@ -519,7 +505,7 @@ estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected%>%
         sarcoma.de.kaposi)
   )
 
-vacunas_t_covid_pautas %<>% 
+estudio_vacunas_t_final_selected %<>% 
   mutate(pautas_covid = as.factor(pautas_covid))
 
 ```
@@ -535,10 +521,10 @@ print('Número pacientes con infección COVID confirmada por PCR y fecha de infe
 a<-nrow(estudio_vacunas_t_final_selected)
 a
 
-# estudio_vacunas_final_selected<-estudio_vacunas_final%>%filter(pautas_covid <5 )
-# print('Pacientes excluídos con más de 4 dosis')
-# b<-nrow(estudio_vacunas_t_final_selected)
-# a-b
+print('Pacientes excluídos con Sexo No encontrado')
+estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (DESC_SEXO %in% c('Hombre','Mujer') )
+b<-nrow(estudio_vacunas_t_final_selected)
+a-b
 
 print('Número final de pacientes')
 nrow(estudio_vacunas_t_final_selected)

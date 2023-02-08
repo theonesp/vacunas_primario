@@ -92,6 +92,7 @@ ggplot(coef_pval_df, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
  scale_y_log10(limits=c(0.1, 4)) +
  coord_flip() +
  labs(y="Odds Ratio", x=NULL)+
+ title('Admisión Hospitalaria')+
  theme_minimal()
 ```
 
@@ -246,7 +247,7 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 ```{r}
 print('glm')
 print(Sys.time())
-logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
+logreg_mortality <- glm(mortality ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
  data =  estudio_vacunas_t_final_selected
 , family=binomial() )
 print(Sys.time())
