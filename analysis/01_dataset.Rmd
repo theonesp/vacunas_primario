@@ -45,10 +45,18 @@ poblacion_diana$COD_FEC_NACIMIENTO <- as.Date(as.character(poblacion_diana$COD_F
 poblacion_diana <- poblacion_diana %>% as_tibble()
 poblacion_diana <- poblacion_diana %>% 
   dplyr::filter(DESC_SEXO == "Hombre" |
-           DESC_SEXO == "Mujer")
+                  DESC_SEXO == "Mujer")
 
 # changing reference in sex
 poblacion_diana$DESC_SEXO <- relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
+
+poblacion_diana <- poblacion_diana %>% 
+  mutate(
+    sex = case_when(
+      DESC_SEXO == "Mujer" ~ "Mujer",
+      DESC_SEXO == "Hombre" ~ "Hombre"
+    )
+  )
 
 # age at 2020-03-01 field
 poblacion_diana$age<-trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-01' ) / years(1))
@@ -247,7 +255,7 @@ episodios_cmbd<-result %>% select(NUHSA_ENCRIPTADO,COD_FEC_INGRESO,COD_FEC_ALTA,
 
 # estancia uci si/no
 episodios_cmbd %<>% 
-mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
+  mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
 
 # dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo. si no, no lo considero ingreso hospitalario por COVID
 #los aún ingresados en el período de análisis habrían de tenerse en cuenta. Es menor de 30 si sale negativo también se cuenta.
@@ -410,7 +418,7 @@ vacunas_inmunity <- vacunas_t %>%
 ```{r}
 print(Sys.time())
 estudio_vacunas_t_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
-    infect_COVID_first
+  infect_COVID_first
   , poblacion_diana #select(NUHSA_ENCRIPTADO,DESC_SEXO,age, mortality)
   , pupa_opt
   , infect_COVID_num  
@@ -486,30 +494,30 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 ```{r}
 estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected%>%
   
- mutate(cancer_organo_solido = +(
-                                  cancer.de.bronquio.y.pulmon | 
-                                  cancer.de.cabeza.y.cuello |
-                                  cancer.de.estomago |
-                                  cancer.de.hueso.y.tejidos.blandos |
-                                  cancer.de.mama |
-                                  cancer.de.ovario |
-                                  cancer.de.pancreas |
-                                  cancer.de.prostata |
-                                  cancer.de.rinon.y.pelvis.renal |
-                                  cancer.de.testiculo |
-                                  cancer.de.tiroides |
-                                  cancer.de.utero |
-                                  cancer.de.vejiga |
-                                  cancer.de.cuello.uterino |
-                                  melanoma.de.piel),
-        
-         cancer_hematologico = +( 
-                                  cancer.inmunoproliferativo |
-                                  enfermedad.de.hodgkin |
-                                  leucemia |
-                                  linfoma.no.hodgkin |
-                                  sarcoma.de.kaposi)
-        )
+  mutate(cancer_organo_solido = +(
+    cancer.de.bronquio.y.pulmon | 
+      cancer.de.cabeza.y.cuello |
+      cancer.de.estomago |
+      cancer.de.hueso.y.tejidos.blandos |
+      cancer.de.mama |
+      cancer.de.ovario |
+      cancer.de.pancreas |
+      cancer.de.prostata |
+      cancer.de.rinon.y.pelvis.renal |
+      cancer.de.testiculo |
+      cancer.de.tiroides |
+      cancer.de.utero |
+      cancer.de.vejiga |
+      cancer.de.cuello.uterino |
+      melanoma.de.piel),
+    
+    cancer_hematologico = +( 
+      cancer.inmunoproliferativo |
+        enfermedad.de.hodgkin |
+        leucemia |
+        linfoma.no.hodgkin |
+        sarcoma.de.kaposi)
+  )
 
 vacunas_t_covid_pautas %<>% 
   mutate(pautas_covid = as.factor(pautas_covid))
