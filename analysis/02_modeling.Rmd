@@ -5,57 +5,132 @@ output: html_document
 
 # Environment
 
-```{r}
+```{r libraries, include=FALSE}
+library(broom)
+library(dplyr)
+library(feather)
 library(forestmodel)
-library(skimr)
+library(ggplot2)
+library(gtsummary)
 library(mgcv)
 library(parallel)
 library(parglm)
 library(pROC)
-library(ggplot2)
-library(feather)
-library(broom)
+library(skimr)
+library(survival)
+```
 
+```{r functions, include=FALSE}
 # metric performance
 
 precision <- function(matrix) {
-	# True positive
-    tp <- matrix[2, 2]
-	# false positive
-    fp <- matrix[1, 2]
-    return (tp / (tp + fp))
+  # True positive
+  tp <- matrix[2, 2]
+  # false positive
+  fp <- matrix[1, 2]
+  return (tp / (tp + fp))
 }
 
 recall <- function(matrix) {
-# true positive
-    tp <- matrix[2, 2]# false positive
-    fn <- matrix[2, 1]
-    return (tp / (tp + fn))
+  # true positive
+  tp <- matrix[2, 2]# false positive
+  fn <- matrix[2, 1]
+  return (tp / (tp + fn))
 }
 
 extract_coef_pval_OR <- function(model) {
-
-   as.data.frame(tibble(term = names(model$coefficients),
-          estimate = model$coefficients,
-          std.error = sqrt(diag(vcov(model))),
-          statistic = model$coefficients / sqrt(diag(vcov(model))),
-          p.value = 2 * (1 - pnorm(abs(statistic))),
-          OR = exp(estimate),
-          OR_CI_lower = exp(estimate - 1.96 * std.error),
-          OR_CI_upper = exp(estimate + 1.96 * std.error)
-   )
-   )
+  
+  as.data.frame(tibble(term = names(model$coefficients),
+                       estimate = model$coefficients,
+                       std.error = sqrt(diag(vcov(model))),
+                       statistic = model$coefficients / sqrt(diag(vcov(model))),
+                       p.value = 2 * (1 - pnorm(abs(statistic))),
+                       OR = exp(estimate),
+                       OR_CI_lower = exp(estimate - 1.96 * std.error),
+                       OR_CI_upper = exp(estimate + 1.96 * std.error)
+  )
+  )
 } 
 ```
+
+# ETL
+```{r, include=FALSE}
+## Defining new variables
+
+cr_solidos <- c(
+  "cancer.de.bronquio.y.pulmon",
+  "cancer.de.cabeza.y.cuello",
+  "cancer.de.estomago",
+  "cancer.de.hueso.y.tejidos.blandos",
+  "cancer.de.mama",
+  "cancer.de.ovario",
+  "cancer.de.pancreas",
+  "cancer.de.prostata",
+  "cancer.de.rinon.y.pelvis.renal",
+  "cancer.de.testiculo",
+  "cancer.de.tiroides",
+  "cancer.de.utero",
+  "cancer.de.vejiga",
+  "cancer.de.cuello.uterino",
+  "melanoma.de.piel",
+  "sarcoma.de.kaposi"
+)
+
+cr_hematologicos <- c(
+  "cancer.inmunoproliferativo",
+  "enfermedad.de.hodgkin",
+  "leucemia",
+  "linfoma.no.hodgkin"
+)
+
+## Loading data
+estudio_vacunas_final_selected <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds") %>% 
+  mutate(
+    sex = case_when(
+      DESC_SEXO == "Mujer" ~ "Mujer",
+      DESC_SEXO == "Hombre" ~ "Hombre"
+    ),
+    composite_var = mortality + hosp_stay_bin + as.numeric(as.character(icu_stay_bin)),
+    composite_var = case_when(
+      composite_var > 0 ~ 1,
+      composite_var == 0 ~ 0
+    ),
+    cancer_organo_solido = case_when(
+      eval(parse(text = paste0(cr_solidos, collapse = " + "))) > 0 ~ 1,
+      eval(parse(text = paste0(cr_solidos, collapse = " + "))) == 0 ~ 0
+    ),
+    cancer_hematologico = case_when(
+      eval(parse(text = paste0(cr_hematologicos, collapse = " + "))) > 0 ~ 1,
+      eval(parse(text = paste0(cr_hematologicos, collapse = " + "))) == 0 ~ 0
+    )
+  )
+```
+
 
 # survival model
 
 ```{r}
-#TODO evaluate efficiency
-# event as numeric
-estudio_vacunas_final_selected$estancia_hospitalaria<-as.numeric(estudio_vacunas_final_selected$estancia_hospitalaria)
-
-res.cox <- coxph(Surv(estancia_hospitalaria_dias, estancia_hospitalaria) ~ DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + age + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_groupB, data =  estudio_vacunas_final_selected)
+# TODO evaluate efficiency
+res.cox <- coxph(
+  Surv(
+    estancia_hospitalaria_dias,
+    estancia_hospitalaria
+  ) ~ DESC_SEXO +
+    # RESIDE_RESIDENCIA +
+    GRUPO_7 +
+    age +
+    cancer +
+    VIH +
+    EPOC +
+    ASMA +
+    INSUF_CARDIACA +
+    CARDIOPATÍA_ISQUÉMCIA +
+    HEPATOPATIA_CRÓNICA +
+    CIRROSIS +
+    INSUF_RENAL_CRÓNICA +
+    vac_groupB,
+  data =  estudio_vacunas_final_selected
+)
 ```
 
 
@@ -69,14 +144,33 @@ ggsurvplot(res.cox, data = estudio_vacunas_final_selected)
 
 ## Fitting the model
 
+### Estancia hospitalaria
+
 ```{r}
-print('glm')
-print(Sys.time())
-logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
- data =  estudio_vacunas_t_final_selected
-, family=binomial() )
-print(Sys.time())
+logreg_hosp_stay_bin <- glm(
+  hosp_stay_bin ~ sex +
+    age +
+    asma +
+    cardiopatia.isquemica +
+    cirrosis.hepatica +
+    diabetes +
+    epoc +
+    hepatopatia.cronica.excepto.cirrosis +
+    hipertension +
+    insuficiencia.cardiaca +
+    insuficiencia.renal.cronica +
+    cancer_organo_solido +
+    cancer_hematologico +
+    vih +
+    infecc_covid_num +
+    pautas_covid,
+  data =  estudio_vacunas_final_selected,
+  family = binomial()
+)
+
+# logreg_hosp_stay_bin %>% tbl_regression()
 ```
+
 ## Odds ratio
 
 ```{r fig.height=16, fig.width=10}
@@ -87,12 +181,12 @@ coef_pval_df <- extract_coef_pval_OR(logreg_hosp_stay_bin)
 
 ```{r}
 ggplot(coef_pval_df, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) + 
- geom_pointrange(alpha=0.7, shape=15) + 
- geom_vline(xintercept=1) +
- scale_y_log10(limits=c(0.1, 4)) +
- coord_flip() +
- labs(y="Odds Ratio", x=NULL)+
- theme_minimal()
+  geom_pointrange(alpha=0.7, shape=15) + 
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  theme_minimal()
 ```
 
 
@@ -100,7 +194,7 @@ ggplot(coef_pval_df, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
 
 ```{r fig.height=5, fig.width=2}
 y_test<-estudio_vacunas_final_selected$hosp_stay_bin
-  
+
 predict <- predict(logreg_hosp_stay_bin, estudio_vacunas_final_selected, type = 'response')
 # confusion matrix
 table_mat <- table(y_test, predict > 0.85)
@@ -148,9 +242,9 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 ```{r}
 print('glm')
 print(Sys.time())
-logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
- data =  estudio_vacunas_t_final_selected
-, family=binomial() )
+logreg_hosp_stay_bin <- glm(
+  hosp_stay_bin ~ DESC_SEXO + age + asma + cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
+  data = estudio_vacunas_t_final_selected, family = binomial() )
 print(Sys.time())
 ```
 ## Odds ratio
@@ -163,12 +257,12 @@ coef_pval_df <- extract_coef_pval_OR(logreg_hosp_stay_bin)
 
 ```{r}
 ggplot(coef_pval_df, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) + 
- geom_pointrange(alpha=0.7, shape=15) + 
- geom_vline(xintercept=1) +
- scale_y_log10(limits=c(0.1, 4)) +
- coord_flip() +
- labs(y="Odds Ratio", x=NULL)+
- theme_minimal()
+  geom_pointrange(alpha=0.7, shape=15) + 
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  theme_minimal()
 ```
 
 # logreg_icu_stay_bin
@@ -198,7 +292,7 @@ print(Sys.time())
 
 ```{r fig.height=5, fig.width=2}
 y_test<-estudio_vacunas_final_selected$icu_stay_bin
-  
+
 predict <- predict(logreg_icu_stay_bin, estudio_vacunas_final_selected, type = 'response')
 # confusion matrix
 table_mat <- table(y_test, predict > 0.1)
@@ -247,8 +341,8 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
- data =  estudio_vacunas_t_final_selected
-, family=binomial() )
+                            data =  estudio_vacunas_t_final_selected
+                            , family=binomial() )
 print(Sys.time())
 ```
 ## Odds ratio
@@ -261,12 +355,12 @@ coef_pval_df <- extract_coef_pval_OR(logreg_hosp_stay_bin)
 
 ```{r}
 ggplot(coef_pval_df, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) + 
- geom_pointrange(alpha=0.7, shape=15) + 
- geom_vline(xintercept=1) +
- scale_y_log10(limits=c(0.1, 4)) +
- coord_flip() +
- labs(y="Odds Ratio", x=NULL)+
- theme_minimal()
+  geom_pointrange(alpha=0.7, shape=15) + 
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  theme_minimal()
 ```
 
 ##Model Performance
@@ -274,7 +368,7 @@ ggplot(coef_pval_df, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
 ```{r}
 
 y_test<-estudio_vacunas_final_selected$icu_stay_bin
-  
+
 predict <- predict(logreg_mortality, estudio_vacunas_final_selected, type = 'response')
 
 # confusion matrix
