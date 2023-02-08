@@ -116,6 +116,7 @@ pupa_opt <- cbind(df_first, df_selected)
 
 remove(df_first); remove(df_selected)
 ```
+
 ## periodos pandemicos
 
 Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente [enlace (exige red corporativa)](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
@@ -318,8 +319,6 @@ vacunas_t <- vroom(
     FEC_VACUNACION = ymd(FEC_VACUNACION), # dates need to be converted from the original source, missing means NO
     vac_infecc_umbral = trunc((FEC_VACUNACION %--% infect_COVID_first_date) / days(1)) # dias entre vacunacion e infeccion
   )
-
-
 # what shot was first per patient?
 vacunas_t_covid_first <- vacunas_t %>%
   filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
@@ -337,11 +336,7 @@ vacunas_t_covid_first <- vacunas_t %>%
     covid_first_name = NOM_VACUNA,
     covid_first_date = FEC_VACUNACION
   )
-
-
-
 # TODO cómo afecta el umbral de 14 días a la pauta completa?
-
 # full shots
 vacunas_t_covid_full <- vacunas_t %>%
   filter(
@@ -360,7 +355,6 @@ vacunas_t_covid_full <- vacunas_t %>%
   )
 
 # number of shots ?
-
 vacunas_t_covid_pautas <- vacunas_t %>%
   group_by(NUHSA_ENCRIPTADO) %>%
   filter(
@@ -369,11 +363,9 @@ vacunas_t_covid_pautas <- vacunas_t %>%
       NOM_VACUNA
     )
   ) %>% 
-  summarise(pautas_covid_totales = n())
+  summarise(pautas_covid = n())
 
-# Delete 5 and 6 shots in that moment was not possible. transcription error.
-vacunas_t_covid_pautas <- vacunas_t_covid_pautas %>% 
-  filter(pautas_covid_totales <=4)
+
 
 # neumococo simple version, was the patient vaccinated? (bin)
 vacunas_neumococo <- vacunas_t %>%
@@ -386,7 +378,6 @@ vacunas_neumococo <- vacunas_t %>%
     vacuna_neumo = 1
   ) %>% 
   distinct()
-
 # gripe simple version, was the patient vaccinated? (bin)
 vacunas_gripe <- vacunas_t %>%
   filter(vac_infecc_umbral >= 14)%>%
@@ -399,6 +390,16 @@ vacunas_gripe <- vacunas_t %>%
   ) %>% 
   distinct()
 
+vacunas_inmunity <- vacunas_t %>%
+  filter(vac_infecc_umbral >= 14)%>%
+  filter(
+    grepl('Gripe', NOM_VACUNA)
+  ) %>% 
+  transmute(
+    NUHSA_ENCRIPTADO,
+    vacuna_gripe = 1
+  ) %>% 
+  distinct()
 # TODO hay varias vacunas de neumo y gripe por paciente.
 ```
 
@@ -460,7 +461,7 @@ fill_cols_to_exclude <- c("COD_FEC_ALTA", "COD_FEC_INGRESO","covid_full_date","c
 fill_cols_to_include <- setdiff(names(estudio_vacunas_t_final_selected), fill_cols_to_exclude)
 
 # Replace NAs with 0s
-estudio_vacunas_t_final_selected[, fill_cols_to_include][is.na(estudio_vacunas_t_final_selected[, fill_cols_to_include])] <- 0
+estudio_vacunas_t_final_selected[, fill_cols_to_include][is.na(estudio_vacunas_t_final_selected[, fill_cols_to_include])] <-'0'
 ```
 
 ### Mapping final missingness
@@ -483,9 +484,36 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 ## New variables creation
 
 ```{r}
-# estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected%>%
-# mutate(
-# )
+estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected%>%
+  
+ mutate(cancer_organo_solido = +(
+                                  cancer.de.bronquio.y.pulmon | 
+                                  cancer.de.cabeza.y.cuello |
+                                  cancer.de.estomago |
+                                  cancer.de.hueso.y.tejidos.blandos |
+                                  cancer.de.mama |
+                                  cancer.de.ovario |
+                                  cancer.de.pancreas |
+                                  cancer.de.prostata |
+                                  cancer.de.rinon.y.pelvis.renal |
+                                  cancer.de.testiculo |
+                                  cancer.de.tiroides |
+                                  cancer.de.utero |
+                                  cancer.de.vejiga |
+                                  cancer.de.cuello.uterino |
+                                  melanoma.de.piel),
+        
+         cancer_hematologico = +( 
+                                  cancer.inmunoproliferativo |
+                                  enfermedad.de.hodgkin |
+                                  leucemia |
+                                  linfoma.no.hodgkin |
+                                  sarcoma.de.kaposi)
+        )
+
+vacunas_t_covid_pautas %<>% 
+  mutate(pautas_covid = as.factor(pautas_covid))
+
 ```
 
 (Coalesce de fallecimiento y fecha de ingreso)
