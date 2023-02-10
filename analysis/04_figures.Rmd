@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-library(UpSetR)
+library(networkD3)
 ```
 
 ## Upset Plot for describing categories
@@ -22,3 +22,37 @@ plot(pressure)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+Install the networkD3 library: You'll need to install the networkD3 library in R in order to make a Sankey diagram. You can install it using the following command: 
+Load the library: After installation, load the library by using the following command: library(networkD3)
+Prepare your data: The data that you want to visualize in the Sankey diagram should be in a specific format. The data should be a matrix or data frame with columns for the source and target of each flow, as well as the value of the flow. For example:
+bash
+
+
+Create the Sankey diagram: You can create the Sankey diagram using the sankeyNetwork function from the networkD3 library. The basic syntax is:
+
+```{r}
+source <- c("A", "A", "B", "B", "C") 
+target <- c("B", "C", "D", "E", "E") 
+value <- c(1, 2, 3, 4, 5) 
+data <- data.frame(source, target, value) 
+```
+
+```{r}
+sankeyNetwork(Links = data, Nodes = NULL, Source = "source", Target = "target", Value = "value", NodeID = NULL, units = "", fontSize = 12, nodeWidth = 30, nodePadding = 10, iterations = 0) 
+```
+
+
+Here, Links is the data frame containing the source, target, and value of each flow. Source and Target specify the column names for the source and target of each flow, and Value specifies the column name for the value of each flow. The other arguments are optional and can be used to customize the appearance of the diagram.
+Display the Sankey diagram: To display the Sankey diagram, you can use the plot function, like this:
+
+```{r}
+kotlin
+
+plot(sankeyNetwork(Links = data, Source = "source", Target = "target", Value = "value")) 
+```
+
+
+This will display the Sankey diagram in the RStudio plot viewer. You can also save the plot as an image file using the ggsave function.
+And that's it! With these steps, you should be able to create a Sankey diagram in RStudio.
