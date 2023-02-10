@@ -233,20 +233,37 @@ episodios_cmbd <- episodios_cmbd %>%
 
 result <- left_join(episodios_cmbd, infect_COVID_first)
 
-result %<>% 
+result <- result %>%   
   mutate(infeccion_ingreso_dias = infect_COVID_first_date - COD_FEC_INGRESO)
 
+
 #  select only cols from names(episodios_cmbd)
-episodios_cmbd<-result %>% select(NUHSA_ENCRIPTADO,COD_FEC_INGRESO,COD_FEC_ALTA,COD_TIPO_INGRESO,DESC_TIPO_INGRESO,COD_TIPO_ALTA,DESC_TIPO_ALTA,COD_D1,COD_D2,COD_D3,COD_D4,COD_D5,COD_D6,COD_D7,COD_D8,COD_D9,COD_D10,COD_D11,COD_D12,COD_D13,COD_D14,COD_D15,COD_D16,COD_D17,COD_D18,COD_D19,COD_D20,COD_P1,COD_P2,COD_P3,COD_P4,COD_P5,COD_P6,COD_P7,COD_P8,COD_P9,COD_P10,COD_P11,COD_P12,COD_P13,COD_P14,COD_P15,COD_P16,COD_P17,COD_P18,COD_P19,COD_P20,NUM_DIAS_UCI,estancia_hospitalaria_dias,infeccion_ingreso_dias)
+episodios_cmbd <- result %>%
+  select(NUHSA_ENCRIPTADO,COD_FEC_INGRESO,COD_FEC_ALTA,COD_TIPO_INGRESO,DESC_TIPO_INGRESO,COD_TIPO_ALTA,DESC_TIPO_ALTA,COD_D1,COD_D2,COD_D3,COD_D4,COD_D5,COD_D6,COD_D7,COD_D8,COD_D9,COD_D10,COD_D11,COD_D12,COD_D13,COD_D14,COD_D15,COD_D16,COD_D17,COD_D18,COD_D19,COD_D20,COD_P1,COD_P2,COD_P3,COD_P4,COD_P5,COD_P6,COD_P7,COD_P8,COD_P9,COD_P10,COD_P11,COD_P12,COD_P13,COD_P14,COD_P15,COD_P16,COD_P17,COD_P18,COD_P19,COD_P20,NUM_DIAS_UCI,estancia_hospitalaria_dias,infeccion_ingreso_dias, infect_COVID_first_date)
 
 # estancia uci si/no
 episodios_cmbd %<>% 
   mutate(icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)),0,1)))
 
+episodios_cmbd <- episodios_cmbd %>%   
+  mutate(infeccion_alta_dias = infect_COVID_first_date - COD_FEC_ALTA)
+
 # dias entre infeccion e ingreso hospitalario ha de ser de 30 días máximo. si no, no lo considero ingreso hospitalario por COVID
-#los aún ingresados en el período de análisis habrían de tenerse en cuenta. Es menor de 30 si sale negativo también se cuenta.
+# los aún ingresados en el período de análisis habrían de tenerse en cuenta. Es menor de 30 si sale negativo también se cuenta.
 episodios_cmbd <- episodios_cmbd %>% 
-  mutate(hosp_stay_bin = if_else(infeccion_ingreso_dias <= 30, 1 ,0))
+  mutate(hosp_stay_bin = if_else(infeccion_ingreso_dias >= -30 &
+                                   infeccion_alta_dias <=0, 1 ,0))
+
+# lo paso al sentido del nombre de la variable
+episodios_cmbd <- episodios_cmbd %>% 
+  mutate(infeccion_ingreso_dias = infeccion_ingreso_dias*-1,
+         infeccion_alta_dias = infeccion_alta_dias*-1)
+  
+# episodios_cmbd %>%
+#   # arrange(infeccion_alta_dias) %>%
+#   filter(hosp_stay_bin == "1",
+#          DESC_TIPO_ALTA == "Defunción") %>%
+#   select(ingreso = COD_FEC_INGRESO, alta = COD_FEC_ALTA, dias_hosp = estancia_hospitalaria_dias,infect_COVID_first_date, infeccion_ingreso_dias, hosp_stay_bin, infeccion_alta_dias, DESC_TIPO_ALTA)
 
 #we are just going to take into account first hospitalization
 #filtramos los 5 códigos principales sólo por ICD relacionados con COVID, según conteo
@@ -359,7 +376,12 @@ vacunas_t_covid_pautas <- vacunas_t %>%
   ) %>% 
   summarise(pautas_covid = n())
 
-
+# Fix 5 and 6 shots in that moment was not possible. transcription error.
+vacunas_t_covid_pautas <- vacunas_t_covid_pautas %>% 
+  mutate(pautas_covid = case_when(
+    pautas_covid >= 4 ~ 4,
+    TRUE ~ pautas_covid
+  ))
 
 # neumococo simple version, was the patient vaccinated? (bin)
 vacunas_neumococo <- vacunas_t %>%
