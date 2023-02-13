@@ -108,7 +108,10 @@ df_selected <- apply(df_selected, 2, function(x) ifelse(x > 0, 1, 0))
 # Append the transformed columns to the first column
 pupa_opt <- cbind(df_first, df_selected)
 
-remove(df_first); remove(df_selected)
+remove(df_first)
+remove(df_selected)
+remove(pupa)
+remove(pupa_dt)
 ```
 
 ## periodos pandemicos
@@ -164,6 +167,8 @@ infect_COVID_first <-
   filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA)) %>% 
   rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
   select(NUHSA_ENCRIPTADO, infect_COVID_first_date)
+
+remove(resultados_pruebas_COVID)
 ```
 
 ## episodios_cmbd
@@ -215,7 +220,7 @@ TODO puede ser que ya estuvieran ingresados.
 icd_ofinterest <- c('U07.1', 'J18.9', 'J12.89', 'J22', 'J96.00', 'J96.01', 'J96.02', 'J96.20', 'J90', 'J47.0', 'J96.21', 'J98.01', 'J18.0', 'J84.9', 'J96.91', 'J96.90', 'J96.92', 'J84.89', 'J81.0', 'I26.99', 'J06.9', 'J98.9', 'J95.89', 'J12.9', 'O98.52', 'J84.111', 'O98.513', 'J20.8', 'J96.11', 'J00', 'J12.81', 'J84.114', 'J39.8', 'J84.115', 'J84.113')
 episodios_cmbd <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt", header = T, encoding = "Latin-1") %>% 
   as.data.frame()
-cmbd_t <- as.data.frame(episodios_cmbd)
+# cmbd_t <- as.data.frame(episodios_cmbd)
 
 # TODO no hay fecha de ingreso en UCI. No podemos calcular dias UCIA. Mirar traslados. rafa: no creo que tengamos acceso a esto.
 
@@ -263,7 +268,7 @@ episodios_cmbd <- episodios_cmbd %>%
 #   # arrange(infeccion_alta_dias) %>%
 #   filter(hosp_stay_bin == "1",
 #          DESC_TIPO_ALTA == "Defunción") %>%
-#   select(ingreso = COD_FEC_INGRESO, alta = COD_FEC_ALTA, dias_hosp = estancia_hospitalaria_dias,infect_COVID_first_date, infeccion_ingreso_dias, hosp_stay_bin, infeccion_alta_dias, DESC_TIPO_ALTA)
+  # select(ingreso = COD_FEC_INGRESO, alta = COD_FEC_ALTA, dias_hosp = estancia_hospitalaria_dias,infect_COVID_first_date, infeccion_ingreso_dias, hosp_stay_bin, infeccion_alta_dias, DESC_TIPO_ALTA)
 
 #we are just going to take into account first hospitalization
 #filtramos los 5 códigos principales sólo por ICD relacionados con COVID, según conteo
@@ -301,6 +306,9 @@ episodios_cmbd_first <- episodios_cmbd %>%
     icu_stay_bin,
     infeccion_ingreso_dias
   )
+
+remove(episodios_cmbd)
+remove(result)
 ```
 
 ## vacunas
@@ -330,15 +338,30 @@ vacunas_t <- vroom(
     FEC_VACUNACION = ymd(FEC_VACUNACION), # dates need to be converted from the original source, missing means NO
     vac_infecc_umbral = trunc((FEC_VACUNACION %--% infect_COVID_first_date) / days(1)) # dias entre vacunacion e infeccion
   )
+
+#convertir los nombres de las vacunas en factores para disminuir coste de computación
+
+vacunas_t <- vacunas_t %>% 
+  mutate(NOM_VACUNA = as.factor(NOM_VACUNA))
+
+# Y FILTRAR LAS VACUNAS QUE DESEAMOS
+vacunas_t <- vacunas_t %>% 
+  filter(NOM_VACUNA == "COVID-19 AstraZeneca"|
+           NOM_VACUNA == "COVID-19 Janssen"|
+           NOM_VACUNA == "COVID-19 Pfizer/BioNTech"|
+           NOM_VACUNA == "COVID-19 Moderna"|
+           NOM_VACUNA == "COVID-19 Novavax")
+vacunas_t$NOM_VACUNA <- droplevels(vacunas_t$NOM_VACUNA)
+         
 # what shot was first per patient?
 vacunas_t_covid_first <- vacunas_t %>%
   filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
-  filter(
-    grepl(
-      'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
-      NOM_VACUNA
-    )
-  ) %>%
+  # filter(
+  #   grepl(
+  #     'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
+  #     NOM_VACUNA
+  #   )
+  # ) %>%
   group_by(NUHSA_ENCRIPTADO) %>%
   arrange(FEC_VACUNACION) %>% 
   filter(row_number() == 1) %>% 
@@ -350,12 +373,12 @@ vacunas_t_covid_first <- vacunas_t %>%
 # TODO cómo afecta el umbral de 14 días a la pauta completa?
 # full shots
 vacunas_t_covid_full <- vacunas_t %>%
-  filter(
-    grepl(
-      'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
-      NOM_VACUNA
-    )
-  ) %>%
+  # filter(
+  #   grepl(
+  #     'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
+  #     NOM_VACUNA
+  #   )
+  # ) %>%
   group_by(NUHSA_ENCRIPTADO) %>%
   arrange(FEC_VACUNACION) %>% 
   filter(row_number()==3) %>% 
@@ -368,55 +391,60 @@ vacunas_t_covid_full <- vacunas_t %>%
 # number of shots ?
 vacunas_t_covid_pautas <- vacunas_t %>%
   group_by(NUHSA_ENCRIPTADO) %>%
-  filter(
-    grepl(
-      'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
-      NOM_VACUNA
-    )
-  ) %>% 
+  # filter(
+  #   grepl(
+  #     'COVID-19 Pfizer/BioNTech|COVID-19 Moderna|COVID-19 AstraZeneca|COVID-19 Janssen|COVID-19 Novavax',
+  #     NOM_VACUNA
+  #   )
+  # ) %>% 
   summarise(pautas_covid = n())
 
 # Fix 5 and 6 shots in that moment was not possible. transcription error.
 vacunas_t_covid_pautas <- vacunas_t_covid_pautas %>% 
-  mutate(pautas_covid = case_when(
+  mutate(pautas_covid = as.numeric(pautas_covid),
+    pautas_covid = case_when(
     pautas_covid >= 4 ~ 4,
     TRUE ~ pautas_covid
   ))
 
-# neumococo simple version, was the patient vaccinated? (bin)
-vacunas_neumococo <- vacunas_t %>%
-  filter(vac_infecc_umbral >= 14)%>%
-  filter(
-    grepl('Neumococo', NOM_VACUNA)
-  ) %>% 
-  transmute(
-    NUHSA_ENCRIPTADO,
-    vacuna_neumo = 1
-  ) %>% 
-  distinct()
-# gripe simple version, was the patient vaccinated? (bin)
-vacunas_gripe <- vacunas_t %>%
-  filter(vac_infecc_umbral >= 14)%>%
-  filter(
-    grepl('Gripe', NOM_VACUNA)
-  ) %>% 
-  transmute(
-    NUHSA_ENCRIPTADO,
-    vacuna_gripe = 1
-  ) %>% 
-  distinct()
+# Comento estas líneas de código ya que no las usamos para el estudio actualmente.
 
-vacunas_inmunity <- vacunas_t %>%
-  filter(vac_infecc_umbral >= 14)%>%
-  filter(
-    grepl('Gripe', NOM_VACUNA)
-  ) %>% 
-  transmute(
-    NUHSA_ENCRIPTADO,
-    vacuna_gripe = 1
-  ) %>% 
-  distinct()
+# neumococo simple version, was the patient vaccinated? (bin)
+# vacunas_neumococo <- vacunas_t %>%
+#   filter(vac_infecc_umbral >= 14)%>%
+#   filter(
+#     grepl('Neumococo', NOM_VACUNA)
+#   ) %>% 
+#   transmute(
+#     NUHSA_ENCRIPTADO,
+#     vacuna_neumo = 1
+#   ) %>% 
+#   distinct()
+# gripe simple version, was the patient vaccinated? (bin)
+# vacunas_gripe <- vacunas_t %>%
+#   filter(vac_infecc_umbral >= 14)%>%
+#   filter(
+#     grepl('Gripe', NOM_VACUNA)
+#   ) %>% 
+#   transmute(
+#     NUHSA_ENCRIPTADO,
+#     vacuna_gripe = 1
+#   ) %>% 
+#   distinct()
+
+# vacunas_inmunity <- vacunas_t %>%
+#   filter(vac_infecc_umbral >= 14)%>%
+#   filter(
+#     grepl('Gripe', NOM_VACUNA)
+#   ) %>% 
+#   transmute(
+#     NUHSA_ENCRIPTADO,
+#     vacuna_gripe = 1
+#   ) %>% 
+#   distinct()
 # TODO hay varias vacunas de neumo y gripe por paciente.
+
+remove(vacunas_t)
 ```
 
 # Final dataset
@@ -437,7 +465,7 @@ estudio_vacunas_t_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
 ))
 print(Sys.time())
 
-saveRDS(estudio_vacunas_t_final, file = "estudio_vacunas_t_final.rds")
+# saveRDS(estudio_vacunas_t_final, file = "estudio_vacunas_t_final.rds")
 ```
 
 ## Selecting only required columns
@@ -476,6 +504,9 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 fill_cols_to_exclude <- c("COD_FEC_ALTA", "COD_FEC_INGRESO","covid_full_date","covid_first_date")
 fill_cols_to_include <- setdiff(names(estudio_vacunas_t_final_selected), fill_cols_to_exclude)
 
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  select(-fill_cols_to_exclude)
+
 # Replace NAs with 0s
 estudio_vacunas_t_final_selected[, fill_cols_to_include][is.na(estudio_vacunas_t_final_selected[, fill_cols_to_include])] <-'0'
 ```
@@ -500,36 +531,70 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 ## New variables creation
 
 ```{r}
-estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected%>%
-  
-  mutate(cancer_organo_solido = +(
-    cancer.de.bronquio.y.pulmon | 
-      cancer.de.cabeza.y.cuello |
-      cancer.de.estomago |
-      cancer.de.hueso.y.tejidos.blandos |
-      cancer.de.mama |
-      cancer.de.ovario |
-      cancer.de.pancreas |
-      cancer.de.prostata |
-      cancer.de.rinon.y.pelvis.renal |
-      cancer.de.testiculo |
-      cancer.de.tiroides |
-      cancer.de.utero |
-      cancer.de.vejiga |
-      cancer.de.cuello.uterino |
-      melanoma.de.piel |
-      sarcoma.de.kaposi),
-    
-    cancer_hematologico = +( 
-      cancer.inmunoproliferativo |
-        enfermedad.de.hodgkin |
-        leucemia |
-        linfoma.no.hodgkin)
-  )
+remove(infect_COVID_first)
+remove(infect_COVID_num)
+remove(poblacion_diana)
+remove(pupa_opt)
 
-estudio_vacunas_t_final_selected %<>% 
-  mutate(pautas_covid = as.factor(pautas_covid))
+# estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>%
+#   mutate(cancer_organo_solido = +(
+#     cancer.de.bronquio.y.pulmon | 
+#       cancer.de.cabeza.y.cuello |
+#       cancer.de.estomago |
+#       cancer.de.hueso.y.tejidos.blandos |
+#       cancer.de.mama |
+#       cancer.de.ovario |
+#       cancer.de.pancreas |
+#       cancer.de.prostata |
+#       cancer.de.rinon.y.pelvis.renal |
+#       cancer.de.testiculo |
+#       cancer.de.tiroides |
+#       cancer.de.utero |
+#       cancer.de.vejiga |
+#       cancer.de.cuello.uterino |
+#       melanoma.de.piel |
+#       sarcoma.de.kaposi),
+#     
+#     cancer_hematologico = +( 
+#       cancer.inmunoproliferativo |
+#         enfermedad.de.hodgkin |
+#         leucemia |
+#         linfoma.no.hodgkin)
+#   )
+# 
+# estudio_vacunas_t_final_selected %>% colnames()
 
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  mutate(cancer_organo_solido = case_when(
+    `Cáncer colorrectal` == 1 ~ 1,
+    `Cáncer de bronquio y pulmón`== 1 ~ 1,
+    `Cáncer de cabeza y cuello`== 1 ~ 1,
+    `Cáncer de cuello uterino`== 1 ~ 1,
+    `Cáncer de estómago`== 1 ~ 1,
+    `Cáncer de hueso y tejidos blandos`== 1 ~ 1,
+    `Cáncer de hígado y vías biliares`== 1 ~ 1,
+    `Cáncer de mama`== 1 ~ 1,
+    `Cáncer de ovario`== 1 ~ 1,
+    `Cáncer de próstata`== 1 ~ 1,
+    `Cáncer de páncreas`== 1 ~ 1,
+    `Cáncer de riñón y pelvis renal`== 1 ~ 1,
+    `Cáncer de testículo`== 1 ~ 1,
+    `Cáncer de tiroides`== 1 ~ 1,
+    `Cáncer de vejiga`== 1 ~ 1,
+    `Cáncer de útero` == 1 ~ 1,
+    `Melanoma de piel`== 1 ~ 1
+  )) %>% 
+  mutate(cancer_organo_solido = replace_na(cancer_organo_solido, 0))
+
+
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  mutate(cancer_hematologico = case_when(
+    `Leucemia` == 1 ~ 1,
+    `Cáncer inmunoproliferativo`== 1 ~ 1,
+    `Enfermedad de Hodgkin`== 1 ~ 1,
+    `Linfoma no Hodgkin`== 1 ~ 1
+  )) %>% 
+  mutate(cancer_hematologico = replace_na(cancer_hematologico, 0))
 ```
 
 (Coalesce de fallecimiento y fecha de ingreso)
@@ -550,10 +615,38 @@ a-b
 
 print('Número final de pacientes')
 nrow(estudio_vacunas_t_final_selected)
+```
 
+
+```{r}
+#LIMPIANDO ERRORES FINALES RAFA Y ÁLVARO
+# estudio_vacunas_t_final_selected$DESC_SEXO %>% summary()
+estudio_vacunas_t_final_selected %>% str()
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  filter(DESC_SEXO == "Mujer" |
+           DESC_SEXO == "Hombre")
+estudio_vacunas_t_final_selected$DESC_SEXO <- droplevels(estudio_vacunas_t_final_selected$DESC_SEXO)
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  mutate(age_num = as.numeric(age),
+         age_num_decada = age_num/10)
+
+estudio_vacunas_t_final_selected %<>% 
+  mutate(pautas_covid = as.factor(pautas_covid))
+
+```
+
+
+```{r}
 saveRDS(estudio_vacunas_t_final_selected, file = "estudio_vacunas_t_final_selected.rds")
+saveRDS(estudio_vacunas_t_final_selected, 
+        file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_v13feb.rds")
 
 # feather format is compatible both with R and python
+# estudio_vacunas_t_final_selected <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_v13feb.rds")
+
+library(arrow)
 write_feather(estudio_vacunas_t_final_selected, "estudio_vacunas_t_final_selected.feather")
+write_feather(estudio_vacunas_t_final_selected,
+              "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_v13feb.feather")
 ```
 

@@ -17,6 +17,8 @@ library(feather)
 library(broom)
 library(htmlTable)
 
+# estudio_vacunas_t_final_selected <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_v13feb.rds")
+
 # metric performance
 
 precision <- function(matrix) {
