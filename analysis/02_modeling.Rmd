@@ -1,5 +1,5 @@
 ---
-title: "01_dataset_creation"
+title: "02_modeling"
 output: html_document
 ---
 
@@ -82,6 +82,9 @@ ggplot(coef_pval_df_hosp_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_C
  labs(y="Odds Ratio", x=NULL)+
  ggtitle('Admisión Hospitalaria')+
  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin.png", width = 6, height = 4, dpi = 300)
 ```
 
 
@@ -158,6 +161,9 @@ ggplot(coef_pval_df_logreg_icu_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, yma
  labs(y="Odds Ratio", x=NULL)+
  ggtitle('Admisión UCI')+
  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_icu_stay_bin.png", width = 6, height = 4, dpi = 300)
 ```
 
 ## Model Performance
@@ -235,9 +241,12 @@ ggplot(coef_pval_df_logreg_mortality, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=O
  labs(y="Odds Ratio", x=NULL)+
  ggtitle('Mortalidad')+
  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_mortality.png", width = 6, height = 4, dpi = 300)
 ```
 
-##Model Performance
+## Model Performance
 
 ```{r eval=FALSE, include=FALSE}
 
