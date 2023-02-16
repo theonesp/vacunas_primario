@@ -15,9 +15,17 @@ library(pROC)
 library(ggplot2)
 library(feather)
 library(broom)
-library(htmlTable)
 
-# estudio_vacunas_t_final_selected <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_v13feb.rds")
+library(htmlTable)
+library(forestmodel)
+library(gtsummary)
+library(tidyverse)
+library(janitor)
+estudio_vacunas_t_final_selected <- readRDS(file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_v13feb.rds")
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% clean_names()
+# estudio_vacunas_t_final_selected %>% str()
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  mutate(hosp_stay_bin = as.numeric(hosp_stay_bin))
 
 # metric performance
 
@@ -51,6 +59,10 @@ extract_coef_pval_OR <- function(model) {
 } 
 ```
 
+```{r}
+# tbl_summary(estudio_vacunas_t_final_selected)
+```
+
 
 # logreg hosp_stay_bin
 
@@ -59,11 +71,19 @@ extract_coef_pval_OR <- function(model) {
 ```{r}
 print('glm')
 print(Sys.time())
-logreg_hosp_stay_bin <- glm(hosp_stay_bin ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
- data =  estudio_vacunas_t_final_selected
-, family=binomial() )
+logreg_hosp_stay_bin <- glm(
+  hosp_stay_bin ~ age_num_decada + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  data =  estudio_vacunas_t_final_selected, 
+  family=binomial())
 print(Sys.time())
 ```
+
+## Summary of the model
+```{r}
+summary(logreg_hosp_stay_bin)
+```
+
+
 ## Odds ratio
 
 ```{r fig.height=16, fig.width=10}
@@ -84,14 +104,14 @@ ggplot(coef_pval_df_hosp_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_C
  theme_minimal()
 
 # Save the plot as a PNG file
-ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin.png", width = 6, height = 4, dpi = 300)
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin_v23feb.png", width = 6, height = 4, dpi = 300)
 ```
 
 
 ## Model Performance
 
 ```{r eval=FALSE, include=FALSE}
-y_test<-estudio_vacunas_final_selected$hosp_stay_bin
+y_test <- estudio_vacunas_final_selected$hosp_stay_bin
   
 predict <- predict(logreg_hosp_stay_bin, estudio_vacunas_final_selected, type = 'response')
 # confusion matrix
@@ -140,7 +160,10 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 ```{r}
 print('glm')
 print(Sys.time())
-logreg_icu_stay_bin <- glm(icu_stay_bin ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid, data =  estudio_vacunas_t_final_selected,family=binomial() )
+logreg_icu_stay_bin <- glm(
+  icu_stay_bin ~ age_num_decada + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  data =  estudio_vacunas_t_final_selected, 
+  family=binomial() )
 print(Sys.time())
 ```
 ## Odds ratio
@@ -218,9 +241,10 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 ```{r}
 print('glm')
 print(Sys.time())
-logreg_mortality <- glm(mortality ~ DESC_SEXO+ age+ asma +cardiopatia.isquemica + cirrosis.hepatica + diabetes + epoc + hepatopatia.cronica.excepto.cirrosis + hipertension + insuficiencia.cardiaca + insuficiencia.renal.cronica + cancer_organo_solido + cancer_hematologico + vih + infecc_covid_num + pautas_covid,
- data =  estudio_vacunas_t_final_selected
-, family=binomial() )
+logreg_mortality <- glm(
+  mortality ~ age_num_decada + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+ data =  estudio_vacunas_t_final_selected,
+ family=binomial())
 print(Sys.time())
 ```
 ## Odds ratio
