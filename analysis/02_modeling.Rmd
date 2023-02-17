@@ -72,7 +72,7 @@ extract_coef_pval_OR <- function(model) {
 print('glm')
 print(Sys.time())
 logreg_hosp_stay_bin <- glm(
-  hosp_stay_bin ~ age_num_decada + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  hosp_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
   data =  estudio_vacunas_t_final_selected, 
   family=binomial())
 print(Sys.time())
@@ -88,6 +88,7 @@ summary(logreg_hosp_stay_bin)
 
 ```{r fig.height=16, fig.width=10}
 coef_pval_df_hosp_stay_bin <- extract_coef_pval_OR(logreg_hosp_stay_bin)
+write.csv(coef_pval_df_hosp_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_hosp_stay_bin.csv',col.names = F)
 htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 ```
 
@@ -161,7 +162,7 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_icu_stay_bin <- glm(
-  icu_stay_bin ~ age_num_decada + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  icu_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
   data =  estudio_vacunas_t_final_selected, 
   family=binomial() )
 print(Sys.time())
@@ -170,6 +171,7 @@ print(Sys.time())
 
 ```{r fig.height=16, fig.width=10}
 coef_pval_df_logreg_icu_stay_bin <- extract_coef_pval_OR(logreg_icu_stay_bin)
+write.csv(coef_pval_df_logreg_icu_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_icu_stay_bin.csv',col.names = F)
 htmlTable(coef_pval_df_logreg_icu_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 ```
 
@@ -242,7 +244,7 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_mortality <- glm(
-  mortality ~ age_num_decada + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  mortality ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
  data =  estudio_vacunas_t_final_selected,
  family=binomial())
 print(Sys.time())
@@ -251,6 +253,7 @@ print(Sys.time())
 
 ```{r fig.height=16, fig.width=10}
 coef_pval_df_logreg_mortality <- extract_coef_pval_OR(logreg_mortality)
+write.csv(coef_pval_df_logreg_mortality,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality.csv',col.names = F)
 htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 ```
 

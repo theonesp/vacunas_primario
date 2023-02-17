@@ -505,7 +505,6 @@ nrow(estudio_vacunas_t_final_selected)
 ```{r}
 saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
 
-	
 save.image(file='/opt/datos_compartidos/vacunas_data/Rfiles/vac_environment.RData')
 ```
 

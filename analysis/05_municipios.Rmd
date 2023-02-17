@@ -1,0 +1,68 @@
+---
+title: "R Notebook"
+#output: html_notebook
+---
+
+```{r}
+plot(cars)
+```
+
+```{r}
+library(dplyr)
+
+df_aggregated <- df %>%
+  group_by(COD_MUNICIPIO, DESC_MUNICIPIO) %>%
+  summarize(
+            infect_COVID_first_date_min = min(infect_COVID_first_date),
+            infect_COVID_first_date_max = max(infect_COVID_first_date),
+            DESC_SEXO_Mujer = sum(DESC_SEXO == "Mujer"),
+            DESC_SEXO_Hombre = sum(DESC_SEXO == "Hombre"),
+            FEC_FALLECIMIENTO_count = n_distinct(FEC_FALLECIMIENTO),
+            age_mean = mean(age),
+            age_sd = sd(age),
+            asma_count = sum(asma),
+            cancer.colorrectal_count = sum(cancer.colorrectal),
+            cancer.de.bronquio.y.pulmon_count = sum(cancer.de.bronquio.y.pulmon),
+            cancer.de.cabeza.y.cuello_count = sum(cancer.de.cabeza.y.cuello),
+            cancer.de.cuello.uterino_count = sum(cancer.de.cuello.uterino),
+            cancer.de.estomago_count = sum(cancer.de.estomago),
+            cancer.de.higado.y.vias.biliares_count = sum(cancer.de.higado.y.vias.biliares),
+            cancer.de.hueso.y.tejidos.blandos_count = sum(cancer.de.hueso.y.tejidos.blandos),
+            cancer.de.mama_count = sum(cancer.de.mama),
+            cancer.de.ovario_count = sum(cancer.de.ovario),
+            cancer.de.pancreas_count = sum(cancer.de.pancreas),
+            cancer.de.prostata_count = sum(cancer.de.prostata),
+            cancer.de.rinon.y.pelvis.renal_count = sum(cancer.de.rinon.y.pelvis.renal),
+            cancer.de.testiculo_count = sum(cancer.de.testiculo),
+            cancer.de.tiroides_count = sum(cancer.de.tiroides),
+            cancer.de.utero_count = sum(cancer.de.utero),
+            cancer.de.vejiga_count = sum(cancer.de.vejiga),
+            cancer.inmunoproliferativo_count = sum(cancer.inmunoproliferativo),
+            cardiopatia.isquemica_count = sum(cardiopatia.isquemica),
+            cirrosis.hepatica_count = sum(cirrosis.hepatica),
+            diabetes_count = sum(diabetes),
+            enfermedad.de.hodgkin_count = sum(enfermedad.de.hodgkin),
+            epoc_count = sum(epoc),
+            hepatopatia.cronica.excepto.cirrosis_count = sum(hepatopatia.cronica.excepto.cirrosis),
+            hipertension_count = sum(hipertension),
+            insuficiencia_cardiaca_count = sum(insuficiencia.cardiaca),
+            insuficiencia_renal_cronica_count = sum(insuficiencia.renal.cronica),
+            leucemia_count = sum(leucemia),
+            linfoma_no_hodgkin_count = sum(linfoma.no.hodgkin),
+            melanoma_de_piel_count = sum(melanoma.de.piel),
+            sarcoma_de_kaposi_count = sum(sarcoma.de.kaposi),
+            vih_count = sum(vih),
+            nfecc_covid_num_count = sum(nfecc_covid_num),
+            estancia_hospitalaria_dias_mean = mean(estancia_hospitalaria_dias),
+            hosp_stay_bin_count = sum(hosp_stay_bin),
+            icu_stay_bin_count = sum(icu_stay_bin)
+            infeccion_ingreso_dias_count = sum(infeccion_ingreso_dias),
+            pautas_covid_cancer_organo_solido_count = sum(pautas_covid, cancer_organo_solido),
+            cancer_hematologico_count = sum(cancer_hematologico),
+            age_num_mean = mean(age_num) )    
+            
+            
+            
+```
+
+
