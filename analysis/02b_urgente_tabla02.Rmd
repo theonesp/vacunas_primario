@@ -6,6 +6,7 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+## Libraries ----
 library(forestmodel)
 library(skimr)
 library(mgcv)
@@ -21,6 +22,24 @@ library(gtsummary)
 # library(tidyverse)
 library(janitor)
 
+## Function ----
+extract_coef_pval_OR <- function(model) {
+  
+  as.data.frame(
+    tibble(
+      term = names(model$coefficients),
+      estimate = model$coefficients,
+      std.error = sqrt(diag(vcov(model))),
+      statistic = model$coefficients / sqrt(diag(vcov(model))),
+      p.value = 2 * (1 - pnorm(abs(statistic))),
+      OR = round(exp(estimate),2),
+      OR_CI_lower = round(exp(estimate - 1.96 * std.error),2),
+      OR_CI_upper = round(exp(estimate + 1.96 * std.error),2)
+    )
+  )
+} 
+
+## Reading ----
 estudio_vacunas_t_final_selected <- readRDS(
   file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_v13feb.rds"
 ) %>%
@@ -41,7 +60,7 @@ estudio_vacunas_t_final_selected <- readRDS(
 
 ```{r table 1}
 ## Ingreso hospitalario
-estudio_vacunas_t_final_selected %>%
+t1 <- estudio_vacunas_t_final_selected %>%
   select(
     -c(
       cod_municipio,
@@ -62,12 +81,14 @@ estudio_vacunas_t_final_selected %>%
     digits = list(
       age ~ 2
     )
-  ) %>% 
-  add_overall() %>% 
-  add_p()
+  )
+
+# %>% 
+#   add_overall() %>% 
+#   add_p()
 
 ## Mortalidad a los 30 días desde la fecha de la primera infección
-estudio_vacunas_t_final_selected %>%
+t2 <- estudio_vacunas_t_final_selected %>%
   select(
     -c(
       cod_municipio,
@@ -88,9 +109,11 @@ estudio_vacunas_t_final_selected %>%
     digits = list(
       age ~ 2
     )
-  ) %>% 
-  add_overall() %>% 
-  add_p()
+  )
+
+# %>% 
+#   add_overall() %>% 
+#   add_p()
 ```
 
 ```{r}
@@ -101,7 +124,14 @@ logreg_mortality <- glm(
 )
 
 coef_pval_df_logreg_mortality <- extract_coef_pval_OR(logreg_mortality)
-write.csv(coef_pval_df_logreg_mortality,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality.csv',col.names = F)
+
+write.table(
+  coef_pval_df_logreg_mortality,
+  sep = ",",
+  "/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality20230221.csv",
+  col.names = F
+  )
+
 htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 
 ggplot(coef_pval_df_logreg_mortality, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
