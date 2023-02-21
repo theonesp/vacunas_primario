@@ -21,17 +21,23 @@ library(gtsummary)
 # library(tidyverse)
 library(janitor)
 
-estudio_vacunas_t_final_selected <- readRDS(file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_v13feb.rds")
-
-estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% clean_names()
-
-estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+estudio_vacunas_t_final_selected <- readRDS(
+  file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_v13feb.rds"
+) %>%
+  clean_names() %>% 
   mutate(
+    infect_covid_first_date = case_when(
+      stri_length(as.character(infect_covid_first_date)) %in% c(8, 10) ~ infect_covid_first_date
+    ),
     hosp_stay_bin = as.numeric(hosp_stay_bin),
     infeccion_ingreso_dias = as.numeric(infeccion_ingreso_dias),
     mortality30d = case_when(
       (ymd(fec_fallecimiento) - infect_covid_first_date) < 31 ~ 1,
       T ~ 0
+    ),
+    estancia_hospitalaria_dias = case_when(
+      hosp_stay_bin == 1 ~ as.integer(estancia_hospitalaria_dias),
+      T ~ NA_integer_
     )
   ) %>% 
   suppressWarnings()
@@ -39,32 +45,32 @@ estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>%
 # metric performance
 
 precision <- function(matrix) {
-	# True positive
-    tp <- matrix[2, 2]
-	# false positive
-    fp <- matrix[1, 2]
-    return (tp / (tp + fp))
+  # True positive
+  tp <- matrix[2, 2]
+  # false positive
+  fp <- matrix[1, 2]
+  return (tp / (tp + fp))
 }
 
 recall <- function(matrix) {
-# true positive
-    tp <- matrix[2, 2]# false positive
-    fn <- matrix[2, 1]
-    return (tp / (tp + fn))
+  # true positive
+  tp <- matrix[2, 2]# false positive
+  fn <- matrix[2, 1]
+  return (tp / (tp + fn))
 }
 
 extract_coef_pval_OR <- function(model) {
-
-   as.data.frame(tibble(term = names(model$coefficients),
-          estimate = model$coefficients,
-          std.error = sqrt(diag(vcov(model))),
-          statistic = model$coefficients / sqrt(diag(vcov(model))),
-          p.value = 2 * (1 - pnorm(abs(statistic))),
-          OR = round(exp(estimate),2),
-          OR_CI_lower = round(exp(estimate - 1.96 * std.error),2),
-          OR_CI_upper = round(exp(estimate + 1.96 * std.error),2)
-   )
-   )
+  
+  as.data.frame(tibble(term = names(model$coefficients),
+                       estimate = model$coefficients,
+                       std.error = sqrt(diag(vcov(model))),
+                       statistic = model$coefficients / sqrt(diag(vcov(model))),
+                       p.value = 2 * (1 - pnorm(abs(statistic))),
+                       OR = round(exp(estimate),2),
+                       OR_CI_lower = round(exp(estimate - 1.96 * std.error),2),
+                       OR_CI_upper = round(exp(estimate + 1.96 * std.error),2)
+  )
+  )
 } 
 ```
 
@@ -81,21 +87,21 @@ estudio_vacunas_t_final_selected %>%
       desc_municipio,
       fec_fallecimiento,
       infeccion_ingreso_dias
-      )
-    ) %>%
+    )
+  ) %>%
   mutate(
     age = as.numeric(age),
     estancia_hospitalaria_dias = as.numeric(estancia_hospitalaria_dias)
-    ) %>%
+  ) %>%
   tbl_summary(
     by = hosp_stay_bin,
     statistic = list(
       all_continuous() ~ "{mean} ({sd})"
-      ),
+    ),
     digits = list(
       age ~ 2
-      )
-    ) %>% 
+    )
+  ) %>% 
   add_overall() %>% 
   add_p()
 
@@ -107,21 +113,21 @@ estudio_vacunas_t_final_selected %>%
       desc_municipio,
       fec_fallecimiento,
       infeccion_ingreso_dias
-      )
-    ) %>%
+    )
+  ) %>%
   mutate(
     age = as.numeric(age),
     estancia_hospitalaria_dias = as.numeric(estancia_hospitalaria_dias)
-    ) %>%
+  ) %>%
   tbl_summary(
     by = mortality30d,
     statistic = list(
       all_continuous() ~ "{mean} ({sd})"
-      ),
+    ),
     digits = list(
       age ~ 2
-      )
-    ) %>% 
+    )
+  ) %>% 
   add_overall() %>% 
   add_p()
 ```
@@ -159,13 +165,13 @@ htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")
 
 ```{r}
 ggplot(coef_pval_df_hosp_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
- geom_pointrange(alpha=0.7, shape=15) +
- geom_vline(xintercept=1) +
- scale_y_log10(limits=c(0.1, 4)) +
- coord_flip() +
- labs(y="Odds Ratio", x=NULL)+
- ggtitle('Admisión Hospitalaria')+
- theme_minimal()
+  geom_pointrange(alpha=0.7, shape=15) +
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  ggtitle('Admisión Hospitalaria')+
+  theme_minimal()
 
 # Save the plot as a PNG file
 ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin_v23feb.png", width = 6, height = 4, dpi = 300)
@@ -242,13 +248,13 @@ htmlTable(coef_pval_df_logreg_icu_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_u
 
 ```{r}
 ggplot(coef_pval_df_logreg_icu_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
- geom_pointrange(alpha=0.7, shape=15) +
- geom_vline(xintercept=1) +
- scale_y_log10(limits=c(0.1, 4)) +
- coord_flip() +
- labs(y="Odds Ratio", x=NULL)+
- ggtitle('Admisión UCI')+
- theme_minimal()
+  geom_pointrange(alpha=0.7, shape=15) +
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  ggtitle('Admisión UCI')+
+  theme_minimal()
 
 # Save the plot as a PNG file
 ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_icu_stay_bin.png", width = 6, height = 4, dpi = 300)
@@ -308,8 +314,8 @@ print('glm')
 print(Sys.time())
 logreg_mortality <- glm(
   mortality ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
- data =  estudio_vacunas_t_final_selected,
- family=binomial())
+  data =  estudio_vacunas_t_final_selected,
+  family=binomial())
 print(Sys.time())
 ```
 ## Odds ratio
@@ -324,13 +330,13 @@ htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_uppe
 
 ```{r}
 ggplot(coef_pval_df_logreg_mortality, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
- geom_pointrange(alpha=0.7, shape=15) +
- geom_vline(xintercept=1) +
+  geom_pointrange(alpha=0.7, shape=15) +
+  geom_vline(xintercept=1) +
   scale_y_log10(limits=c(0.1, 4)) +
- coord_flip() +
- labs(y="Odds Ratio", x=NULL)+
- ggtitle('Mortalidad')+
- theme_minimal()
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  ggtitle('Mortalidad')+
+  theme_minimal()
 
 # Save the plot as a PNG file
 ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_mortality.png", width = 6, height = 4, dpi = 300)
