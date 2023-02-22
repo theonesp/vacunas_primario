@@ -39,7 +39,14 @@ estudio_vacunas_t_final_selected <- readRDS(
     ),
     estancia_hospitalaria_dias = case_when(
       hosp_stay_bin == 1 ~ as.integer(estancia_hospitalaria_dias),
-      T ~ NA_integer_
+      T ~ NA_integer_,
+    covid_first_name = as.character(covid_first_name),
+    covid_first_name = replace_na(covid_first_name, "No vacunado", covid_first_name),
+    covid_first_name = factor(covid_first_name),
+    covid_full_name = as.character(covid_full_name),
+    covid_full_name = replace_na(covid_full_name, "No vacunado o vacunado con menos de tres dosis", covid_full_name),
+    covid_full_name = factor(covid_full_name),
+    pautas_covid = factor(pautas_covid, ordered = TRUE)
     )
   ) %>% 
   suppressWarnings()
@@ -101,7 +108,8 @@ estudio_vacunas_t_final_selected %>%
       all_continuous() ~ "{mean} ({sd})"
     ),
     digits = list(
-      age ~ 2
+      age ~ 2,
+      estancia_hospitalaria_dias ~ 2
     )
   ) %>% 
   add_overall() %>% 
@@ -127,7 +135,8 @@ estudio_vacunas_t_final_selected %>%
       all_continuous() ~ "{mean} ({sd})"
     ),
     digits = list(
-      age ~ 2
+      age ~ 2,
+      estancia_hospitalaria_dias ~ 2
     )
   ) %>%
   add_overall() %>%

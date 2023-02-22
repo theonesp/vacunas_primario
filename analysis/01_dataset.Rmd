@@ -334,9 +334,17 @@ vacunas_t_covid_first <- vacunas_t %>%
     covid_first_name = NOM_VACUNA,
     covid_first_date = FEC_VACUNACION
   )
+
 # TODO cómo afecta el umbral de 14 días a la pauta completa?
 # full shots
 vacunas_t_covid_full <- vacunas_t %>%
+  filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
+  # ALVARO SERRANO: la linea anterior la introduzco el dia 22/02. Al no estar en el codigo previamente, -->
+  # estabamos considerando para cada paciente la ultima dosis puesta a fecha de extraccion de datos (mayo 2022 -->
+  # si no recuerdo mal) y no hasta catorce dias antes de la infeccion, por lo que los analisis -->
+  # incluyen datos erroneos e incurren en sesgos. Vamos, que no vale decir que con tres dosis te proteges -->
+  # mas, basados en estos datos. Seguramente sea asi, pero los resultados hechos con el codigo anterior -->
+  # no deben fundamentar dicha afirmacion.
   group_by(NUHSA_ENCRIPTADO) %>%
   arrange(FEC_VACUNACION) %>% 
   filter(row_number()==3) %>% 
@@ -347,7 +355,9 @@ vacunas_t_covid_full <- vacunas_t %>%
   )
 
 # number of shots
-vacunas_t_covid_pautas <- vacunas_t %>%
+vacunas_t_covid_pautas <- vacunas_t %>% 
+  filter(vac_infecc_umbral >= 14) %>%
+  # ALVARO SERRANO: idem a lo escrito en el pipeline anterior.
   group_by(NUHSA_ENCRIPTADO) %>%
   summarise(pautas_covid = n())
 
