@@ -135,269 +135,269 @@ estudio_vacunas_t_final_selected %>%
 ```
 
 
-<!-- <!-- # logreg hosp_stay_bin --> -->
+# logreg hosp_stay_bin
 
-<!-- ## Fitting the model -->
+## Fitting the model
+
+```{r}
+print('glm')
+print(Sys.time())
+logreg_hosp_stay_bin <- glm(
+  hosp_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  data =  estudio_vacunas_t_final_selected,
+  family=binomial())
+print(Sys.time())
+```
+
+## Summary of the model
+```{r}
+summary(logreg_hosp_stay_bin)
+```
+
+
+## Odds ratio
+
+```{r fig.height=16, fig.width=10}
+coef_pval_df_hosp_stay_bin <- extract_coef_pval_OR(logreg_hosp_stay_bin)
+write.csv(coef_pval_df_hosp_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_hosp_stay_bin.csv',col.names = F)
+htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
+```
+
+## Forest Plot
+
+```{r}
+ggplot(coef_pval_df_hosp_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+  geom_pointrange(alpha=0.7, shape=15) +
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  ggtitle('Admisión Hospitalaria')+
+  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin_v23feb.png", width = 6, height = 4, dpi = 300)
+```
+
+
+## Model Performance
+
+```{r eval=FALSE, include=FALSE}
+y_test <- estudio_vacunas_final_selected$hosp_stay_bin
+
+predict <- predict(logreg_hosp_stay_bin, estudio_vacunas_final_selected, type = 'response')
+# confusion matrix
+table_mat <- table(y_test, predict > 0.85)
+table_mat
+
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.1))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
+```
+
+# logreg_icu_stay_bin
+
+## Fitting the model
+
+```{r}
+print('glm')
+print(Sys.time())
+logreg_icu_stay_bin <- glm(
+  icu_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  data =  estudio_vacunas_t_final_selected,
+  family=binomial() )
+print(Sys.time())
+```
+## Odds ratio
+
+```{r fig.height=16, fig.width=10}
+coef_pval_df_logreg_icu_stay_bin <- extract_coef_pval_OR(logreg_icu_stay_bin)
+write.csv(coef_pval_df_logreg_icu_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_icu_stay_bin.csv',col.names = F)
+htmlTable(coef_pval_df_logreg_icu_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
+```
+
+## Forest Plot
+
+```{r}
+ggplot(coef_pval_df_logreg_icu_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+  geom_pointrange(alpha=0.7, shape=15) +
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  ggtitle('Admisión UCI')+
+  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_icu_stay_bin.png", width = 6, height = 4, dpi = 300)
+```
+
+## Model Performance
+
+```{r eval=FALSE, include=FALSE}
+y_test<-estudio_vacunas_final_selected$icu_stay_bin
+
+predict <- predict(logreg_icu_stay_bin, estudio_vacunas_final_selected, type = 'response')
+# confusion matrix
+table_mat <- table(y_test, predict > 0.1)
+table_mat
+
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.3))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
+```
+
+# logreg_mortality
+
+## Fitting the model
+
+```{r}
+print('glm')
+print(Sys.time())
+logreg_mortality <- glm(
+  mortality ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  data =  estudio_vacunas_t_final_selected,
+  family=binomial())
+print(Sys.time())
+```
+## Odds ratio
+
+```{r fig.height=16, fig.width=10}
+coef_pval_df_logreg_mortality <- extract_coef_pval_OR(logreg_mortality)
+write.csv(coef_pval_df_logreg_mortality,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality.csv',col.names = F)
+htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_upper")])
+```
+
+## Forest Plot
+
+```{r}
+ggplot(coef_pval_df_logreg_mortality, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+  geom_pointrange(alpha=0.7, shape=15) +
+  geom_vline(xintercept=1) +
+  scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y="Odds Ratio", x=NULL)+
+  ggtitle('Mortalidad')+
+  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_mortality.png", width = 6, height = 4, dpi = 300)
+```
+
+## Model Performance
+
+```{r eval=FALSE, include=FALSE}
+
+y_test<-estudio_vacunas_final_selected$icu_stay_bin
+
+predict <- predict(logreg_mortality, estudio_vacunas_final_selected, type = 'response')
+
+# confusion matrix
+table_mat <- table(y_test, predict > 0.1)
+table_mat
+
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.3))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
+```
+
+
+<!-- # survival model -->
 
 <!-- ```{r} -->
-<!-- print('glm') -->
-<!-- print(Sys.time()) -->
-<!-- logreg_hosp_stay_bin <- glm( -->
-<!--   hosp_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num, -->
-<!--   data =  estudio_vacunas_t_final_selected, -->
-<!--   family=binomial()) -->
-<!-- print(Sys.time()) -->
+<!-- #TODO evaluate efficiency -->
+<!-- # event as numeric -->
+<!-- estudio_vacunas_final_selected$estancia_hospitalaria<-as.numeric(estudio_vacunas_final_selected$estancia_hospitalaria) -->
+
+<!-- res.cox <- coxph(Surv(estancia_hospitalaria_dias, estancia_hospitalaria) ~ DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + age + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_groupB, data =  estudio_vacunas_final_selected) -->
 <!-- ``` -->
-
-<!-- ## Summary of the model -->
-<!-- ```{r} -->
-<!-- summary(logreg_hosp_stay_bin) -->
-<!-- ``` -->
-
-
-<!-- ## Odds ratio -->
-
-<!-- ```{r fig.height=16, fig.width=10} -->
-<!-- coef_pval_df_hosp_stay_bin <- extract_coef_pval_OR(logreg_hosp_stay_bin) -->
-<!-- write.csv(coef_pval_df_hosp_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_hosp_stay_bin.csv',col.names = F) -->
-<!-- htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")]) -->
-<!-- ``` -->
-
-<!-- ## Forest Plot -->
-
-<!-- ```{r} -->
-<!-- ggplot(coef_pval_df_hosp_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) + -->
-<!--   geom_pointrange(alpha=0.7, shape=15) + -->
-<!--   geom_vline(xintercept=1) + -->
-<!--   scale_y_log10(limits=c(0.1, 4)) + -->
-<!--   coord_flip() + -->
-<!--   labs(y="Odds Ratio", x=NULL)+ -->
-<!--   ggtitle('Admisión Hospitalaria')+ -->
-<!--   theme_minimal() -->
-
-<!-- # Save the plot as a PNG file -->
-<!-- ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin_v23feb.png", width = 6, height = 4, dpi = 300) -->
-<!-- ``` -->
-
-
-<!-- ## Model Performance -->
-
-<!-- ```{r eval=FALSE, include=FALSE} -->
-<!-- y_test <- estudio_vacunas_final_selected$hosp_stay_bin -->
-
-<!-- predict <- predict(logreg_hosp_stay_bin, estudio_vacunas_final_selected, type = 'response') -->
-<!-- # confusion matrix -->
-<!-- table_mat <- table(y_test, predict > 0.85) -->
-<!-- table_mat -->
-
-<!-- accuracy <- sum(diag(table_mat)) / sum(table_mat) -->
-<!-- accuracy -->
-
-<!-- prec <- precision(table_mat) -->
-<!-- prec -->
-
-<!-- rec <- recall(table_mat) -->
-<!-- rec -->
-
-<!-- f1 <- 2 * ((prec * rec) / (prec + rec)) -->
-<!-- f1 -->
-
-<!-- #AUTOC plot -->
-
-<!-- predicted_bin<-as.numeric(c(predict > 0.1)) -->
-<!-- rocobj <- roc(y_test, predicted_bin) -->
-
-<!-- auc <- round(auc(y_test, predicted_bin),2) -->
-
-<!-- #create ROC plot -->
-<!-- ggroc(rocobj, colour = 'steelblue', size = 2) + -->
-<!--   ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')')) -->
-
-<!-- metrics<-round(as.data.frame(rbind(accuracy,auc)),2) -->
-<!-- metrics$metric<-rownames(metrics) -->
-<!-- metrics$metric<-toupper(metrics$metric) -->
-
-<!-- names(metrics)<-c('Value', 'Metric') -->
-
-<!-- ggplot(data=metrics, aes(x=Metric, y=Value)) + -->
-<!--   geom_bar(stat="identity", fill="steelblue")+ -->
-<!--   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+ -->
-<!--   theme_minimal() -->
-<!-- ``` -->
-
-<!-- # logreg_icu_stay_bin -->
-
-<!-- ## Fitting the model -->
-
-<!-- ```{r} -->
-<!-- print('glm') -->
-<!-- print(Sys.time()) -->
-<!-- logreg_icu_stay_bin <- glm( -->
-<!--   icu_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num, -->
-<!--   data =  estudio_vacunas_t_final_selected, -->
-<!--   family=binomial() ) -->
-<!-- print(Sys.time()) -->
-<!-- ``` -->
-<!-- ## Odds ratio -->
-
-<!-- ```{r fig.height=16, fig.width=10} -->
-<!-- coef_pval_df_logreg_icu_stay_bin <- extract_coef_pval_OR(logreg_icu_stay_bin) -->
-<!-- write.csv(coef_pval_df_logreg_icu_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_icu_stay_bin.csv',col.names = F) -->
-<!-- htmlTable(coef_pval_df_logreg_icu_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")]) -->
-<!-- ``` -->
-
-<!-- ## Forest Plot -->
-
-<!-- ```{r} -->
-<!-- ggplot(coef_pval_df_logreg_icu_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) + -->
-<!--   geom_pointrange(alpha=0.7, shape=15) + -->
-<!--   geom_vline(xintercept=1) + -->
-<!--   scale_y_log10(limits=c(0.1, 4)) + -->
-<!--   coord_flip() + -->
-<!--   labs(y="Odds Ratio", x=NULL)+ -->
-<!--   ggtitle('Admisión UCI')+ -->
-<!--   theme_minimal() -->
-
-<!-- # Save the plot as a PNG file -->
-<!-- ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_icu_stay_bin.png", width = 6, height = 4, dpi = 300) -->
-<!-- ``` -->
-
-<!-- ## Model Performance -->
-
-<!-- ```{r eval=FALSE, include=FALSE} -->
-<!-- y_test<-estudio_vacunas_final_selected$icu_stay_bin -->
-
-<!-- predict <- predict(logreg_icu_stay_bin, estudio_vacunas_final_selected, type = 'response') -->
-<!-- # confusion matrix -->
-<!-- table_mat <- table(y_test, predict > 0.1) -->
-<!-- table_mat -->
-
-<!-- accuracy <- sum(diag(table_mat)) / sum(table_mat) -->
-<!-- accuracy -->
-
-<!-- prec <- precision(table_mat) -->
-<!-- prec -->
-
-<!-- rec <- recall(table_mat) -->
-<!-- rec -->
-
-<!-- f1 <- 2 * ((prec * rec) / (prec + rec)) -->
-<!-- f1 -->
-
-<!-- #AUTOC plot -->
-
-<!-- predicted_bin<-as.numeric(c(predict > 0.3)) -->
-<!-- rocobj <- roc(y_test, predicted_bin) -->
-
-<!-- auc <- round(auc(y_test, predicted_bin),2) -->
-
-<!-- #create ROC plot -->
-<!-- ggroc(rocobj, colour = 'steelblue', size = 2) + -->
-<!--   ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')')) -->
-
-<!-- metrics<-round(as.data.frame(rbind(accuracy,auc)),2) -->
-<!-- metrics$metric<-rownames(metrics) -->
-<!-- metrics$metric<-toupper(metrics$metric) -->
-
-<!-- names(metrics)<-c('Value', 'Metric') -->
-
-<!-- ggplot(data=metrics, aes(x=Metric, y=Value)) + -->
-<!--   geom_bar(stat="identity", fill="steelblue")+ -->
-<!--   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+ -->
-<!--   theme_minimal() -->
-<!-- ``` -->
-
-<!-- # logreg_mortality -->
-
-<!-- ## Fitting the model -->
-
-<!-- ```{r} -->
-<!-- print('glm') -->
-<!-- print(Sys.time()) -->
-<!-- logreg_mortality <- glm( -->
-<!--   mortality ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num, -->
-<!--   data =  estudio_vacunas_t_final_selected, -->
-<!--   family=binomial()) -->
-<!-- print(Sys.time()) -->
-<!-- ``` -->
-<!-- ## Odds ratio -->
-
-<!-- ```{r fig.height=16, fig.width=10} -->
-<!-- coef_pval_df_logreg_mortality <- extract_coef_pval_OR(logreg_mortality) -->
-<!-- write.csv(coef_pval_df_logreg_mortality,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality.csv',col.names = F) -->
-<!-- htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_upper")]) -->
-<!-- ``` -->
-
-<!-- ## Forest Plot -->
-
-<!-- ```{r} -->
-<!-- ggplot(coef_pval_df_logreg_mortality, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) + -->
-<!--   geom_pointrange(alpha=0.7, shape=15) + -->
-<!--   geom_vline(xintercept=1) + -->
-<!--   scale_y_log10(limits=c(0.1, 4)) + -->
-<!--   coord_flip() + -->
-<!--   labs(y="Odds Ratio", x=NULL)+ -->
-<!--   ggtitle('Mortalidad')+ -->
-<!--   theme_minimal() -->
-
-<!-- # Save the plot as a PNG file -->
-<!-- ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_mortality.png", width = 6, height = 4, dpi = 300) -->
-<!-- ``` -->
-
-<!-- ## Model Performance -->
-
-<!-- ```{r eval=FALSE, include=FALSE} -->
-
-<!-- y_test<-estudio_vacunas_final_selected$icu_stay_bin -->
-
-<!-- predict <- predict(logreg_mortality, estudio_vacunas_final_selected, type = 'response') -->
-
-<!-- # confusion matrix -->
-<!-- table_mat <- table(y_test, predict > 0.1) -->
-<!-- table_mat -->
-
-<!-- accuracy <- sum(diag(table_mat)) / sum(table_mat) -->
-<!-- accuracy -->
-
-<!-- prec <- precision(table_mat) -->
-<!-- prec -->
-
-<!-- rec <- recall(table_mat) -->
-<!-- rec -->
-
-<!-- f1 <- 2 * ((prec * rec) / (prec + rec)) -->
-<!-- f1 -->
-
-<!-- #AUTOC plot -->
-
-<!-- predicted_bin<-as.numeric(c(predict > 0.3)) -->
-<!-- rocobj <- roc(y_test, predicted_bin) -->
-
-<!-- auc <- round(auc(y_test, predicted_bin),2) -->
-
-<!-- #create ROC plot -->
-<!-- ggroc(rocobj, colour = 'steelblue', size = 2) + -->
-<!--   ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')')) -->
-
-<!-- metrics<-round(as.data.frame(rbind(accuracy,auc)),2) -->
-<!-- metrics$metric<-rownames(metrics) -->
-<!-- metrics$metric<-toupper(metrics$metric) -->
-
-<!-- names(metrics)<-c('Value', 'Metric') -->
-
-<!-- ggplot(data=metrics, aes(x=Metric, y=Value)) + -->
-<!--   geom_bar(stat="identity", fill="steelblue")+ -->
-<!--   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+ -->
-<!--   theme_minimal() -->
-<!-- ``` -->
-
-
-<!-- <!-- # survival model --> -->
-
-<!-- <!-- ```{r} --> -->
-<!-- <!-- #TODO evaluate efficiency --> -->
-<!-- <!-- # event as numeric --> -->
-<!-- <!-- estudio_vacunas_final_selected$estancia_hospitalaria<-as.numeric(estudio_vacunas_final_selected$estancia_hospitalaria) --> -->
-
-<!-- <!-- res.cox <- coxph(Surv(estancia_hospitalaria_dias, estancia_hospitalaria) ~ DESC_SEXO + RESIDE_RESIDENCIA + GRUPO_7 + age + cancer + VIH + EPOC + ASMA + INSUF_CARDIACA + CARDIOPATÍA_ISQUÉMCIA + HEPATOPATIA_CRÓNICA + CIRROSIS + INSUF_RENAL_CRÓNICA + vac_groupB, data =  estudio_vacunas_final_selected) --> -->
-<!-- <!-- ``` --> -->
