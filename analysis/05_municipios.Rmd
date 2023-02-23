@@ -3,66 +3,72 @@ title: "R Notebook"
 #output: html_notebook
 ---
 
-```{r}
-plot(cars)
-```
+# Environment
 
 ```{r}
 library(dplyr)
+```
 
-df_aggregated <- df %>%
-  group_by(COD_MUNICIPIO, DESC_MUNICIPIO) %>%
+```{r}
+municipio_aggregated <- estudio_vacunas_t_final  %>%
+  group_by(DESC_MUNICIPIO,COD_MUNICIPIO) %>%
   summarize(
             infect_COVID_first_date_min = min(infect_COVID_first_date),
             infect_COVID_first_date_max = max(infect_COVID_first_date),
+            infect_COVID_first_date_median = median(infect_COVID_first_date),
+            infect_COVID_first_date_sd = sd(infect_COVID_first_date),
             DESC_SEXO_Mujer = sum(DESC_SEXO == "Mujer"),
             DESC_SEXO_Hombre = sum(DESC_SEXO == "Hombre"),
             FEC_FALLECIMIENTO_count = n_distinct(FEC_FALLECIMIENTO),
-            age_mean = mean(age),
+            age_median = median(age),
             age_sd = sd(age),
-            asma_count = sum(asma),
-            cancer.colorrectal_count = sum(cancer.colorrectal),
-            cancer.de.bronquio.y.pulmon_count = sum(cancer.de.bronquio.y.pulmon),
-            cancer.de.cabeza.y.cuello_count = sum(cancer.de.cabeza.y.cuello),
-            cancer.de.cuello.uterino_count = sum(cancer.de.cuello.uterino),
-            cancer.de.estomago_count = sum(cancer.de.estomago),
-            cancer.de.higado.y.vias.biliares_count = sum(cancer.de.higado.y.vias.biliares),
-            cancer.de.hueso.y.tejidos.blandos_count = sum(cancer.de.hueso.y.tejidos.blandos),
-            cancer.de.mama_count = sum(cancer.de.mama),
-            cancer.de.ovario_count = sum(cancer.de.ovario),
-            cancer.de.pancreas_count = sum(cancer.de.pancreas),
-            cancer.de.prostata_count = sum(cancer.de.prostata),
-            cancer.de.rinon.y.pelvis.renal_count = sum(cancer.de.rinon.y.pelvis.renal),
-            cancer.de.testiculo_count = sum(cancer.de.testiculo),
-            cancer.de.tiroides_count = sum(cancer.de.tiroides),
-            cancer.de.utero_count = sum(cancer.de.utero),
-            cancer.de.vejiga_count = sum(cancer.de.vejiga),
-            cancer.inmunoproliferativo_count = sum(cancer.inmunoproliferativo),
-            cardiopatia.isquemica_count = sum(cardiopatia.isquemica),
-            cirrosis.hepatica_count = sum(cirrosis.hepatica),
-            diabetes_count = sum(diabetes),
-            enfermedad.de.hodgkin_count = sum(enfermedad.de.hodgkin),
-            epoc_count = sum(epoc),
-            hepatopatia.cronica.excepto.cirrosis_count = sum(hepatopatia.cronica.excepto.cirrosis),
-            hipertension_count = sum(hipertension),
-            insuficiencia_cardiaca_count = sum(insuficiencia.cardiaca),
-            insuficiencia_renal_cronica_count = sum(insuficiencia.renal.cronica),
-            leucemia_count = sum(leucemia),
-            linfoma_no_hodgkin_count = sum(linfoma.no.hodgkin),
-            melanoma_de_piel_count = sum(melanoma.de.piel),
-            sarcoma_de_kaposi_count = sum(sarcoma.de.kaposi),
-            vih_count = sum(vih),
-            nfecc_covid_num_count = sum(nfecc_covid_num),
-            estancia_hospitalaria_dias_mean = mean(estancia_hospitalaria_dias),
-            hosp_stay_bin_count = sum(hosp_stay_bin),
-            icu_stay_bin_count = sum(icu_stay_bin)
-            infeccion_ingreso_dias_count = sum(infeccion_ingreso_dias),
-            pautas_covid_cancer_organo_solido_count = sum(pautas_covid, cancer_organo_solido),
-            cancer_hematologico_count = sum(cancer_hematologico),
-            age_num_mean = mean(age_num) )    
-            
-            
-            
+            asma_count = sum(asma,na.rm = T),
+            cancer.colorrectal_count = sum(cancer.colorrectal,na.rm = T),
+            cancer.de.bronquio.y.pulmon_count = sum(cancer.de.bronquio.y.pulmon,na.rm = T),
+            cancer.de.cabeza.y.cuello_count = sum(cancer.de.cabeza.y.cuello,na.rm = T),
+            cancer.de.cuello.uterino_count = sum(cancer.de.cuello.uterino,na.rm = T),
+            cancer.de.estomago_count = sum(cancer.de.estomago,na.rm = T),
+            cancer.de.higado.y.vias.biliares_count = sum(cancer.de.higado.y.vias.biliares,na.rm = T),
+            cancer.de.hueso.y.tejidos.blandos_count = sum(cancer.de.hueso.y.tejidos.blandos,na.rm = T),
+            cancer.de.mama_count = sum(cancer.de.mama,na.rm = T),
+            cancer.de.ovario_count = sum(cancer.de.ovario,na.rm = T),
+            cancer.de.pancreas_count = sum(cancer.de.pancreas,na.rm = T),
+            cancer.de.prostata_count = sum(cancer.de.prostata,na.rm = T),
+            cancer.de.rinon.y.pelvis.renal_count = sum(cancer.de.rinon.y.pelvis.renal,na.rm = T),
+            cancer.de.testiculo_count = sum(cancer.de.testiculo,na.rm = T),
+            cancer.de.tiroides_count = sum(cancer.de.tiroides,na.rm = T),
+            cancer.de.utero_count = sum(cancer.de.utero,na.rm = T),
+            cancer.de.vejiga_count = sum(cancer.de.vejiga,na.rm = T),
+            cancer.inmunoproliferativo_count = sum(cancer.inmunoproliferativo,na.rm = T),
+            cardiopatia.isquemica_count = sum(cardiopatia.isquemica,na.rm = T),
+            cirrosis.hepatica_count = sum(cirrosis.hepatica,na.rm = T),
+            diabetes_count = sum(diabetes,na.rm = T),
+            enfermedad.de.hodgkin_count = sum(enfermedad.de.hodgkin,na.rm = T),
+            epoc_count = sum(epoc,na.rm = T),
+            hepatopatia.cronica.excepto.cirrosis_count = sum(hepatopatia.cronica.excepto.cirrosis,na.rm = T),
+            hipertension_count = sum(hipertension,na.rm = T),
+            insuficiencia_cardiaca_count = sum(insuficiencia.cardiaca,na.rm = T),
+            insuficiencia_renal_cronica_count = sum(insuficiencia.renal.cronica,na.rm = T),
+            leucemia_count = sum(leucemia,na.rm = T),
+            linfoma_no_hodgkin_count = sum(linfoma.no.hodgkin,na.rm = T),
+            melanoma_de_piel_count = sum(melanoma.de.piel,na.rm = T),
+            sarcoma_de_kaposi_count = sum(sarcoma.de.kaposi,na.rm = T),
+            vih_count = sum(vih,na.rm = T),
+            infecc_covid_num_median = median(infecc_covid_num,na.rm = T),
+            estancia_hospitalaria_dias_median = median(estancia_hospitalaria_dias,na.rm = T),
+            hosp_stay_bin_count = sum(hosp_stay_bin,na.rm = T),
+            icu_stay_bin_count = sum(as.numeric(icu_stay_bin),na.rm = T),
+            infeccion_ingreso_dias_median = median(infeccion_ingreso_dias,na.rm = T),
+            pautas_covid_cancer_median = median(as.numeric(pautas_covid),na.rm = T ),
+            # cancer_organo_solido_count = sum(cancer_organo_solido),
+            # cancer_hematologico_count = sum(cancer_hematologico),
+            )    
 ```
+# Export file
+
+```{r}
+write.csv(municipio_aggregated,'municipio_aggregated.csv',row.names = F)
+```
+
 
 

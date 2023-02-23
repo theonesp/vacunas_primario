@@ -5,6 +5,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(networkD3)
+library(ggplot2)
 ```
 
 ## Upset Plot for describing categories
@@ -56,3 +57,25 @@ plot(sankeyNetwork(Links = data, Source = "source", Target = "target", Value = "
 
 This will display the Sankey diagram in the RStudio plot viewer. You can also save the plot as an image file using the ggsave function.
 And that's it! With these steps, you should be able to create a Sankey diagram in RStudio.
+
+# Rentabilidad Edad
+
+```{r}
+# Definir los parámetros
+costo_hospitalizacion <- 4612.76
+precio_vacuna <- 31
+dosis_equiv <- 148
+nnt <- 148
+red_abs_riesgo <- 0.0068
+
+# Definir un vector de edades de 18 a 120
+edades <- 18:120
+
+# Calcular la rentabilidad para cada edad
+rentabilidad <- (costo_hospitalizacion/dosis_equiv) / nnt / (1 - red_abs_riesgo)
+
+# Crear un dataframe con los resultados
+df <- data.frame(edad = edades, rentabilidad = rentabilidad)
+
+```
+
