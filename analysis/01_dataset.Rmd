@@ -17,6 +17,7 @@ library(vroom)
 library(stringi)
 library(tidyr)
 library(parallel)
+library(janitor)
 
 # defining functions
 
@@ -395,7 +396,7 @@ estudio_vacunas_t_final_selected<-estudio_vacunas_t_final %>% select(cols_to_inc
 
 ```
 
-# New variables creation
+# New variables creation / adjustment
 
 ```{r}
 estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>%
@@ -432,7 +433,40 @@ estudio_vacunas_t_final_selected %<>%
          cancer_organo_solido=as.numeric(cancer_organo_solido)
          )
 
-
+estudio_vacunas_t_final_selected %>% 
+  # Clean the column names using clean_names()
+  clean_names() %>% 
+  # Modify certain columns using mutate()
+  mutate(
+    # Set the infect_covid_first_date column to have a length of either 8 or 10 characters
+    infect_covid_first_date = case_when(
+      stri_length(as.character(infect_covid_first_date)) %in% c(8, 10) ~ infect_covid_first_date
+    ),
+    # Convert the hosp_stay_bin column to numeric
+    hosp_stay_bin = as.numeric(hosp_stay_bin),
+    # Convert the infeccion_ingreso_dias column to numeric
+    infeccion_ingreso_dias = as.numeric(infeccion_ingreso_dias),
+    # Set the mortality30d column to 1 if the difference between fec_fallecimiento and infect_covid_first_date is less than 31 days, 0 otherwise
+    mortality30d = case_when(
+      (ymd(fec_fallecimiento) - infect_covid_first_date) < 31 ~ 1,
+      T ~ 0
+    ),
+    # Set the estancia_hospitalaria_dias column to NA if hosp_stay_bin is not equal to 1, otherwise convert it to an integer
+    estancia_hospitalaria_dias = case_when(
+      hosp_stay_bin == 1 ~ as.integer(estancia_hospitalaria_dias),
+      T ~ NA_integer_
+    ),
+    # Convert covid_first_name to character, replace NAs with "No vacunado", and convert to factor
+    covid_first_name = as.character(covid_first_name),
+    covid_first_name = replace_na(covid_first_name, "No vacunado", covid_first_name),
+    covid_first_name = factor(covid_first_name),
+    # Convert covid_full_name to character, replace NAs with "No vacunado o vacunado con menos de tres dosis", and convert to factor
+    covid_full_name = as.character(covid_full_name),
+    covid_full_name = replace_na(covid_full_name, "No vacunado o vacunado con menos de tres dosis", covid_full_name),
+    covid_full_name = factor(covid_full_name),
+    # Convert pautas_covid to an ordered factor
+    pautas_covid = factor(pautas_covid, ordered = TRUE)
+  )     
 ```
 
 ## Adressing missingness
@@ -509,6 +543,15 @@ b-c
 print('Número final de pacientes')
 nrow(estudio_vacunas_t_final_selected)
 ```
+
+# Final adjustments
+
+TODO integrate them in the proper section accordingly
+
+```{r}
+
+```
+
 
 # Saving Rds and Env
 
