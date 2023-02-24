@@ -59,10 +59,11 @@ municipio_aggregated <- estudio_vacunas_t_final  %>%
             hosp_stay_bin_count = sum(hosp_stay_bin,na.rm = T),
             icu_stay_bin_count = sum(as.numeric(icu_stay_bin),na.rm = T),
             infeccion_ingreso_dias_median = median(infeccion_ingreso_dias,na.rm = T),
-            pautas_covid_cancer_median = median(as.numeric(pautas_covid),na.rm = T ),
-            # cancer_organo_solido_count = sum(cancer_organo_solido),
-            # cancer_hematologico_count = sum(cancer_hematologico),
-            )    
+            cancer_organo_solido_count = sum(cancer_organo_solido),
+            cancer_hematologico_count = sum(cancer_hematologico),
+            corregirrrrrrrrrrrrr#pautas_covid_cancer_median = sum(as.numeric(pautas_covid),na.rm = T )
+
+                        )    
 ```
 # Export file
 

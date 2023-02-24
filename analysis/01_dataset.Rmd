@@ -392,48 +392,12 @@ saveRDS(estudio_vacunas_t_final, file = "/opt/datos_compartidos/vacunas_data/Rfi
 cols_to_exclude <- c("NUHSA_ENCRIPTADO", "COD_FEC_NACIMIENTO")
 cols_to_include <- setdiff(names(estudio_vacunas_t_final), cols_to_exclude)
 estudio_vacunas_t_final_selected<-estudio_vacunas_t_final %>% select(cols_to_include)
-
-
 ```
 
 # New variables creation / adjustment
 
 ```{r}
-estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>%
-  mutate(cancer_organo_solido = 
-    cancer.de.bronquio.y.pulmon | 
-      cancer.de.cabeza.y.cuello |
-      cancer.de.estomago |
-      cancer.de.hueso.y.tejidos.blandos |
-      cancer.de.mama |
-      cancer.de.ovario |
-      cancer.de.pancreas |
-      cancer.de.prostata |
-      cancer.de.rinon.y.pelvis.renal |
-      cancer.de.testiculo |
-      cancer.de.tiroides |
-      cancer.de.utero |
-      cancer.de.vejiga |
-      cancer.de.cuello.uterino |
-      melanoma.de.piel |
-      sarcoma.de.kaposi,
-    
-    cancer_hematologico = 
-      cancer.inmunoproliferativo |
-        enfermedad.de.hodgkin |
-        leucemia |
-        linfoma.no.hodgkin
-)
-
-estudio_vacunas_t_final_selected %<>% 
-  mutate(pautas_covid = as.factor(pautas_covid),
-         age_num = as.numeric(age),
-         age_num_decada = age_num/10,
-         pautas_covid=as.character(pautas_covid),
-         cancer_organo_solido=as.numeric(cancer_organo_solido)
-         )
-
-estudio_vacunas_t_final_selected %>% 
+estudio_vacunas_t_final_selected %<>%
   # Clean the column names using clean_names()
   clean_names() %>% 
   # Modify certain columns using mutate()
@@ -445,7 +409,11 @@ estudio_vacunas_t_final_selected %>%
     # Convert the hosp_stay_bin column to numeric
     hosp_stay_bin = as.numeric(hosp_stay_bin),
     # Convert the infeccion_ingreso_dias column to numeric
-    infeccion_ingreso_dias = as.numeric(infeccion_ingreso_dias),
+    infeccion_ingreso_dias = as.numeric(infeccion_ingreso_dias)
+)
+
+estudio_vacunas_t_final_selected %<>%
+  mutate(  
     # Set the mortality30d column to 1 if the difference between fec_fallecimiento and infect_covid_first_date is less than 31 days, 0 otherwise
     mortality30d = case_when(
       (ymd(fec_fallecimiento) - infect_covid_first_date) < 31 ~ 1,
@@ -458,15 +426,51 @@ estudio_vacunas_t_final_selected %>%
     ),
     # Convert covid_first_name to character, replace NAs with "No vacunado", and convert to factor
     covid_first_name = as.character(covid_first_name),
-    covid_first_name = replace_na(covid_first_name, "No vacunado", covid_first_name),
+    covid_first_name = if_else(is.na(covid_first_name), "No vac",covid_first_name),
     covid_first_name = factor(covid_first_name),
     # Convert covid_full_name to character, replace NAs with "No vacunado o vacunado con menos de tres dosis", and convert to factor
     covid_full_name = as.character(covid_full_name),
-    covid_full_name = replace_na(covid_full_name, "No vacunado o vacunado con menos de tres dosis", covid_full_name),
+    covid_full_name = if_else(is.na(covid_full_name), "No vac or <3 shots",covid_full_name),
     covid_full_name = factor(covid_full_name),
     # Convert pautas_covid to an ordered factor
     pautas_covid = factor(pautas_covid, ordered = TRUE)
-  )     
+  ) %>% 
+  suppressWarnings()     
+
+# grouping cancers by type
+estudio_vacunas_t_final_selected %<>%
+  mutate(cancer_organo_solido = 
+    cancer_de_bronquio_y_pulmon | 
+      cancer_de_cabeza_y_cuello |
+      cancer_de_estomago |
+      cancer_de_hueso_y_tejidos_blandos |
+      cancer_de_mama |
+      cancer_de_ovario |
+      cancer_de_pancreas |
+      cancer_de_prostata |
+      cancer_de_rinon_y_pelvis_renal |
+      cancer_de_testiculo |
+      cancer_de_tiroides |
+      cancer_de_utero |
+      cancer_de_vejiga |
+      cancer_de_cuello_uterino |
+      melanoma_de_piel |
+      sarcoma_de_kaposi,
+    
+    cancer_hematologico = 
+      cancer_inmunoproliferativo |
+        enfermedad_de_hodgkin |
+        leucemia |
+        linfoma_no_hodgkin
+)
+
+estudio_vacunas_t_final_selected %<>% 
+  mutate(pautas_covid = as.factor(pautas_covid),
+         age_num = as.numeric(age),
+         age_num_decada = age_num/10,
+         pautas_covid=as.character(pautas_covid),
+         cancer_organo_solido=as.numeric(cancer_organo_solido)
+         )
 ```
 
 ## Adressing missingness
@@ -490,17 +494,15 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 ### Columns NA filling
 
 ```{r}
+
 # except for date fields, for every NA cell, we replace it with 0 since
 # for cat variables empty means NO and for days related cols, NA means 0 days.
 
-fill_cols_to_exclude <- c("COD_FEC_ALTA", "COD_FEC_INGRESO","covid_full_date","covid_first_date","covid_first_name","covid_full_name")
+fill_cols_to_exclude <- c("cod_fec_alta", "cod_fec_ingreso","covid_full_date","covid_first_date","covid_first_name","covid_full_name")
 fill_cols_to_include <- setdiff(names(estudio_vacunas_t_final_selected), fill_cols_to_exclude)
 
-estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
-  select(-fill_cols_to_exclude)
+estudio_vacunas_t_final_selected[, fill_cols_to_include] <- lapply(estudio_vacunas_t_final_selected[, fill_cols_to_include], function(x) ifelse(is.na(x), 0, x))
 
-# Replace NAs with 0s
-estudio_vacunas_t_final_selected[, fill_cols_to_include][is.na(estudio_vacunas_t_final_selected[, fill_cols_to_include])] <-'0'
 ```
 
 ### Mapping final missingness
@@ -531,7 +533,7 @@ a<-nrow(estudio_vacunas_t_final_selected)
 a
 
 print('Pacientes excluídos con Sexo No encontrado')
-estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (DESC_SEXO %in% c('Hombre','Mujer') )
+estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (desc_sexo %in% c('Hombre','Mujer') )
 b<-nrow(estudio_vacunas_t_final_selected)
 a-b
 
