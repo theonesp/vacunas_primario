@@ -26,17 +26,13 @@ estudio_vacunas_t_final_selected %>%
       infeccion_ingreso_dias
     )
   ) %>%
-  mutate(
-    age = as.numeric(age),
-    estancia_hospitalaria_dias = as.numeric(estancia_hospitalaria_dias)
-  ) %>%
   tbl_summary(
     by = hosp_stay_bin,
     statistic = list(
       all_continuous() ~ "{mean} ({sd})"
     ),
     digits = list(
-      age ~ 2,
+      age_num ~ 2,
       estancia_hospitalaria_dias ~ 2
     )
   ) %>% 

@@ -340,11 +340,11 @@ vacunas_t_covid_first <- vacunas_t %>%
 # full shots
 vacunas_t_covid_full <- vacunas_t %>%
   filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
-  # ALVARO SERRANO: la linea anterior la introduzco el dia 22/02. Al no estar en el codigo previamente, -->
+  # ALVARO SERRANO: la linea anterior la introduzco el dia 22/02/2023. Al no estar en el codigo previamente, -->
   # estabamos considerando para cada paciente la ultima dosis puesta a fecha de extraccion de datos (mayo 2022 -->
   # si no recuerdo mal) y no hasta catorce dias antes de la infeccion, por lo que los analisis -->
   # incluyen datos erroneos e incurren en sesgos. Vamos, que no vale decir que con tres dosis te proteges -->
-  # mas, basados en estos datos. Seguramente sea asi, pero los resultados hechos con el codigo anterior -->
+  # mas, basandose en estos datos. Seguramente sea asi, pero los resultados hechos con el codigo anterior -->
   # no deben fundamentar dicha afirmacion.
   group_by(NUHSA_ENCRIPTADO) %>%
   arrange(FEC_VACUNACION) %>% 
@@ -371,7 +371,7 @@ remove(vacunas_t)
 
 ```{r}
 print(Sys.time())
-estudio_vacunas_t_final<-Reduce(function(...) merge(..., all.x=TRUE), list(
+estudio_vacunas_t_final <- Reduce(function(...) merge(..., all.x=TRUE), list(
   infect_COVID_first
   , poblacion_diana 
   , pupa_opt
@@ -391,7 +391,7 @@ saveRDS(estudio_vacunas_t_final, file = "/opt/datos_compartidos/vacunas_data/Rfi
 ```{r}
 cols_to_exclude <- c("NUHSA_ENCRIPTADO", "COD_FEC_NACIMIENTO")
 cols_to_include <- setdiff(names(estudio_vacunas_t_final), cols_to_exclude)
-estudio_vacunas_t_final_selected<-estudio_vacunas_t_final %>% select(cols_to_include)
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final %>% select(cols_to_include)
 ```
 
 # New variables creation / adjustment
@@ -426,13 +426,15 @@ estudio_vacunas_t_final_selected %<>%
     ),
     # Convert covid_first_name to character, replace NAs with "No vacunado", and convert to factor
     covid_first_name = as.character(covid_first_name),
-    covid_first_name = if_else(is.na(covid_first_name), "No vac",covid_first_name),
+    covid_first_name = if_else(is.na(covid_first_name), "No vac", covid_first_name),
     covid_first_name = factor(covid_first_name),
     # Convert covid_full_name to character, replace NAs with "No vacunado o vacunado con menos de tres dosis", and convert to factor
     covid_full_name = as.character(covid_full_name),
-    covid_full_name = if_else(is.na(covid_full_name), "No vac or <3 shots",covid_full_name),
+    covid_full_name = if_else(is.na(covid_full_name), "No vac or <3 shots", covid_full_name),
     covid_full_name = factor(covid_full_name),
     # Convert pautas_covid to an ordered factor
+    pautas_covid = as.character(pautas_covid),
+    pautas_covid = if_else(is.na(pautas_covid), "0", pautas_covid),
     pautas_covid = factor(pautas_covid, ordered = TRUE)
   ) %>% 
   suppressWarnings()     
@@ -467,9 +469,12 @@ estudio_vacunas_t_final_selected %<>%
 estudio_vacunas_t_final_selected %<>% 
   mutate(pautas_covid = as.factor(pautas_covid),
          age_num = as.numeric(age),
+         estancia_hospitalaria_dias = as.numeric(estancia_hospitalaria_dias),
          age_num_decada = age_num/10,
-         pautas_covid=as.character(pautas_covid),
-         cancer_organo_solido=as.numeric(cancer_organo_solido)
+         cancer_organo_solido = as.numeric(cancer_organo_solido),
+         cancer_organo_solido = if_else(is.na(cancer_organo_solido), 0, cancer_organo_solido),
+         cancer_hematologico = as.numeric(cancer_hematologico),
+         cancer_hematologico = if_else(is.na(cancer_hematologico), 0, cancer_hematologico)
          )
 ```
 
@@ -494,15 +499,20 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 ### Columns NA filling
 
 ```{r}
+# saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_pre_lapply.rds")
+# estudio_vacunas_t_final_selected_pre_lapply <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_pre_lapply.rds")
+
+
+# TODO el saveRDS ya esta hecho, queda pte. cargar el pre_lapply y ver si debemos cambiar este chunk porque nos este jorobando variables ya pasadas a factores y demas. Por ahora sigo adelante, metiendo desc_sexo y pautas_covid en las variables a excluir de la funcion lapply
+
 
 # except for date fields, for every NA cell, we replace it with 0 since
 # for cat variables empty means NO and for days related cols, NA means 0 days.
 
-fill_cols_to_exclude <- c("cod_fec_alta", "cod_fec_ingreso","covid_full_date","covid_first_date","covid_first_name","covid_full_name")
+fill_cols_to_exclude <- c("desc_sexo","cod_fec_alta","cod_fec_ingreso","covid_first_name","covid_first_date","covid_full_name","covid_full_date","pautas_covid")
 fill_cols_to_include <- setdiff(names(estudio_vacunas_t_final_selected), fill_cols_to_exclude)
 
 estudio_vacunas_t_final_selected[, fill_cols_to_include] <- lapply(estudio_vacunas_t_final_selected[, fill_cols_to_include], function(x) ifelse(is.na(x), 0, x))
-
 ```
 
 ### Mapping final missingness
@@ -531,7 +541,7 @@ No exclusion criteria by now.
 print('Número pacientes con infección COVID confirmada por PCR y fecha de infección disponible')
 a<-nrow(estudio_vacunas_t_final_selected)
 a
-
+summary(estudio_vacunas_t_final_selected$pautas_covid)
 print('Pacientes excluídos con Sexo No encontrado')
 estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (desc_sexo %in% c('Hombre','Mujer') )
 b<-nrow(estudio_vacunas_t_final_selected)
@@ -558,8 +568,8 @@ TODO integrate them in the proper section accordingly
 # Saving Rds and Env
 
 ```{r}
-saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+# saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
 
-save.image(file='/opt/datos_compartidos/vacunas_data/Rfiles/vac_environment.RData')
+# save.image(file='/opt/datos_compartidos/vacunas_data/Rfiles/vac_environment.RData')
 ```
 
