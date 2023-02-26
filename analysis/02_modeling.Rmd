@@ -23,9 +23,9 @@ library(stringi)
 library(lubridate)
 
 estudio_vacunas_t_final_selected <- readRDS(
-  file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected.rds"
+  file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds"
 )
-
+class(estudio_vacunas_t_final_selected$pautas_covid)
 # metric performance
 
 precision <- function(matrix) {
@@ -238,7 +238,7 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_mortality <- glm(
-  mortality ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  mortality30d ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
   data =  estudio_vacunas_t_final_selected,
   family=binomial())
 print(Sys.time())
