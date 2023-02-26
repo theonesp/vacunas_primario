@@ -18,6 +18,7 @@ library(stringi)
 library(tidyr)
 library(parallel)
 library(janitor)
+library(purrr)
 
 # defining functions
 
@@ -474,8 +475,7 @@ estudio_vacunas_t_final_selected %<>%
          cancer_organo_solido = as.numeric(cancer_organo_solido),
          cancer_organo_solido = if_else(is.na(cancer_organo_solido), 0, cancer_organo_solido),
          cancer_hematologico = as.numeric(cancer_hematologico),
-         cancer_hematologico = if_else(is.na(cancer_hematologico), 0, cancer_hematologico)
-         )
+         cancer_hematologico = if_else(is.na(cancer_hematologico), 0, cancer_hematologico))
 ```
 
 ## Adressing missingness
@@ -496,23 +496,81 @@ ordered_miss_percent <- miss_percent[order(names(estudio_vacunas_t_final_selecte
 miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Percent = ordered_miss_percent)
 ```
 
-### Columns NA filling
+### Load RDS before *lapply* function (intermediate step, made in order to speed up the process of loading whole 01dataset)
 
 ```{r}
 # saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_pre_lapply.rds")
-# estudio_vacunas_t_final_selected_pre_lapply <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_pre_lapply.rds")
+estudio_vacunas_t_final_selected <-
+  readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_pre_lapply.rds")
 
 
-# TODO el saveRDS ya esta hecho, queda pte. cargar el pre_lapply y ver si debemos cambiar este chunk porque nos este jorobando variables ya pasadas a factores y demas. Por ahora sigo adelante, metiendo desc_sexo y pautas_covid en las variables a excluir de la funcion lapply
+# ALVARO: el saveRDS lo hice para facilitar el analisis de lo que pasaba con la funcion lapply que viene mas adelante -->
+# y variables como desc_sexo, pautas_covid o icu_stay_bin (ver slack, dias 24/02/2023 a 26/02/2023). -->
+# La funcion lapply estaba coercionando todas las variables a numerico, y eso distorsionaba los datos -->
+# e impedia correr las regresiones. En el caso de desc_sexo, esa transformacion impedia un filtrado posterior -->
+# que se hacia expresando un termino concreto c("Hombre", "Mujer"). En el caso de icu_stay_bin, el paso de factor a numeric -->
+# liaba pardisimo el asunto (para los interesados en saber cómo R interpreta los factores: https://stackoverflow.com/questions/59898810/strange-behaviour-of-as-numeric-with-factor-variable-gives-completely-differ. -->
+# El 0 era el primer nivel del factor, por lo que en el paso a numeric pasaba a 1 (de "primer nivel"). --> 
+# Los 1 eran el segundo nivel, por lo que pasaban a "2", y los NA a 0 (porque así estaba especificado en el lapply). -->
+# Finalmente, dejo el lapply en el chunk siguiente pero modifico la lista de variables fill_cols_to_exclude. Además, -->
+# icu_stay_bin la paso a numeric(character) para evitar este fenomeno cuando era coercionada.
+# Al final, el problema no es de lapply en si; es el paso factor-->numeric, por cómo interpreta R los factores.
+  
+
+estudio_vacunas_t_final_selected <- 
+  estudio_vacunas_t_final_selected %>% 
+  mutate(icu_stay_bin = as.numeric(as.character(icu_stay_bin)))
+```
+
+### Columns NA filling
+
+```{r}
+quien_tiene_na <- map_dfc(estudio_vacunas_t_final_selected, ~sum(is.na(.)))
 
 
-# except for date fields, for every NA cell, we replace it with 0 since
-# for cat variables empty means NO and for days related cols, NA means 0 days.
-
-fill_cols_to_exclude <- c("desc_sexo","cod_fec_alta","cod_fec_ingreso","covid_first_name","covid_first_date","covid_full_name","covid_full_date","pautas_covid")
+fill_cols_to_exclude <- 
+  estudio_vacunas_t_final_selected %>% 
+  # ALVARO: hago lo siguiente para ahorrar tiempo, escribiendo asma:vih
+  select(
+    infect_covid_first_date, cod_sexo, desc_sexo, cod_municipio, desc_municipio,
+    fec_fallecimiento, age, mortality, asma:vih, cod_fec_ingreso, cod_fec_alta,
+    infeccion_ingreso_dias, covid_first_name, covid_first_date,
+    covid_full_name, covid_full_date, pautas_covid, mortality30d,
+    cancer_organo_solido, cancer_hematologico, age_num, age_num_decada
+  ) %>% 
+  colnames()
 fill_cols_to_include <- setdiff(names(estudio_vacunas_t_final_selected), fill_cols_to_exclude)
 
-estudio_vacunas_t_final_selected[, fill_cols_to_include] <- lapply(estudio_vacunas_t_final_selected[, fill_cols_to_include], function(x) ifelse(is.na(x), 0, x))
+
+# ALVARO: codigo "de seguridad" para vigilar que el lapply no la lie parda
+summary_antes_lapply <- 
+  estudio_vacunas_t_final_selected %>% 
+  select(fill_cols_to_include) %>% 
+  mutate(
+    hosp_stay_bin = as.factor(hosp_stay_bin),
+    icu_stay_bin = as.factor(icu_stay_bin)
+  ) %>% 
+  summary()
+summary_antes_lapply
+
+
+estudio_vacunas_t_final_selected[, fill_cols_to_include] <- 
+  lapply(
+    estudio_vacunas_t_final_selected[, fill_cols_to_include], 
+    function(x) ifelse(is.na(x), 0, x)
+  )
+
+
+# ALVARO: codigo "de seguridad" para vigilar que el lapply no la lie parda
+summary_despues_lapply <- 
+  estudio_vacunas_t_final_selected %>% 
+  select(fill_cols_to_include) %>% 
+  mutate(
+    hosp_stay_bin = as.factor(hosp_stay_bin),
+    icu_stay_bin = as.factor(icu_stay_bin)
+  ) %>% 
+  summary()
+summary_despues_lapply
 ```
 
 ### Mapping final missingness
