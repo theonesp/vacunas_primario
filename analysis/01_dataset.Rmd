@@ -554,6 +554,9 @@ b-c
 
 print('Número final de pacientes')
 nrow(estudio_vacunas_t_final_selected)
+
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  mutate_at(c("desc_sexo", "pautas_covid"), droplevels)
 ```
 
 # Final adjustments

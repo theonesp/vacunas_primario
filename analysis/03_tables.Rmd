@@ -9,12 +9,15 @@ output: html_document
 library(dplyr)
 library(tableone)
 library(kableExtra)
+library(gtsummary)
 ```
 
 # Tabla 2A: Características de la población incluida en el estudio, en total y estratificada según ingreso hospitalario (no/sí).
+# Tabla 2B: Características de la población incluida en el estudio, en total y estratificada según mortalidad en los 30 días posteriores a la PCR positiva (no/sí).
 
 ```{r}
-str(estudio_vacunas_t_final_selected)
+# estudio_vacunas_t_final_selected <-
+#   readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
 
 ## Ingreso hospitalario
 estudio_vacunas_t_final_selected %>%
@@ -71,72 +74,71 @@ estudio_vacunas_t_final_selected %>%
 # Table 1 estancia_hospitalaria
 
 ```{r}
-vars_in_table1<-names(estudio_vacunas_t_final_selected %>% select(DESC_SEXO, age, asma ,cardiopatia.isquemica , cirrosis.hepatica , diabetes , epoc , hepatopatia.cronica.excepto.cirrosis , hipertension , insuficiencia.cardiaca , insuficiencia.renal.cronica , cancer_organo_solido , cancer_hematologico , vih , infecc_covid_num , pautas_covid,infecc_covid_num,,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,infeccion_ingreso_dias,covid_first_name,covid_first_date,covid_full_name,covid_full_date,cancer_organo_solido,cancer_hematologico, mortality ) )
-
-table1_dataset<-estudio_vacunas_t_final_selected[,vars_in_table1]
-cat_variables<-rep(NA, length(vars_in_table1))
-stratifyby<-c("mortality")
- 
-# detects whether a variable is categorical or not
-cont<-1
-for (i in 1:length(vars_in_table1) ) {
-  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
-    print(i)
-    print(vars_in_table1[i])
-    print(names(table1_dataset[vars_in_table1[i]]))
-    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
-    cont<-cont+1
-  }
-}  
-cat_variables<-cat_variables[!is.na(cat_variables)]
-table1_base<-print(CreateTableOne(vars = vars_in_table1
-                                   , strata = stratifyby
-                                  , factorVars = cat_variables
-    ,data = table1_dataset, addOverall=T),varLabels = T)
-# run this in console for html output, the code below uses kableExtra::
- starification_cats<-n_distinct(table1_dataset[,stratifyby])
-
- # for console
- table1_base %>%
-  kbl(caption = "Table 1 of base model" , align = "c") %>%
-  kable_classic_2(full_width = F, html_font = "Cambria") %>%
-  add_header_above(c(" "," ", 'Mortalidad Hospitalaria' = starification_cats,"",""))
-
+# vars_in_table1<-names(estudio_vacunas_t_final_selected %>% select(DESC_SEXO, age, asma ,cardiopatia.isquemica , cirrosis.hepatica , diabetes , epoc , hepatopatia.cronica.excepto.cirrosis , hipertension , insuficiencia.cardiaca , insuficiencia.renal.cronica , cancer_organo_solido , cancer_hematologico , vih , infecc_covid_num , pautas_covid,infecc_covid_num,,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,infeccion_ingreso_dias,covid_first_name,covid_first_date,covid_full_name,covid_full_date,cancer_organo_solido,cancer_hematologico, mortality ) )
+# 
+# table1_dataset<-estudio_vacunas_t_final_selected[,vars_in_table1]
+# cat_variables<-rep(NA, length(vars_in_table1))
+# stratifyby<-c("mortality")
+#  
+# # detects whether a variable is categorical or not
+# cont<-1
+# for (i in 1:length(vars_in_table1) ) {
+#   if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
+#     print(i)
+#     print(vars_in_table1[i])
+#     print(names(table1_dataset[vars_in_table1[i]]))
+#     cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
+#     cont<-cont+1
+#   }
+# }  
+# cat_variables<-cat_variables[!is.na(cat_variables)]
+# table1_base<-print(CreateTableOne(vars = vars_in_table1
+#                                    , strata = stratifyby
+#                                   , factorVars = cat_variables
+#     ,data = table1_dataset, addOverall=T),varLabels = T)
+# # run this in console for html output, the code below uses kableExtra::
+#  starification_cats<-n_distinct(table1_dataset[,stratifyby])
+# 
+#  # for console
+#  table1_base %>%
+#   kbl(caption = "Table 1 of base model" , align = "c") %>%
+#   kable_classic_2(full_width = F, html_font = "Cambria") %>%
+#   add_header_above(c(" "," ", 'Mortalidad Hospitalaria' = starification_cats,"",""))
 ```
 
 # Descriptive table Strat by sex
 
 ```{r}
-vars_in_table1<-names(estudio_vacunas_final_selected %>% select(hosp_stay_bin, icu_stay_bin , age , DESC_SEXO , RESIDE_RESIDENCIA , GRUPO_7 , cancer , VIH , EPOC , ASMA , INSUF_CARDIACA , CARDIOPATÍA_ISQUÉMCIA , HEPATOPATIA_CRÓNICA , CIRROSIS , INSUF_RENAL_CRÓNICA,vac_COV_Neumo_Gripe ) ) 
-table1_dataset<-estudio_vacunas_final_selected[,vars_in_table1]
-cat_variables<-rep(NA, length(vars_in_table1))
-stratifyby<-"DESC_SEXO"
- 
-# detects whether a variable is categorical or not
-cont<-1
-for (i in 1:length(vars_in_table1) ) {
-  if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
-    print(i)
-    print(vars_in_table1[i])
-    print(names(table1_dataset[vars_in_table1[i]]))
-    cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
-    cont<-cont+1
-  }
-}  
-cat_variables<-cat_variables[!is.na(cat_variables)]
-table1_base<-print(CreateTableOne(vars = vars_in_table1
-                                   , strata = stratifyby
-                                  , factorVars = cat_variables
-    ,data = table1_dataset, addOverall=T),varLabels = T)
-# run this in console for html output, the code below uses kableExtra::
- starification_cats<-n_distinct(table1_dataset[,stratifyby])
-
- # for console
- table1_base %>%
-  kbl(caption = "Table 1 of base model" , align = "c") %>%
-  kable_classic_2(full_width = F, html_font = "Cambria")
- 
- %>%
-  add_header_above(c(" "," ", 'Estancia Hospitalaria' = starification_cats," ", "" ))
+# vars_in_table1<-names(estudio_vacunas_final_selected %>% select(hosp_stay_bin, icu_stay_bin , age , DESC_SEXO , RESIDE_RESIDENCIA , GRUPO_7 , cancer , VIH , EPOC , ASMA , INSUF_CARDIACA , CARDIOPATÍA_ISQUÉMCIA , HEPATOPATIA_CRÓNICA , CIRROSIS , INSUF_RENAL_CRÓNICA,vac_COV_Neumo_Gripe ) ) 
+# table1_dataset<-estudio_vacunas_final_selected[,vars_in_table1]
+# cat_variables<-rep(NA, length(vars_in_table1))
+# stratifyby<-"DESC_SEXO"
+#  
+# # detects whether a variable is categorical or not
+# cont<-1
+# for (i in 1:length(vars_in_table1) ) {
+#   if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
+#     print(i)
+#     print(vars_in_table1[i])
+#     print(names(table1_dataset[vars_in_table1[i]]))
+#     cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
+#     cont<-cont+1
+#   }
+# }  
+# cat_variables<-cat_variables[!is.na(cat_variables)]
+# table1_base<-print(CreateTableOne(vars = vars_in_table1
+#                                    , strata = stratifyby
+#                                   , factorVars = cat_variables
+#     ,data = table1_dataset, addOverall=T),varLabels = T)
+# # run this in console for html output, the code below uses kableExtra::
+#  starification_cats<-n_distinct(table1_dataset[,stratifyby])
+# 
+#  # for console
+#  table1_base %>%
+#   kbl(caption = "Table 1 of base model" , align = "c") %>%
+#   kable_classic_2(full_width = F, html_font = "Cambria")
+#  
+#  %>%
+#   add_header_above(c(" "," ", 'Estancia Hospitalaria' = starification_cats," ", "" ))
 ```
 
