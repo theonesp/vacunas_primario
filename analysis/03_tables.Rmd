@@ -20,6 +20,41 @@ estudio_vacunas_t_final_selected <-
   readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
 
 
+# estudio_vacunas_t_final_selected %>%
+#   select(
+#     -c(
+#       age,
+#       cod_municipio,
+#       desc_municipio,
+#       fec_fallecimiento,
+#       infeccion_ingreso_dias,
+#       cod_fec_ingreso,
+#       cod_fec_alta,
+#       cancer_colorrectal:cancer_inmunoproliferativo,
+#       enfermedad_de_hodgkin,
+#       leucemia,
+#       linfoma_no_hodgkin,
+#       melanoma_de_piel,
+#       sarcoma_de_kaposi
+#     )
+#   ) %>%
+#   tbl_summary(
+#     by = hosp_stay_bin,
+#     statistic = list(
+#       all_continuous() ~ "{mean} ({sd})"
+#     ),
+#     digits = list(
+#       age_num ~ 2,
+#       estancia_hospitalaria_dias ~ 2
+#     )
+#   ) %>% 
+#   add_overall() %>% 
+#   add_p()
+```
+
+# Tabla 2B: Características de la población incluida en el estudio, en total y estratificada según mortalidad en los 30 días posteriores a la PCR positiva (no/sí).
+
+```{r}
 estudio_vacunas_t_final_selected %>%
   select(
     -c(
@@ -28,6 +63,8 @@ estudio_vacunas_t_final_selected %>%
       desc_municipio,
       fec_fallecimiento,
       infeccion_ingreso_dias,
+      cod_fec_ingreso,
+      cod_fec_alta,
       cancer_colorrectal:cancer_inmunoproliferativo,
       enfermedad_de_hodgkin,
       leucemia,
@@ -37,7 +74,7 @@ estudio_vacunas_t_final_selected %>%
     )
   ) %>%
   tbl_summary(
-    by = hosp_stay_bin,
+    by = mortality30d,
     statistic = list(
       all_continuous() ~ "{mean} ({sd})"
     ),
@@ -45,46 +82,9 @@ estudio_vacunas_t_final_selected %>%
       age_num ~ 2,
       estancia_hospitalaria_dias ~ 2
     )
-  ) %>% 
-  add_overall() %>% 
+  ) %>%
+  add_overall() %>%
   add_p()
-```
-
-# Tabla 2B: Características de la población incluida en el estudio, en total y estratificada según mortalidad en los 30 días posteriores a la PCR positiva (no/sí).
-
-```{r}
-# estudio_vacunas_t_final_selected %>%
-#   select(
-#     -c(
-#       age,
-#       cod_municipio,
-#       desc_municipio,
-#       fec_fallecimiento,
-#       infeccion_ingreso_dias,
-#       cancer_colorrectal:cancer_inmunoproliferativo,
-#       enfermedad_de_hodgkin,
-#       leucemia,
-#       linfoma_no_hodgkin,
-#       melanoma_de_piel,
-#       sarcoma_de_kaposi
-#     )
-#   ) %>%
-#   mutate(
-#     age = as.numeric(age),
-#     estancia_hospitalaria_dias = as.numeric(estancia_hospitalaria_dias)
-#   ) %>%
-#   tbl_summary(
-#     by = mortality30d,
-#     statistic = list(
-#       all_continuous() ~ "{mean} ({sd})"
-#     ),
-#     digits = list(
-#       age ~ 2,
-#       estancia_hospitalaria_dias ~ 2
-#     )
-#   ) %>%
-#   add_overall() %>%
-#   add_p()
 ```
 
 
