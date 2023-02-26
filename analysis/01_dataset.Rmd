@@ -519,7 +519,8 @@ estudio_vacunas_t_final_selected <-
 
 estudio_vacunas_t_final_selected <- 
   estudio_vacunas_t_final_selected %>% 
-  mutate(icu_stay_bin = as.numeric(as.character(icu_stay_bin)))
+  mutate(icu_stay_bin = as.numeric(as.character(icu_stay_bin))) %>% 
+  filter(!is.na(age))
 ```
 
 ### Columns NA filling
@@ -533,7 +534,7 @@ fill_cols_to_exclude <-
   # ALVARO: hago lo siguiente para ahorrar tiempo, escribiendo asma:vih
   select(
     infect_covid_first_date, cod_sexo, desc_sexo, cod_municipio, desc_municipio,
-    fec_fallecimiento, age, mortality, asma:vih, cod_fec_ingreso, cod_fec_alta,
+    fec_fallecimiento, age, mortality, cod_fec_ingreso, cod_fec_alta,
     infeccion_ingreso_dias, covid_first_name, covid_first_date,
     covid_full_name, covid_full_date, pautas_covid, mortality30d,
     cancer_organo_solido, cancer_hematologico, age_num, age_num_decada
@@ -629,7 +630,7 @@ TODO integrate them in the proper section accordingly
 # Saving Rds and Env
 
 ```{r}
-# saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
 
 # save.image(file='/opt/datos_compartidos/vacunas_data/Rfiles/vac_environment.RData')
 ```
