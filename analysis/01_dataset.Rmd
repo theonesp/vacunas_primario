@@ -366,9 +366,7 @@ vacunas_t_covid_pautas <- vacunas_t %>%
 remove(vacunas_t)
 ```
 
-# Final dataset
-
-## Joining across datasets
+# Joining across datasets
 
 ```{r}
 print(Sys.time())
@@ -387,7 +385,7 @@ print(Sys.time())
 saveRDS(estudio_vacunas_t_final, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final.rds")
 ```
 
-## Selecting only required columns
+# Selecting only required columns
 
 ```{r}
 cols_to_exclude <- c("NUHSA_ENCRIPTADO", "COD_FEC_NACIMIENTO")
@@ -436,7 +434,7 @@ estudio_vacunas_t_final_selected %<>%
     # Convert pautas_covid to an ordered factor
     pautas_covid = as.character(pautas_covid),
     pautas_covid = if_else(is.na(pautas_covid), "0", pautas_covid),
-    pautas_covid = factor(pautas_covid, ordered = TRUE)
+    pautas_covid = as.factor(pautas_covid)
   ) %>% 
   suppressWarnings()     
 
@@ -468,19 +466,24 @@ estudio_vacunas_t_final_selected %<>%
 )
 
 estudio_vacunas_t_final_selected %<>% 
-  mutate(pautas_covid = as.factor(pautas_covid),
-         age_num = as.numeric(age),
+  mutate(age_num = as.numeric(age),
          estancia_hospitalaria_dias = as.numeric(estancia_hospitalaria_dias),
          age_num_decada = age_num/10,
          cancer_organo_solido = as.numeric(cancer_organo_solido),
          cancer_organo_solido = if_else(is.na(cancer_organo_solido), 0, cancer_organo_solido),
          cancer_hematologico = as.numeric(cancer_hematologico),
-         cancer_hematologico = if_else(is.na(cancer_hematologico), 0, cancer_hematologico))
+         cancer_hematologico = if_else(is.na(cancer_hematologico), 0, cancer_hematologico),
+         icu_stay_bin =  if_else(icu_stay_bin ==0, 0, 1)
+         )
+
+# we want the factors in no particular order
+estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
+  mutate_at(c("desc_sexo", "pautas_covid"), droplevels)
 ```
 
-## Adressing missingness
+# Adressing missingness
 
-### Mapping initial missingness
+## Mapping initial missingness
 
 ```{r}
 # Count the number of missing values in each column of the data frame 
@@ -494,33 +497,6 @@ ordered_miss_percent <- miss_percent[order(names(estudio_vacunas_t_final_selecte
 
 # Save the results in a new data frame
 miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Percent = ordered_miss_percent)
-```
-
-### Load RDS before *lapply* function (intermediate step, made in order to speed up the process of loading whole 01dataset)
-
-```{r}
-# saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_pre_lapply.rds")
-estudio_vacunas_t_final_selected <-
-  readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/toberemoved/estudio_vacunas_t_final_selected_pre_lapply.rds")
-
-
-# ALVARO: el saveRDS lo hice para facilitar el analisis de lo que pasaba con la funcion lapply que viene mas adelante -->
-# y variables como desc_sexo, pautas_covid o icu_stay_bin (ver slack, dias 24/02/2023 a 26/02/2023). -->
-# La funcion lapply estaba coercionando todas las variables a numerico, y eso distorsionaba los datos -->
-# e impedia correr las regresiones. En el caso de desc_sexo, esa transformacion impedia un filtrado posterior -->
-# que se hacia expresando un termino concreto c("Hombre", "Mujer"). En el caso de icu_stay_bin, el paso de factor a numeric -->
-# liaba pardisimo el asunto (para los interesados en saber cómo R interpreta los factores: https://stackoverflow.com/questions/59898810/strange-behaviour-of-as-numeric-with-factor-variable-gives-completely-differ. -->
-# El 0 era el primer nivel del factor, por lo que en el paso a numeric pasaba a 1 (de "primer nivel"). --> 
-# Los 1 eran el segundo nivel, por lo que pasaban a "2", y los NA a 0 (porque así estaba especificado en el lapply). -->
-# Finalmente, dejo el lapply en el chunk siguiente pero modifico la lista de variables fill_cols_to_exclude. Además, -->
-# icu_stay_bin la paso a numeric(character) para evitar este fenomeno cuando era coercionada.
-# Al final, el problema no es de lapply en si; es el paso factor-->numeric, por cómo interpreta R los factores.
-  
-
-estudio_vacunas_t_final_selected <- 
-  estudio_vacunas_t_final_selected %>% 
-  mutate(icu_stay_bin = as.numeric(as.character(icu_stay_bin))) %>% 
-  filter(!is.na(age))
 ```
 
 ### Columns NA filling
@@ -590,8 +566,6 @@ ordered_miss_percent <- miss_percent[order(names(estudio_vacunas_t_final_selecte
 miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Percent = ordered_miss_percent)
 ```
 
-(Coalesce de fallecimiento y fecha de ingreso)
-
 # Exclusion criteria
 
 No exclusion criteria by now.
@@ -600,8 +574,8 @@ No exclusion criteria by now.
 print('Número pacientes con infección COVID confirmada por PCR y fecha de infección disponible')
 a<-nrow(estudio_vacunas_t_final_selected)
 a
-summary(estudio_vacunas_t_final_selected$pautas_covid)
-print('Pacientes excluídos con Sexo No encontrado')
+
+print('Pacientes excluídos con Sexo No Especificado')
 estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (desc_sexo %in% c('Hombre','Mujer') )
 b<-nrow(estudio_vacunas_t_final_selected)
 a-b
@@ -611,21 +585,15 @@ estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (p
 c<-nrow(estudio_vacunas_t_final_selected)
 b-c
 
+print('Pacientes excluídos sin información de edad')
+estudio_vacunas_t_final_selected%<>%filter(!is.na(age))
+d<-nrow(estudio_vacunas_t_final_selected)
+c-d
+  
 print('Número final de pacientes')
 nrow(estudio_vacunas_t_final_selected)
 
-estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
-  mutate_at(c("desc_sexo", "pautas_covid"), droplevels)
 ```
-
-# Final adjustments
-
-TODO integrate them in the proper section accordingly
-
-```{r}
-
-```
-
 
 # Saving Rds and Env
 

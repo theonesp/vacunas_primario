@@ -6,7 +6,6 @@ output: html_document
 # Environment
 
 ```{r}
-library(forestmodel)
 library(skimr)
 library(mgcv)
 library(parallel)
@@ -16,18 +15,12 @@ library(ggplot2)
 library(feather)
 library(broom)
 library(htmlTable)
-library(forestmodel)
-library(gtsummary)
-library(tidyverse)
-library(stringi)
-library(lubridate)
+
 
 estudio_vacunas_t_final_selected <- readRDS(
   file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds"
 )
-class(estudio_vacunas_t_final_selected$pautas_covid)
 # metric performance
-
 precision <- function(matrix) {
   # True positive
   tp <- matrix[2, 2]
@@ -72,12 +65,6 @@ logreg_hosp_stay_bin <- glm(
 print(Sys.time())
 ```
 
-## Summary of the model
-```{r}
-summary(logreg_hosp_stay_bin)
-```
-
-
 ## Odds ratio
 
 ```{r fig.height=16, fig.width=10}
@@ -99,7 +86,7 @@ ggplot(coef_pval_df_hosp_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_C
   theme_minimal()
 
 # Save the plot as a PNG file
-ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin_v23feb.png", width = 6, height = 4, dpi = 300)
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin.png", width = 6, height = 4, dpi = 300)
 ```
 
 
