@@ -48,21 +48,33 @@ table2b<-estudio_vacunas_t_final_selected %>%
   add_p()
 
 table2b
-write.csv(table2b,'/opt/datos_compartidos/vacunas_data/tablas/table2b',col.names = F)
 
+write.csv(table2b,'/opt/datos_compartidos/vacunas_data/tablas/table2b',col.names = F)
+class(estudio_vacunas_t_final_selected$estancia_hospitalaria_dias)
+colnames(estudio_vacunas_t_final_selected)
 ```
 
 
 # Table 1 estancia_hospitalaria
 
 ```{r}
-# vars_in_table1<-names(estudio_vacunas_t_final_selected %>% select(DESC_SEXO, age, asma ,cardiopatia.isquemica , cirrosis.hepatica , diabetes , epoc , hepatopatia.cronica.excepto.cirrosis , hipertension , insuficiencia.cardiaca , insuficiencia.renal.cronica , cancer_organo_solido , cancer_hematologico , vih , infecc_covid_num , pautas_covid,infecc_covid_num,,estancia_hospitalaria_dias,hosp_stay_bin,icu_stay_bin,infeccion_ingreso_dias,covid_first_name,covid_first_date,covid_full_name,covid_full_date,cancer_organo_solido,cancer_hematologico, mortality ) )
-# 
-# table1_dataset<-estudio_vacunas_t_final_selected[,vars_in_table1]
+vars_in_table1<-names(estudio_vacunas_t_final_selected %>% select(desc_sexo, age_num, asma, cardiopatia_isquemica,
+                                                                  cirrosis_hepatica, diabetes, epoc,
+                                                                  hepatopatia_cronica_excepto_cirrosis, hipertension,
+                                                                  insuficiencia_cardiaca, insuficiencia_renal_cronica,
+                                                                  cancer_organo_solido, cancer_hematologico, vih,
+                                                                  infecc_covid_num, pautas_covid, estancia_hospitalaria_dias,
+                                                                  hosp_stay_bin, icu_stay_bin, covid_first_name,
+                                                                  # covid_first_date, 
+                                                                  covid_full_name,
+                                                                  # covid_full_date,
+                                                                  cancer_organo_solido, cancer_hematologico, mortality30d))
+
+table1_dataset<-estudio_vacunas_t_final_selected[,vars_in_table1]
 # cat_variables<-rep(NA, length(vars_in_table1))
-# stratifyby<-c("mortality")
-#  
-# # detects whether a variable is categorical or not
+stratifyby<-c("mortality30d")
+
+# detects whether a variable is categorical or not
 # cont<-1
 # for (i in 1:length(vars_in_table1) ) {
 #   if ( n_distinct(table1_dataset[vars_in_table1[i] ])<=10 ) {
@@ -72,7 +84,7 @@ write.csv(table2b,'/opt/datos_compartidos/vacunas_data/tablas/table2b',col.names
 #     cat_variables[cont]<-names(table1_dataset[vars_in_table1[i]])
 #     cont<-cont+1
 #   }
-# }  
+# }
 # cat_variables<-cat_variables[!is.na(cat_variables)]
 # table1_base<-print(CreateTableOne(vars = vars_in_table1
 #                                    , strata = stratifyby
