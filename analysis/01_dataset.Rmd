@@ -473,7 +473,8 @@ estudio_vacunas_t_final_selected %<>%
          cancer_organo_solido = if_else(is.na(cancer_organo_solido), 0, cancer_organo_solido),
          cancer_hematologico = as.numeric(cancer_hematologico),
          cancer_hematologico = if_else(is.na(cancer_hematologico), 0, cancer_hematologico),
-         icu_stay_bin =  if_else(icu_stay_bin ==0, 0, 1)
+         # icu_stay_bin =  if_else(icu_stay_bin ==0, 0, 1),
+         icu_stay_bin = as.numeric(as.character(icu_stay_bin))
          )
 
 # we want the factors in no particular order
