@@ -1,6 +1,6 @@
 ---
 title: "03_tables"
-output: html_document
+# output: html_document
 ---
 
 # Environment
