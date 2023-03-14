@@ -12,6 +12,8 @@ library(parallel)
 library(parglm)
 library(pROC)
 library(ggplot2)
+library(tibble)
+library(dplyr)
 library(feather)
 library(broom)
 library(htmlTable)
@@ -59,7 +61,7 @@ extract_coef_pval_OR <- function(model) {
 print('glm')
 print(Sys.time())
 logreg_hosp_stay_bin <- glm(
-  hosp_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  hosp_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid,
   data =  estudio_vacunas_t_final_selected,
   family=binomial())
 print(Sys.time())
@@ -76,17 +78,69 @@ htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")
 ## Forest Plot
 
 ```{r}
-ggplot(coef_pval_df_hosp_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+coef_pval_df_hosp_stay_bin2 <- 
+  coef_pval_df_hosp_stay_bin %>% 
+  mutate(orden = case_when(term == "age_num" ~ 1,
+                           term == "desc_sexoHombre" ~ 2,
+                           term == "asma" ~ 3,
+                           term == "cardiopatia_isquemica" ~ 4,
+                           term == "cirrosis_hepatica" ~ 5,
+                           term == "diabetes" ~ 6,
+                           term == "epoc" ~ 7,
+                           term == "hepatopatia_cronica_excepto_cirrosis" ~ 8,
+                           term == "hipertension" ~ 9,
+                           term == "insuficiencia_cardiaca" ~ 10,
+                           term == "insuficiencia_renal_cronica" ~ 11,
+                           term == "vih" ~ 12,
+                           term == "cancer_hematologico" ~ 13,
+                           term == "cancer_organo_solido" ~ 14,
+                           term == "pautas_covid1" ~ 15,
+                           term == "pautas_covid2" ~ 16,
+                           term == "pautas_covid3" ~ 17,
+                           term == "pautas_covid4" ~ 18,
+                           term == "(Intercept)" ~ 19,
+                           TRUE ~ 999),
+         term = case_when(term == "age_num" ~ "Edad (años)",
+                          term == "desc_sexoHombre" ~ "Sexo: hombre",
+                          term == "asma" ~ "Asma",
+                          term == "cardiopatia_isquemica" ~ "Cardiopatía isquémica",
+                          term == "cirrosis_hepatica" ~ "Cirrosis hepática",
+                          term == "diabetes" ~ "Diabetes",
+                          term == "epoc" ~ "EPOC",
+                          term == "hepatopatia_cronica_excepto_cirrosis" ~ "Hepatopatía crónica (excepto cirrosis)",
+                          term == "hipertension" ~ "Hipertensión",
+                          term == "insuficiencia_cardiaca" ~ "Insuficiencia cardíaca",
+                          term == "insuficiencia_renal_cronica" ~ "Insuficiencia renal crónica",
+                          term == "vih" ~ "VIH +",
+                          term == "cancer_hematologico" ~ "Cáncer hematológico",
+                          term == "cancer_organo_solido" ~ "Cáncer de órgano sólido",
+                          term == "pautas_covid1" ~ "1 dosis de vacuna",
+                          term == "pautas_covid2" ~ "2 dosis de vacuna",
+                          term == "pautas_covid3" ~ "3 dosis de vacuna",
+                          term == "pautas_covid4" ~ "4 dosis de vacuna",
+                          TRUE ~ term)) %>% 
+  arrange(desc(orden)) %>% 
+  select(-orden) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(term = factor(term, levels = term, ordered = TRUE))
+
+
+ggplot(coef_pval_df_hosp_stay_bin2, 
+       aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+  geom_hline(yintercept=1,colour = "blue", size=1, linetype="longdash") +
   geom_pointrange(alpha=0.7, shape=15) +
-  geom_vline(xintercept=1) +
-  scale_y_log10(limits=c(0.1, 4)) +
+  geom_vline(xintercept=0, size=1.2) +
+  scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  # scale_y_log10(
+  #   limits=c(0.1, 4)
+  #   ) +
   coord_flip() +
   labs(y="Odds Ratio", x=NULL)+
   ggtitle('Admisión Hospitalaria')+
   theme_minimal()
 
 # Save the plot as a PNG file
-ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin.png", width = 6, height = 4, dpi = 300)
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_hosp_stay_bin2.png", width = 6, height = 4, dpi = 300)
 ```
 
 
@@ -143,7 +197,7 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_icu_stay_bin <- glm(
-  icu_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  icu_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid,
   data =  estudio_vacunas_t_final_selected,
   family=binomial() )
 print(Sys.time())
@@ -159,17 +213,66 @@ htmlTable(coef_pval_df_logreg_icu_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_u
 ## Forest Plot
 
 ```{r}
-ggplot(coef_pval_df_logreg_icu_stay_bin, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+coef_pval_df_logreg_icu_stay_bin2 <- 
+  coef_pval_df_logreg_icu_stay_bin %>% 
+  mutate(orden = case_when(term == "age_num" ~ 1,
+                           term == "desc_sexoHombre" ~ 2,
+                           term == "asma" ~ 3,
+                           term == "cardiopatia_isquemica" ~ 4,
+                           term == "cirrosis_hepatica" ~ 5,
+                           term == "diabetes" ~ 6,
+                           term == "epoc" ~ 7,
+                           term == "hepatopatia_cronica_excepto_cirrosis" ~ 8,
+                           term == "hipertension" ~ 9,
+                           term == "insuficiencia_cardiaca" ~ 10,
+                           term == "insuficiencia_renal_cronica" ~ 11,
+                           term == "vih" ~ 12,
+                           term == "cancer_hematologico" ~ 13,
+                           term == "cancer_organo_solido" ~ 14,
+                           term == "pautas_covid1" ~ 15,
+                           term == "pautas_covid2" ~ 16,
+                           term == "pautas_covid3" ~ 17,
+                           term == "pautas_covid4" ~ 18,
+                           term == "(Intercept)" ~ 19,
+                           TRUE ~ 999),
+         term = case_when(term == "age_num" ~ "Edad (años)",
+                          term == "desc_sexoHombre" ~ "Sexo: hombre",
+                          term == "asma" ~ "Asma",
+                          term == "cardiopatia_isquemica" ~ "Cardiopatía isquémica",
+                          term == "cirrosis_hepatica" ~ "Cirrosis hepática",
+                          term == "diabetes" ~ "Diabetes",
+                          term == "epoc" ~ "EPOC",
+                          term == "hepatopatia_cronica_excepto_cirrosis" ~ "Hepatopatía crónica (excepto cirrosis)",
+                          term == "hipertension" ~ "Hipertensión",
+                          term == "insuficiencia_cardiaca" ~ "Insuficiencia cardíaca",
+                          term == "insuficiencia_renal_cronica" ~ "Insuficiencia renal crónica",
+                          term == "vih" ~ "VIH +",
+                          term == "cancer_hematologico" ~ "Cáncer hematológico",
+                          term == "cancer_organo_solido" ~ "Cáncer de órgano sólido",
+                          term == "pautas_covid1" ~ "1 dosis de vacuna",
+                          term == "pautas_covid2" ~ "2 dosis de vacuna",
+                          term == "pautas_covid3" ~ "3 dosis de vacuna",
+                          term == "pautas_covid4" ~ "4 dosis de vacuna",
+                          TRUE ~ term)) %>% 
+  arrange(desc(orden)) %>% 
+  select(-orden) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(term = factor(term, levels = term, ordered = TRUE))
+
+
+ggplot(coef_pval_df_logreg_icu_stay_bin2, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+  geom_hline(yintercept=1,colour = "blue", size=1, linetype="longdash") +
   geom_pointrange(alpha=0.7, shape=15) +
-  geom_vline(xintercept=1) +
-  scale_y_log10(limits=c(0.1, 4)) +
+  geom_vline(xintercept=0, size=1.2) +
+  scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  # scale_y_log10(limits=c(0.1, 4)) +
   coord_flip() +
   labs(y="Odds Ratio", x=NULL)+
   ggtitle('Admisión UCI')+
   theme_minimal()
 
 # Save the plot as a PNG file
-ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_icu_stay_bin.png", width = 6, height = 4, dpi = 300)
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_icu_stay_bin2.png", width = 6, height = 4, dpi = 300)
 ```
 
 ## Model Performance
@@ -225,7 +328,7 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_mortality <- glm(
-  mortality30d ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid + infecc_covid_num,
+  mortality30d ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid,
   data =  estudio_vacunas_t_final_selected,
   family=binomial())
 print(Sys.time())
@@ -241,17 +344,66 @@ htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_uppe
 ## Forest Plot
 
 ```{r}
-ggplot(coef_pval_df_logreg_mortality, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+coef_pval_df_logreg_mortality2 <- 
+  coef_pval_df_logreg_mortality %>% 
+  mutate(orden = case_when(term == "age_num" ~ 1,
+                           term == "desc_sexoHombre" ~ 2,
+                           term == "asma" ~ 3,
+                           term == "cardiopatia_isquemica" ~ 4,
+                           term == "cirrosis_hepatica" ~ 5,
+                           term == "diabetes" ~ 6,
+                           term == "epoc" ~ 7,
+                           term == "hepatopatia_cronica_excepto_cirrosis" ~ 8,
+                           term == "hipertension" ~ 9,
+                           term == "insuficiencia_cardiaca" ~ 10,
+                           term == "insuficiencia_renal_cronica" ~ 11,
+                           term == "vih" ~ 12,
+                           term == "cancer_hematologico" ~ 13,
+                           term == "cancer_organo_solido" ~ 14,
+                           term == "pautas_covid1" ~ 15,
+                           term == "pautas_covid2" ~ 16,
+                           term == "pautas_covid3" ~ 17,
+                           term == "pautas_covid4" ~ 18,
+                           term == "(Intercept)" ~ 19,
+                           TRUE ~ 999),
+         term = case_when(term == "age_num" ~ "Edad (años)",
+                          term == "desc_sexoHombre" ~ "Sexo: hombre",
+                          term == "asma" ~ "Asma",
+                          term == "cardiopatia_isquemica" ~ "Cardiopatía isquémica",
+                          term == "cirrosis_hepatica" ~ "Cirrosis hepática",
+                          term == "diabetes" ~ "Diabetes",
+                          term == "epoc" ~ "EPOC",
+                          term == "hepatopatia_cronica_excepto_cirrosis" ~ "Hepatopatía crónica (excepto cirrosis)",
+                          term == "hipertension" ~ "Hipertensión",
+                          term == "insuficiencia_cardiaca" ~ "Insuficiencia cardíaca",
+                          term == "insuficiencia_renal_cronica" ~ "Insuficiencia renal crónica",
+                          term == "vih" ~ "VIH +",
+                          term == "cancer_hematologico" ~ "Cáncer hematológico",
+                          term == "cancer_organo_solido" ~ "Cáncer de órgano sólido",
+                          term == "pautas_covid1" ~ "1 dosis de vacuna",
+                          term == "pautas_covid2" ~ "2 dosis de vacuna",
+                          term == "pautas_covid3" ~ "3 dosis de vacuna",
+                          term == "pautas_covid4" ~ "4 dosis de vacuna",
+                          TRUE ~ term)) %>% 
+  arrange(desc(orden)) %>% 
+  select(-orden) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(term = factor(term, levels = term, ordered = TRUE))
+
+
+ggplot(coef_pval_df_logreg_mortality2, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
+  geom_hline(yintercept=1,colour = "blue", size=1, linetype="longdash") +
   geom_pointrange(alpha=0.7, shape=15) +
-  geom_vline(xintercept=1) +
-  scale_y_log10(limits=c(0.1, 4)) +
+  geom_vline(xintercept=0, size=1.2) +
+  scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  # scale_y_log10(limits=c(0.1, 4)) +
   coord_flip() +
   labs(y="Odds Ratio", x=NULL)+
   ggtitle('Mortalidad')+
   theme_minimal()
 
 # Save the plot as a PNG file
-ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_mortality.png", width = 6, height = 4, dpi = 300)
+ggsave("/opt/datos_compartidos/vacunas_data/figuras/coef_pval_df_logreg_mortality2.png", width = 6, height = 4, dpi = 300)
 ```
 
 ## Model Performance
