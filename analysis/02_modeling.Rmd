@@ -61,7 +61,11 @@ extract_coef_pval_OR <- function(model) {
 print('glm')
 print(Sys.time())
 logreg_hosp_stay_bin <- glm(
+<<<<<<< HEAD
   hosp_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid,
+=======
+  hosp_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid ,
+>>>>>>> 0f167a12b9b4b8eae38bfc1abca9b6cfd6d1d811
   data =  estudio_vacunas_t_final_selected,
   family=binomial())
 print(Sys.time())
@@ -197,7 +201,11 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_icu_stay_bin <- glm(
+<<<<<<< HEAD
   icu_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid,
+=======
+  icu_stay_bin ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid ,
+>>>>>>> 0f167a12b9b4b8eae38bfc1abca9b6cfd6d1d811
   data =  estudio_vacunas_t_final_selected,
   family=binomial() )
 print(Sys.time())
@@ -328,7 +336,11 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
 print('glm')
 print(Sys.time())
 logreg_mortality <- glm(
+<<<<<<< HEAD
   mortality30d ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid,
+=======
+  mortality30d ~ age_num + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + pautas_covid ,
+>>>>>>> 0f167a12b9b4b8eae38bfc1abca9b6cfd6d1d811
   data =  estudio_vacunas_t_final_selected,
   family=binomial())
 print(Sys.time())
