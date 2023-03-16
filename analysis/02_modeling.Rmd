@@ -71,6 +71,7 @@ print(Sys.time())
 
 ```{r fig.height=16, fig.width=10}
 coef_pval_df_hosp_stay_bin <- extract_coef_pval_OR(logreg_hosp_stay_bin)
+# write.csv(coef_pval_df_hosp_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_hosp_stay_bin_v16mar.csv',col.names = F)
 write.csv(coef_pval_df_hosp_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_hosp_stay_bin.csv',col.names = F)
 htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 ```
@@ -127,10 +128,11 @@ coef_pval_df_hosp_stay_bin2 <-
 
 ggplot(coef_pval_df_hosp_stay_bin2, 
        aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
-  geom_hline(yintercept=1,colour = "blue", size=1, linetype="longdash") +
+  geom_hline(yintercept=1, colour = "blue", size=0.8, linetype="dotted") +
   geom_pointrange(alpha=0.7, shape=15) +
   geom_vline(xintercept=0, size=1.2) +
   scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  scale_y_continuous(expand = expansion(add = c(0.1, 0.1))) +
   # scale_y_log10(
   #   limits=c(0.1, 4)
   #   ) +
@@ -206,6 +208,7 @@ print(Sys.time())
 
 ```{r fig.height=16, fig.width=10}
 coef_pval_df_logreg_icu_stay_bin <- extract_coef_pval_OR(logreg_icu_stay_bin)
+# write.csv(coef_pval_df_logreg_icu_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_icu_stay_bin_v16mar.csv',col.names = F)
 write.csv(coef_pval_df_logreg_icu_stay_bin,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_icu_stay_bin.csv',col.names = F)
 htmlTable(coef_pval_df_logreg_icu_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 ```
@@ -257,14 +260,26 @@ coef_pval_df_logreg_icu_stay_bin2 <-
   arrange(desc(orden)) %>% 
   select(-orden) %>% 
   filter(term != "(Intercept)") %>% 
-  mutate(term = factor(term, levels = term, ordered = TRUE))
+  mutate(term = factor(term, levels = term, ordered = TRUE),
+         sobrepasa = case_when(OR_CI_upper > (sort(coef_pval_df_logreg_icu_stay_bin$OR_CI_upper, decreasing = TRUE)[2] + 10) ~ 1,
+                               TRUE ~ 0),
+         nuevo_OR_CI_upper = case_when(OR_CI_upper > (sort(coef_pval_df_logreg_icu_stay_bin$OR_CI_upper, decreasing = TRUE)[2] + 10) 
+                                       ~ sort(coef_pval_df_logreg_icu_stay_bin$OR_CI_upper, decreasing = TRUE)[2] + 0.5,
+                                       TRUE ~ OR_CI_upper))
 
 
-ggplot(coef_pval_df_logreg_icu_stay_bin2, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
-  geom_hline(yintercept=1,colour = "blue", size=1, linetype="longdash") +
+ggplot(coef_pval_df_logreg_icu_stay_bin2, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=nuevo_OR_CI_upper)) +
+  geom_hline(yintercept=1,colour = "blue", size=0.8, linetype="dotted") +
   geom_pointrange(alpha=0.7, shape=15) +
+  geom_text(data = coef_pval_df_logreg_icu_stay_bin2 %>% filter(sobrepasa == 1),
+            aes(x=term, y=nuevo_OR_CI_upper),
+            label = "▶", size = 3, family = "HiraKakuPro-W3", colour = "darkred") +
+  # geom_point(data = coef_pval_df_logreg_icu_stay_bin2 %>% filter(sobrepasa = 1),
+  #            shape = 17,
+  #            ) +
   geom_vline(xintercept=0, size=1.2) +
   scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  scale_y_continuous(expand = expansion(add = c(0.1, 0.05))) +
   # scale_y_log10(limits=c(0.1, 4)) +
   coord_flip() +
   labs(y="Odds Ratio", x=NULL)+
@@ -337,6 +352,7 @@ print(Sys.time())
 
 ```{r fig.height=16, fig.width=10}
 coef_pval_df_logreg_mortality <- extract_coef_pval_OR(logreg_mortality)
+# write.csv(coef_pval_df_logreg_mortality,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality_v16mar.csv',col.names = F)
 write.csv(coef_pval_df_logreg_mortality,'/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality.csv',col.names = F)
 htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 ```
@@ -392,10 +408,11 @@ coef_pval_df_logreg_mortality2 <-
 
 
 ggplot(coef_pval_df_logreg_mortality2, aes(x=term, y=OR, ymin=OR_CI_lower, ymax=OR_CI_upper)) +
-  geom_hline(yintercept=1,colour = "blue", size=1, linetype="longdash") +
+  geom_hline(yintercept=1,colour = "blue", size=0.8, linetype="dotted") +
   geom_pointrange(alpha=0.7, shape=15) +
   geom_vline(xintercept=0, size=1.2) +
   scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  scale_y_continuous(expand = expansion(add = c(0.1, 0.1))) +
   # scale_y_log10(limits=c(0.1, 4)) +
   coord_flip() +
   labs(y="Odds Ratio", x=NULL)+

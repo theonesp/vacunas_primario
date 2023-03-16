@@ -210,7 +210,7 @@ episodios_cmbd <- episodios_cmbd %>%
 
 result <- left_join(episodios_cmbd, infect_COVID_first)
 
-result <- result %>%   
+result <- result %>% 
   mutate(infeccion_ingreso_dias = infect_COVID_first_date - COD_FEC_INGRESO)
 
 
@@ -592,6 +592,17 @@ c-d
 print('Número final de pacientes')
 nrow(estudio_vacunas_t_final_selected)
 
+estudio_vacunas_t_final_selected <- 
+  estudio_vacunas_t_final_selected %>% 
+  filter((covid_first_date > ymd(20201226)) | is.na(covid_first_date))
+e <- nrow(estudio_vacunas_t_final_selected)
+d-e
+
+estudio_vacunas_t_final_selected <- 
+  estudio_vacunas_t_final_selected %>% 
+  filter(infect_covid_first_date > ymd(20200229))
+f <- nrow(estudio_vacunas_t_final_selected)
+e-f
 ```
 
 # Saving Rds and Env
