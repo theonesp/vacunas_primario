@@ -1,0 +1,134 @@
+---
+title: "06_quality_control"
+output: html_document
+---
+
+# Data Load
+
+
+```{r}
+vacunas_t <- vroom(
+  "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_VACUNAS_TODO.txt"
+) %>%
+  lazy_dt() %>%
+  as.data.frame() %>% 
+  left_join(.,infect_COVID_first,by = "NUHSA_ENCRIPTADO") %>% 
+  mutate(
+    FEC_VACUNACION = ymd(FEC_VACUNACION), # dates need to be converted from the original source, missing means NO
+    vac_infecc_umbral = trunc((FEC_VACUNACION %--% infect_COVID_first_date) / days(1)) # dias entre vacunacion e infeccion
+  )
+
+#convertir los nombres de las vacunas en factores para disminuir coste de computación
+
+vacunas_t <- vacunas_t %>% 
+  mutate(NOM_VACUNA = as.factor(NOM_VACUNA))
+
+# Y FILTRAR LAS VACUNAS QUE DESEAMOS
+vacunas_t <- vacunas_t %>% 
+  filter(NOM_VACUNA == "COVID-19 AstraZeneca"|
+           NOM_VACUNA == "COVID-19 Janssen"|
+           NOM_VACUNA == "COVID-19 Pfizer/BioNTech"|
+           NOM_VACUNA == "COVID-19 Moderna"|
+           NOM_VACUNA == "COVID-19 Novavax")
+vacunas_t$NOM_VACUNA <- droplevels(vacunas_t$NOM_VACUNA)
+         
+
+```
+# Quality control
+
+## Vaccination before/after the infection
+
+```{r}
+
+# Vaccinated population at any point of the study period (March 2020-May 2020)
+vacunas_t_poblacion <- vacunas_t %>% 
+  group_by(NUHSA_ENCRIPTADO) %>%
+  arrange(FEC_VACUNACION) %>%
+  filter(row_number() == 1) %>% 
+  transmute(
+    NUHSA_ENCRIPTADO,
+    vaccine_first_name = NOM_VACUNA,
+    vaccine_first_date = FEC_VACUNACION, 
+    COVID_first_date = infect_COVID_first_date
+  )
+print('Vaccinated population (at least one dose) at any point of the study period (March 2020-May 2020)')
+nrow(vacunas_t_poblacion)
+
+# Vaccinated population with and without COVID-19 infection within the study period 
+vacunas_t_poblacion_infected <- vacunas_t_poblacion %>%
+  filter(!is.na(COVID_first_date)) %>%
+  nrow()
+print('Vaccinated population with COVID-19 infection within the study period')
+vacunas_t_poblacion_infected
+
+vacunas_t_poblacion_noninfected <- vacunas_t_poblacion %>%
+  filter(is.na(COVID_first_date)) %>%
+  nrow()
+print('Vaccinated population without COVID-19 infection within the study period')
+vacunas_t_poblacion_noninfected
+
+print('Población infectada total que se ha vacunado en algún momento del periodo de estudio (TRUE) frente a la que no se ha vacunado (FALSE)')
+table(infect_COVID_first$NUHSA_ENCRIPTADO %in% vacunas_t$NUHSA_ENCRIPTADO)
+
+# Study population in final dataset
+print('Number of total population in final dataset: patients with positive COVID-19 infection confirmed by RT-PCR')
+study_population <- nrow(estudio_vacunas_t_final_selected)
+study_population
+
+# Total vaccinated population 14 days before COVID-19 infection in final dataset
+vacunados_totales_recuento <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")) %>%
+  nrow()
+print('Total vaccinated population (at least one dose) 14 days before COVID-19 infection in final dataset')
+vacunados_totales_recuento
+
+# Total non-vaccinated population 14 days before COVID-19 infection in final dataset
+no_vacunados_totales_recuento <- 
+  estudio_vacunas_t_final_selected %>% 
+  filter(pautas_covid %in% c("0")) %>% 
+  nrow()
+print('Total non-vaccinated population 14 days before COVID-19 infection in final dataset')
+no_vacunados_totales_recuento
+
+# Method 1-Vaccinated population that got vaccinated after 14 days prior to infection
+print('Method 1-Vaccinated population that got infected more than 14 days before vaccination')
+infectados_14diasantes_vacunacion <- vacunas_t_poblacion_infected-vacunados_totales_recuento
+infectados_14diasantes_vacunacion
+
+# Method 2-Vaccinated population that got vaccinated after 14 days prior to infection
+vacunas_t_covid_first_afterinfection <- vacunas_t %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  arrange(FEC_VACUNACION) %>% 
+  filter(row_number() == 1) %>%
+  filter(vac_infecc_umbral < 14) %>% # los dias entre la vacunacion e infeccion han de ser < 14
+  transmute(
+    NUHSA_ENCRIPTADO,
+    covid_first_name = NOM_VACUNA,
+    covid_first_date = FEC_VACUNACION
+  )
+print('Method 2-Vaccinated population that got vaccinated after 14 days prior to infection')
+nrow(vacunas_t_covid_first_afterinfection)
+
+print('These numbers are almost identical and thus validate our dataset. The slight difference between them are probably due to exclusion criteria applied in the final dataset')
+
+```
+## Summary Tables
+
+```{r}
+# Table for total population vaccinated
+print('Total population vaccinated throughout the study period')
+table_totalpopulation_vaccinated <- data.frame(variable = c("Población vacunada durante todo el periodo de estudio (Marzo 2020-Mayo 2022)","Infectados durante todo el periodo de estudio", "No infectados durante todo el periodo de estudio"), population = c(nrow(vacunas_t_poblacion), vacunas_t_poblacion_infected, vacunas_t_poblacion_noninfected))
+table_totalpopulation_vaccinated
+
+# Table for final dataset 
+print('Final dataset: total population included in this analysis for study')
+table_final_dataset <- data.frame(variable = c("Población de estudio antes de criterios de exclusión", "Población de estudio (RT-PCR positiva para infección por SARS-CoV-2)", "Vacunados 14 días antes de la infección", "No Vacunados 14 días antes de la infección"), population = c(nrow(estudio_vacunas_t_final), study_population, vacunados_totales_recuento, no_vacunados_totales_recuento))
+table_final_dataset
+
+# Table validating quality control for vaccinated people not included in our final dataset
+print('Table validating quality control for vaccinated people not included in our final dataset')
+table_quality_control <- data.frame(variable = c("Excluded vaccinated population - Method 1", "Excluded vaccinated population - Method 2"), population = c(infectados_14diasantes_vacunacion, nrow(vacunas_t_covid_first_afterinfection)))
+table_quality_control
+```
+

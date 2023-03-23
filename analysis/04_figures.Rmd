@@ -3,60 +3,397 @@ title: "Figures"
 output: html_document
 ---
 
+# Environment
+
 ```{r setup, include=FALSE}
 library(networkD3)
+library(dplyr)
 library(ggplot2)
+library(janitor)
+library(stringi)
+library(lubridate)
 ```
 
-## Upset Plot for describing categories
+# Upset Plot for describing categories
 
 ```{r cars}
 upset(data=vacunas, intersections = NOM_VACUNA,group.by = COD_NUHSA_ENCRIPTADO, order.by = "freq")
 ```
 
-## Including Plots
+# Sankey Plots
+
+## Data Load
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+
+
+# Read final dataset file 
+estudio_vacunas_t_final_selected <-
+  readRDS(file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+nrow(estudio_vacunas_t_final_selected)
+summary(estudio_vacunas_t_final_selected$pautas_covid)
+
+
+# Vaccinated and unvaccinated population before positive CODIV-19 infection by RT-PCR
+vacunados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")) %>%
+  nrow()
+vacunados
+
+no_vacunados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")) %>%
+  nrow()
+no_vacunados
+
+# Hospital admission data
+vacunados_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & hosp_stay_bin == 1) %>%
+  nrow()
+vacunados_ingresados
+
+vacunados_no_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & hosp_stay_bin == 0) %>%
+  nrow()
+vacunados_no_ingresados
+
+no_vacunados_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & hosp_stay_bin == 1) %>%
+  nrow()
+no_vacunados_ingresados
+
+no_vacunados_no_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & hosp_stay_bin == 0) %>%
+  nrow()
+no_vacunados_no_ingresados
+
+
+# UCI admission data
+vacunados_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & icu_stay_bin == 1) %>%
+  nrow()
+vacunados_ingresados_uci
+
+vacunados_no_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & icu_stay_bin == 0) %>%
+  nrow()
+vacunados_no_ingresados_uci
+
+no_vacunados_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & icu_stay_bin == 1) %>%
+  nrow()
+no_vacunados_ingresados_uci
+
+no_vacunados_no_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & icu_stay_bin == 0) %>%
+  nrow()
+no_vacunados_no_ingresados_uci
+
+
+# Mortality data
+vacunados_muertos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & mortality30d == 1) %>%
+  nrow()
+vacunados_muertos
+
+vacunados_vivos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & mortality30d == 0) %>%
+  nrow()
+vacunados_vivos
+
+no_vacunados_muertos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & mortality30d == 1) %>%
+  nrow()
+no_vacunados_muertos
+
+no_vacunados_vivos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & mortality30d == 0) %>%
+  nrow()
+no_vacunados_vivos
+
 ```
+## Sankey Plot for Hospital Admission
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
-
-Install the networkD3 library: You'll need to install the networkD3 library in R in order to make a Sankey diagram. You can install it using the following command: 
-Load the library: After installation, load the library by using the following command: library(networkD3)
-Prepare your data: The data that you want to visualize in the Sankey diagram should be in a specific format. The data should be a matrix or data frame with columns for the source and target of each flow, as well as the value of the flow. For example:
-bash
-
-
-Create the Sankey diagram: You can create the Sankey diagram using the sankeyNetwork function from the networkD3 library. The basic syntax is:
 
 ```{r}
-source <- c("A", "A", "B", "B", "C") 
-target <- c("B", "C", "D", "E", "E") 
-value <- c(1, 2, 3, 4, 5) 
-data <- data.frame(source, target, value) 
+#Name of nodes
+A <- "Población de estudio"
+B <- "Vacunados"
+C <- "No Vacunados"
+D <- "No Hospitalizados"
+E <- "Hospitalizados"
+
+# Make a connection data frame
+source <- c(A, A, B, B, C, C)
+target <- c(B, C, D, E, D, E)
+value <- c(vacunados, no_vacunados, vacunados_no_ingresados, vacunados_ingresados, no_vacunados_no_ingresados, no_vacunados_ingresados)
+data <- data.frame(source, target, value)
+
+# From these flows we need to create a node data frame: it lists every entities involved in the flow
+nodes <-
+  data.frame("name" = c(
+    as.character(data$source),
+    as.character(data$target)
+    %>% unique()
+  ))
+
+# With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
+data$IDsource <- match(data$source, nodes$name) - 1
+data$IDtarget <- match(data$target, nodes$name) - 1
+
+
+## Add link types for coloring purpose
+data$group = as.factor(c("type_0",
+                         "type_0",
+                         "type_1",
+                         "type_2",
+                         "type_1",
+                         "type_2"))
+
+# Add a 'group' column to each node.
+nodes$group <-
+  as.factor(
+    c(
+      "node1",
+      "node1",
+      "node2",
+      "node2",
+      "node3",
+      "node3",
+      "node2",
+      "node3",
+      "node4",
+      "node5"
+    )
+  )
+
+# Give a color for each group
+my_color <-
+  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+
+# Create the Sankey diagram
+SankeyDiagram <- sankeyNetwork(
+  Links = data,
+  Nodes = nodes,
+  Source = "IDsource",
+  Target = "IDtarget",
+  Value = "value",
+  NodeID = "name",
+  colourScale = my_color,
+  LinkGroup = "group",
+  NodeGroup = "group",
+  fontSize = 16,
+  fontFamily = 34,
+  nodeWidth = 100,
+  nodePadding = 20,
+  height = 400,
+  width = 1100,
+  iterations = 32,
+  sinksRight = FALSE
+)
+
+# Print the Sankey diagram
+SankeyDiagram
+
+
 ```
+
+## Sankey Plot for UCI Admission
+
 
 ```{r}
-sankeyNetwork(Links = data, Nodes = NULL, Source = "source", Target = "target", Value = "value", NodeID = NULL, units = "", fontSize = 12, nodeWidth = 30, nodePadding = 10, iterations = 0) 
+#Name of nodes
+A <- "Población de estudio"
+B <- "Vacunados"
+C <- "No Vacunados"
+G <- "No Ingresados en UCI"
+H <- "Ingresados en UCI"
+
+# Make a connection data frame
+source <- c(A, A, B, B, C, C)
+target <- c(B, C, G, H, G, H)
+value <- c(vacunados, no_vacunados, vacunados_no_ingresados_uci, vacunados_ingresados_uci, no_vacunados_no_ingresados_uci, no_vacunados_ingresados_uci)
+data <- data.frame(source, target, value)
+
+# From these flows we need to create a node data frame: it lists every entities involved in the flow
+nodes <-
+  data.frame("name" = c(
+    as.character(data$source),
+    as.character(data$target)
+    %>% unique()
+  ))
+
+# With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
+data$IDsource <- match(data$source, nodes$name) - 1
+data$IDtarget <- match(data$target, nodes$name) - 1
+
+
+## Add link types for coloring purpose
+data$group = as.factor(c("type_0",
+                         "type_0",
+                         "type_1",
+                         "type_2",
+                         "type_1",
+                         "type_2"))
+
+# Add a 'group' column to each node.
+nodes$group <-
+  as.factor(
+    c(
+      "node1",
+      "node1",
+      "node2",
+      "node2",
+      "node3",
+      "node3",
+      "node2",
+      "node3",
+      "node4",
+      "node5"
+    )
+  )
+
+# Give a color for each group
+my_color <-
+  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+
+# Create the Sankey diagram
+SankeyDiagram <- sankeyNetwork(
+  Links = data,
+  Nodes = nodes,
+  Source = "IDsource",
+  Target = "IDtarget",
+  Value = "value",
+  NodeID = "name",
+  colourScale = my_color,
+  LinkGroup = "group",
+  NodeGroup = "group",
+  fontSize = 16,
+  fontFamily = 34,
+  nodeWidth = 100,
+  nodePadding = 20,
+  height = 400,
+  width = 1100,
+  iterations = 32,
+  sinksRight = FALSE
+)
+
+# Print the Sankey diagram
+SankeyDiagram
+
 ```
 
+## Sankey Plot for Survival/Mortality
 
-Here, Links is the data frame containing the source, target, and value of each flow. Source and Target specify the column names for the source and target of each flow, and Value specifies the column name for the value of each flow. The other arguments are optional and can be used to customize the appearance of the diagram.
-Display the Sankey diagram: To display the Sankey diagram, you can use the plot function, like this:
 
 ```{r}
-kotlin
+#Name of nodes
+A <- "Población de estudio"
+B <- "Vacunados"
+C <- "No Vacunados"
+I <- "Supervivientes"
+J <- "Fallecidos"
 
-plot(sankeyNetwork(Links = data, Source = "source", Target = "target", Value = "value")) 
+# Make a connection data frame
+source <- c(A, A, B, B, C, C)
+target <- c(B, C, I, J, I, J)
+value <- c(vacunados, no_vacunados, vacunados_vivos, vacunados_muertos, no_vacunados_vivos, no_vacunados_muertos)
+data <- data.frame(source, target, value)
+
+# From these flows we need to create a node data frame: it lists every entities involved in the flow
+nodes <-
+  data.frame("name" = c(
+    as.character(data$source),
+    as.character(data$target)
+    %>% unique()
+  ))
+
+# With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
+data$IDsource <- match(data$source, nodes$name) - 1
+data$IDtarget <- match(data$target, nodes$name) - 1
+
+
+## Add link types for coloring purpose
+data$group = as.factor(c("type_0",
+                         "type_0",
+                         "type_1",
+                         "type_2",
+                         "type_1",
+                         "type_2"))
+
+# Add a 'group' column to each node.
+nodes$group <-
+  as.factor(
+    c(
+      "node1",
+      "node1",
+      "node2",
+      "node2",
+      "node3",
+      "node3",
+      "node2",
+      "node3",
+      "node4",
+      "node5"
+    )
+  )
+
+# Give a color for each group
+my_color <-
+  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+
+# Create the Sankey diagram
+SankeyDiagram <- sankeyNetwork(
+  Links = data,
+  Nodes = nodes,
+  Source = "IDsource",
+  Target = "IDtarget",
+  Value = "value",
+  NodeID = "name",
+  colourScale = my_color,
+  LinkGroup = "group",
+  NodeGroup = "group",
+  fontSize = 16,
+  fontFamily = 34,
+  nodeWidth = 100,
+  nodePadding = 20,
+  height = 400,
+  width = 1100,
+  iterations = 32,
+  sinksRight = FALSE
+)
+
+# Print the Sankey diagram
+SankeyDiagram
 ```
 
-
-This will display the Sankey diagram in the RStudio plot viewer. You can also save the plot as an image file using the ggsave function.
-And that's it! With these steps, you should be able to create a Sankey diagram in RStudio.
 
 # Rentabilidad Edad
 
