@@ -22,60 +22,108 @@ estudio_vacunas_t_final_selected <- readRDS("/opt/datos_compartidos/vacunas_data
 municipio_aggregated <- estudio_vacunas_t_final_selected  %>%
   group_by(desc_municipio, cod_municipio) %>%
   summarize(
-    DESC_SEXO_Mujer = sum(desc_sexo == "Mujer"),
-    DESC_SEXO_Hombre = sum(desc_sexo == "Hombre"),
-    age_median = median(age),
+    #sample population of women by town
+    DESC_SEXO_Mujer = sum(desc_sexo == "Mujer"), 
+    #sample population of men by town
+    DESC_SEXO_Hombre = sum(desc_sexo == "Hombre"), 
+    #median of age among sample population
+    age_median = median(age), 
+    #standard deviation of age among sample population
     age_sd = sd(age),
-    pautas_covid_mean = mean(as.numeric(pautas_covid)),
-    pautas_covid_sd = sd(as.numeric(pautas_covid)),
-    pautas_covid_1pauta_count = sum(pautas_covid == "1"),
-    pautas_covid_2pauta_count = sum(pautas_covid == "2"),
-    pautas_covid_3pauta_count = sum(pautas_covid == "3"),
-    infect_COVID_first_date_min = min(infect_covid_first_date),
-    infect_COVID_first_date_max = max(infect_covid_first_date),
-    infect_COVID_first_date_median = median(infect_covid_first_date),
-    infect_COVID_first_date_sd = sd(infect_covid_first_date),
-    infecc_covid_num_mean = mean(infecc_covid_num),
-    infeccion_ingreso_dias_mean = mean(infeccion_ingreso_dias, na.rm = T),
-    hosp_stay_bin_count = sum(hosp_stay_bin),
-    icu_stay_bin_count = sum(as.numeric(icu_stay_bin)),
-    estancia_hospitalaria_dias_median = median(estancia_hospitalaria_dias[estancia_hospitalaria_dias > 0]),
-    mortality30d_count = sum(mortality30d),
-    mortality30d_mean_percent = mean(mortality30d)*100,
-    asma_count = sum(asma),
-    epoc_count = sum(epoc),
-    hipertension_count = sum(hipertension),
-    insuficiencia_cardiaca_count = sum(insuficiencia_cardiaca),
-    cardiopatia_isquemica_count = sum(cardiopatia_isquemica),
-    cirrosis_hepatica_count = sum(cirrosis_hepatica),
-    hepatopatia_cronica_excepto_cirrosis_count = sum(hepatopatia_cronica_excepto_cirrosis),
-    insuficiencia_renal_cronica_count = sum(insuficiencia_renal_cronica),
-    diabetes_count = sum(diabetes),
-    vih_count = sum(vih),
-    cancer_organo_solido_count = sum(cancer_organo_solido),
-    cancer_hematologico_count = sum(cancer_hematologico),
-    cancer_colorrectal_count = sum(cancer_colorrectal),
-    cancer_de_bronquio_y_pulmon_count = sum(cancer_de_bronquio_y_pulmon),
-    cancer_de_cabeza_y_cuello_count = sum(cancer_de_cabeza_y_cuello),
-    cancer_de_cuello_uterino_count = sum(cancer_de_cuello_uterino),
-    cancer_de_estomago_count = sum(cancer_de_estomago),
-    cancer_de_higado_y_vias_biliares_count = sum(cancer_de_higado_y_vias_biliares),
-    cancer_de_hueso_y_tejidos_blandos_count = sum(cancer_de_hueso_y_tejidos_blandos),
-    cancer_de_mama_count = sum(cancer_de_mama),
-    cancer_de_ovario_count = sum(cancer_de_ovario),
-    cancer_de_pancreas_count = sum(cancer_de_pancreas),
-    cancer_de_prostata_count = sum(cancer_de_prostata),
-    cancer_de_rinon_y_pelvis_renal_count = sum(cancer_de_rinon_y_pelvis_renal),
-    cancer_de_testiculo_count = sum(cancer_de_testiculo),
-    cancer_de_tiroides_count = sum(cancer_de_tiroides),
-    cancer_de_utero_count = sum(cancer_de_utero),
-    cancer_de_vejiga_count = sum(cancer_de_vejiga),
-    melanoma_de_piel_count = sum(melanoma_de_piel),
-    sarcoma_de_kaposi_count = sum(sarcoma_de_kaposi),
-    cancer_inmunoproliferativo_count = sum(cancer_inmunoproliferativo),
-    enfermedad_de_hodgkin_count = sum(enfermedad_de_hodgkin),
-    leucemia_count = sum(leucemia),
-    linfoma_no_hodgkin_count = sum(linfoma_no_hodgkin)
+    #Mean of vaccination dose per patient among sample population 
+    pautas_covid_mean = mean(as.numeric(pautas_covid)), 
+    #Standard deviation of vaccination dose per patient among sample population
+    pautas_covid_sd = sd(as.numeric(pautas_covid)), 
+    #sample population with 1 vaccine shot against COVID-19 among sample population
+    pautas_covid_1pauta_count = sum(pautas_covid == "1"), 
+    #sample population with 2 vaccine shots against COVID-19 among sample population
+    pautas_covid_2pauta_count = sum(pautas_covid == "2"), 
+    #sample population with 3 vaccine shots against COVID-19 among sample population
+    pautas_covid_3pauta_count = sum(pautas_covid == "3"), 
+    #first SARS-CoV-2 infection confirmed by RT-PCR in the town within the study period
+    infect_COVID_first_date_min = min(infect_covid_first_date), 
+    #last SARS-CoV-2 infection confirmed by RT-PCR in the town within the study period
+    infect_COVID_first_date_max = max(infect_covid_first_date), 
+    #Mean of SARS-CoV-2 infections per patient by town
+    infecc_covid_num_mean = mean(infecc_covid_num), 
+    #Number of hospitalized patients among sample population
+    hosp_stay_bin_count = sum(hosp_stay_bin), 
+    #Number of patients in ICU among sample population
+    icu_stay_bin_count = sum(as.numeric(icu_stay_bin)),  
+    #Median length of hospital stay for patients with SARS-CoV-2 infection confirmed by RT-PCR and hospitalized for       COVID-19 in the town
+    estancia_hospitalaria_dias_median = median(estancia_hospitalaria_dias[estancia_hospitalaria_dias > 0]), 
+    #Number of deaths at 30 days from positive SARS-CoV-2 RT-PCR test in the town
+    mortality30d_count = sum(mortality30d), 
+    #Percent of deaths at 30 days from positive SARS-CoV-2 RT-PCR test in the town 
+    mortality30d_mean_percent = mean(mortality30d)*100, 
+    #Number of patients with Asthma among sample population
+    asma_count = sum(asma), 
+    #Number of patients with COPD among sample population
+    epoc_count = sum(epoc), 
+    #Number of patients with Hypertension among sample population
+    hipertension_count = sum(hipertension), 
+    #Number of patients with Heart Failure among sample population
+    insuficiencia_cardiaca_count = sum(insuficiencia_cardiaca), 
+    #Number of patients with Ischemic Heart Disease among sample population
+    cardiopatia_isquemica_count = sum(cardiopatia_isquemica), 
+    #Number of patients with Liver Cirrhosis among sample population
+    cirrosis_hepatica_count = sum(cirrosis_hepatica), 
+    #Number of patients with Chronic Liver Disease (excepting cirrhosis) among sample population
+    hepatopatia_cronica_excepto_cirrosis_count = sum(hepatopatia_cronica_excepto_cirrosis), 
+    #Number of patients with Chronic Renal Failure among sample population
+    insuficiencia_renal_cronica_count = sum(insuficiencia_renal_cronica), 
+    #Number of patients with Diabetes among sample population
+    diabetes_count = sum(diabetes), 
+    #Number of patients with HIV among sample population
+    vih_count = sum(vih), 
+    #Number of patients with Solid Organ Tumors among sample population
+    cancer_organo_solido_count = sum(cancer_organo_solido), 
+    #Number of patients with Hematological Tumors among sample population
+    cancer_hematologico_count = sum(cancer_hematologico), 
+    #Number of patients with Colorectal Cancer among sample population
+    cancer_colorrectal_count = sum(cancer_colorrectal), 
+    #Number of patients with lung and bronchus cancer among sample population
+    cancer_de_bronquio_y_pulmon_count = sum(cancer_de_bronquio_y_pulmon), 
+    #Number of patients with head and neck cancer among sample population
+    cancer_de_cabeza_y_cuello_count = sum(cancer_de_cabeza_y_cuello), 
+    #Number of patients with cervical cancer among sample population
+    cancer_de_cuello_uterino_count = sum(cancer_de_cuello_uterino), 
+    #Number of patients with stomach cancer among sample population
+    cancer_de_estomago_count = sum(cancer_de_estomago), 
+    #Number of patients with liver and bile duct cancer among sample population
+    cancer_de_higado_y_vias_biliares_count = sum(cancer_de_higado_y_vias_biliares), 
+    #Number of patients with bone and soft tissue cancer among sample population
+    cancer_de_hueso_y_tejidos_blandos_count = sum(cancer_de_hueso_y_tejidos_blandos), 
+    #Number of patients with breast cancer among sample population
+    cancer_de_mama_count = sum(cancer_de_mama), 
+    #Number of patients with ovarian cancer among sample population
+    cancer_de_ovario_count = sum(cancer_de_ovario), 
+    #Number of patients with pancreatic cancer among sample population
+    cancer_de_pancreas_count = sum(cancer_de_pancreas), 
+    #Number of patients with prostate cancer among sample population
+    cancer_de_prostata_count = sum(cancer_de_prostata), 
+    #Number of patients with kidney and renal pelvis cancer among sample population
+    cancer_de_rinon_y_pelvis_renal_count = sum(cancer_de_rinon_y_pelvis_renal), 
+    #Number of patients with testicular cancer among sample population
+    cancer_de_testiculo_count = sum(cancer_de_testiculo), 
+    #Number of patients with thyroid cancer among sample population
+    cancer_de_tiroides_count = sum(cancer_de_tiroides), 
+    #Number of patients with uterine cancer among sample population
+    cancer_de_utero_count = sum(cancer_de_utero), 
+    #Number of patients with bladder cancer among sample population
+    cancer_de_vejiga_count = sum(cancer_de_vejiga), 
+    #Number of patients with skin melanoma among sample population
+    melanoma_de_piel_count = sum(melanoma_de_piel), 
+    #Number of patients with Kaposi sarcoma among sample population
+    sarcoma_de_kaposi_count = sum(sarcoma_de_kaposi), 
+    #Number of patients with immunoproliferative cancer among sample population
+    cancer_inmunoproliferativo_count = sum(cancer_inmunoproliferativo), 
+    #Number of patients with Hodgkin's lymphoma among sample population
+    enfermedad_de_hodgkin_count = sum(enfermedad_de_hodgkin), 
+    #Number of patients with leukemia among sample population
+    leucemia_count = sum(leucemia), 
+    #Number of patients with non-Hodgkin's lymphoma among sample population
+    linfoma_no_hodgkin_count = sum(linfoma_no_hodgkin) 
   )    
 ```
 # Quality control
@@ -83,10 +131,11 @@ municipio_aggregated <- estudio_vacunas_t_final_selected  %>%
 ## Mapping missingness in datasets 
 
 ```{r}
-
+#Names of columns in estudio_vacunas_t_final_selected having NAs
 print('Columns in estudio_vacunas_t_final_selected having NAs')
 names(estudio_vacunas_t_final_selected)[colSums(is.na(estudio_vacunas_t_final_selected)) > 0]
 
+#Names of columns in municipio_aggregated having NAs
 print('Columns in municipio_aggregated having NAs')
 names(municipio_aggregated)[colSums(is.na(municipio_aggregated)) > 0]
 
@@ -101,7 +150,7 @@ columns_vacunas_selected <- estudio_vacunas_t_final_selected %>%
 
 columns_municipio <- colSums(municipio_aggregated[, c("DESC_SEXO_Mujer", "DESC_SEXO_Hombre", "mortality30d_count", "asma_count", "cancer_colorrectal_count", "cancer_de_bronquio_y_pulmon_count", "cancer_de_cabeza_y_cuello_count", "cancer_de_cuello_uterino_count", "cancer_de_estomago_count", "cancer_de_higado_y_vias_biliares_count", "cancer_de_hueso_y_tejidos_blandos_count", "cancer_de_mama_count", "cancer_de_ovario_count", "cancer_de_pancreas_count", "cancer_de_prostata_count", "cancer_de_rinon_y_pelvis_renal_count", "cancer_de_testiculo_count", "cancer_de_tiroides_count", "cancer_de_utero_count", "cancer_de_vejiga_count", "cancer_inmunoproliferativo_count", "cardiopatia_isquemica_count", "cirrosis_hepatica_count", "diabetes_count", "enfermedad_de_hodgkin_count", "epoc_count", "hepatopatia_cronica_excepto_cirrosis_count", "hipertension_count", "insuficiencia_cardiaca_count", "insuficiencia_renal_cronica_count", "leucemia_count", "linfoma_no_hodgkin_count", "melanoma_de_piel_count", "sarcoma_de_kaposi_count", "vih_count", "hosp_stay_bin_count", "icu_stay_bin_count", "cancer_organo_solido_count", "cancer_hematologico_count")])
 
-
+#Table for row comparison between two datasets
 combined_QC_columns <- cbind(columns_vacunas_selected, columns_municipio)
   
 
