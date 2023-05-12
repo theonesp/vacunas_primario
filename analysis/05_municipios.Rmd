@@ -13,7 +13,7 @@ library(dplyr)
 # Load data
 
 ```{r}
-estudio_vacunas_t_final_selected <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+estudio_vacunas_t_final_selected <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_full.rds")
 ```
 
 # Aggregate data by town
@@ -158,7 +158,7 @@ combined_QC_columns <- cbind(columns_vacunas_selected, columns_municipio)
 # Export file
 
 ```{r}
-write.csv(municipio_aggregated,'municipio_aggregated.csv',row.names = F)
+write.csv(municipio_aggregated,'municipio_aggregated_full_dataset.csv',row.names = F)
 ```
 
 

@@ -19,6 +19,9 @@ library(tidyr)
 library(parallel)
 library(janitor)
 library(purrr)
+library(hrbrthemes)
+library(viridis)
+library(tidyverse)
 
 # defining functions
 
@@ -327,7 +330,7 @@ vacunas_t$NOM_VACUNA <- droplevels(vacunas_t$NOM_VACUNA)
          
 # what shot was first per patient?
 vacunas_t_covid_first <- vacunas_t %>%
-  filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
+  #filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
   group_by(NUHSA_ENCRIPTADO) %>%
   arrange(FEC_VACUNACION) %>% 
   filter(row_number() == 1) %>% 
@@ -340,7 +343,7 @@ vacunas_t_covid_first <- vacunas_t %>%
 # TODO cómo afecta el umbral de 14 días a la pauta completa?
 # full shots
 vacunas_t_covid_full <- vacunas_t %>%
-  filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
+  #filter(vac_infecc_umbral >= 14) %>% # los dias entre la vacunacion e infeccion han de ser >= 14
   # ALVARO SERRANO: la linea anterior la introduzco el dia 22/02/2023. Al no estar en el codigo previamente, -->
   # estabamos considerando para cada paciente la ultima dosis puesta a fecha de extraccion de datos (mayo 2022 -->
   # si no recuerdo mal) y no hasta catorce dias antes de la infeccion, por lo que los analisis -->
@@ -358,7 +361,7 @@ vacunas_t_covid_full <- vacunas_t %>%
 
 # number of shots
 vacunas_t_covid_pautas <- vacunas_t %>% 
-  filter(vac_infecc_umbral >= 14) %>%
+  #filter(vac_infecc_umbral >= 14) %>%
   # ALVARO SERRANO: idem a lo escrito en el pipeline anterior.
   group_by(NUHSA_ENCRIPTADO) %>%
   summarise(pautas_covid = n())
@@ -370,9 +373,9 @@ remove(vacunas_t)
 
 ```{r}
 print(Sys.time())
-estudio_vacunas_t_final <- Reduce(function(...) merge(..., all.x=TRUE), list(
-  infect_COVID_first
-  , poblacion_diana 
+estudio_vacunas_t_final <- Reduce(function(...) merge(..., all=TRUE), list(
+  poblacion_diana
+  , infect_COVID_first
   , pupa_opt
   , infect_COVID_num  
   , episodios_cmbd_first 
@@ -502,8 +505,9 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 
 ```{r}
 quien_tiene_na <- map_dfc(estudio_vacunas_t_final_selected, ~sum(is.na(.)))
+```
 
-
+```{r}
 fill_cols_to_exclude <- 
   estudio_vacunas_t_final_selected %>% 
   # ALVARO: hago lo siguiente para ahorrar tiempo, escribiendo asma:vih
@@ -528,15 +532,18 @@ summary_antes_lapply <-
   ) %>% 
   summary()
 summary_antes_lapply
+```
 
-
+```{r}
 estudio_vacunas_t_final_selected[, fill_cols_to_include] <- 
   lapply(
-    estudio_vacunas_t_final_selected[, fill_cols_to_include], 
+    estudio_vacunas_t_final_selected[, ..fill_cols_to_include], 
     function(x) ifelse(is.na(x), 0, x)
   )
+```
 
 
+```{r}
 # ALVARO: codigo "de seguridad" para vigilar que el lapply no la lie parda
 summary_despues_lapply <- 
   estudio_vacunas_t_final_selected %>% 
@@ -548,6 +555,7 @@ summary_despues_lapply <-
   summary()
 summary_despues_lapply
 ```
+
 
 ### Mapping final missingness
 
@@ -570,7 +578,7 @@ miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Perc
 No exclusion criteria by now.
 
 ```{r}
-print('Número pacientes con infección COVID confirmada por PCR y fecha de infección disponible')
+print('Número pacientes inicial')
 a<-nrow(estudio_vacunas_t_final_selected)
 a
 
@@ -592,23 +600,40 @@ c-d
 print('Número final de pacientes')
 nrow(estudio_vacunas_t_final_selected)
 
-estudio_vacunas_t_final_selected <- 
-  estudio_vacunas_t_final_selected %>% 
-  filter((covid_first_date > ymd(20201226)) | is.na(covid_first_date))
-e <- nrow(estudio_vacunas_t_final_selected)
-d-e
+```
+# Boxplot
+```{r}
+# Boxplot basic
+estudio_vacunas_t_final_selected %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Basic boxplot") +
+    xlab("")
 
-estudio_vacunas_t_final_selected <- 
-  estudio_vacunas_t_final_selected %>% 
-  filter(infect_covid_first_date > ymd(20200229))
-f <- nrow(estudio_vacunas_t_final_selected)
-e-f
+# Violin basic
+estudio_vacunas_t_final_selected %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Violin chart") +
+    xlab("")
 ```
 
 # Saving Rds and Env
 
 ```{r}
-saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_full.rds")
 
 # save.image(file='/opt/datos_compartidos/vacunas_data/Rfiles/vac_environment.RData')
 ```
