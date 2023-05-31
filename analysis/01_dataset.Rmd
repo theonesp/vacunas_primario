@@ -23,7 +23,7 @@ library(purrr)
 # defining functions
 
 special_date = function(number){
-  date = if_else(number%in%c(-1,0,NA), as.Date(NA), as.Date(as.character(number),format="%Y%m%d"))
+  date = if_else(number %in% c(-1, 0, NA), as.Date(NA), as.Date(as.character(number), format = "%Y%m%d"))
   return(date)
 }
 
@@ -38,50 +38,107 @@ convertir_valores <- function(x) {ifelse(x == -1, 0, 1)}
 Se filtra el sexo en dos posibles categorías: hombre y mujer. Otros eran menor al 0.1%.
 
 ```{r}
-poblacion_diana <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt", 
-                         header = T, 
-                         encoding = 'Latin-1')
+poblacion_diana <- 
+  fread(
+    "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_POB_DIANA.txt", 
+    header = T, 
+    encoding = 'Latin-1'
+  )
 
-poblacion_diana$COD_FEC_NACIMIENTO <- as.Date(as.character(poblacion_diana$COD_FEC_NACIMIENTO), format = "%Y%m%d") 
+poblacion_diana$COD_FEC_NACIMIENTO <- 
+  as.Date(as.character(poblacion_diana$COD_FEC_NACIMIENTO), format = "%Y%m%d") 
 
 # changing reference in sex
-poblacion_diana$DESC_SEXO <- relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer" )
+poblacion_diana$DESC_SEXO <- relevel(as.factor(poblacion_diana$DESC_SEXO), ref = "Mujer")
 
 # age at 2020-03-01 field
-poblacion_diana$age<-trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-01' ) / years(1))
+poblacion_diana$age <- trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-01') / years(1))
 
 # mortality field
 poblacion_diana$mortality <- convertir_valores(poblacion_diana$FEC_FALLECIMIENTO)
 ```
-## pupa
 
-Periodo-Usuario-PAtologías
+## resultados_pruebas_COVID
+
+```{r RESULTADOS_PRUEBAS_COVID}
+# '_t' means total population, second data load
+# database importation and tidying
+resultados_pruebas_COVID <-
+  fread(
+    "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",
+    header = T,
+    encoding = 'UTF-8'
+  ) %>% 
+  as.data.frame() %>% 
+  select(-TIPO_PRUEBA) %>% 
+  mutate(FECHA_MUESTRA = as.Date(as.character(FECHA_MUESTRA), format = "%d/%m/%Y"))
+# infection count per person
+infect_COVID_num <-
+  resultados_pruebas_COVID %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  summarise(infecc_covid_num = n())
+
+# first COVID infection with date available
+# TODO: pendientes de PRDA
+infect_COVID_first <-
+  resultados_pruebas_COVID %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA)) %>% 
+  rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
+  select(NUHSA_ENCRIPTADO, infect_COVID_first_date)
+
+remove(resultados_pruebas_COVID)
+```
+
+## pupa (Periodo-Usuario-Patologías)
 
 ```{r}
-pupa <- fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt",header = T,encoding = 'Latin-1');pupa<-as.data.frame(pupa);
+# Load datatable and remove duplicates
+pupa <- 
+  fread(
+    "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt", header = T, encoding = 'Latin-1'
+  ) %>% 
+  as.data.frame()
 
-# Remove duplicates
 pupa %<>% distinct()
 
-# dates need to be converted from the original source, missing means NO
-pupa$COD_FEC_INI_PATOLOGIA <- as.Date(as.character(pupa$COD_FEC_INI_PATOLOGIA), format="%Y%m%d")
+# First, dates need to be converted from the original source, missing means NO.
+# Also, we convert character variables to get rid of capital letters and accents
+pupa <- pupa %>% 
+  mutate(
+    COD_FEC_INI_PATOLOGIA = as.Date(as.character(COD_FEC_INI_PATOLOGIA), format="%Y%m%d"),
+    COD_FEC_FIN_PATOLOGIA = special_date(COD_FEC_FIN_PATOLOGIA),
+    DESC_PATOLOGIA_CRONICA = tolower(make.names(stri_trans_general(DESC_PATOLOGIA_CRONICA, "latin-ascii")))
+  )
 
-# First, we convert the categorical variables to one without capital letters and accents
-pupa$DESC_PATOLOGIA_CRONICA <- tolower(make.names(stri_trans_general(pupa$DESC_PATOLOGIA_CRONICA, "latin-ascii")))
 
-#TODO, FILTER by admission or infection date?
+pupa <- pupa %>% 
+  filter(COD_FEC_INI_PATOLOGIA > ymd(20200229))
+# TODO ALVARO SE HA QUEDADO POR AQUI
 
-# Convert the data frame to a data.table since dplyr is not efficient enough
+#TODO FILTER by admission or infection date?
+
+# Convert the dataframe to a data.table since dplyr is not efficient enough
 pupa_dt <- setDT(pupa)
 
 # Group by and mutate in a single step
-pupa_opt <- pupa_dt[, value := 1, by = c("NUHSA_ENCRIPTADO", "DESC_PATOLOGIA_CRONICA")]
+pupa_opt <- pupa_dt[, value := pupa_dt$COD_FEC_INI_PATOLOGIA, by = c("NUHSA_ENCRIPTADO", "DESC_PATOLOGIA_CRONICA")]
 
-# Spread in a single step
-#This will create a new column for each unique element in the DESC_PATOLOGIA_CRONICA column, and fill the cells with a value of 1 for rows where the DESC_PATOLOGIA_CRONICA value matches the column name, and 0 for all other rows.
-pupa_opt <- dcast(pupa_opt, NUHSA_ENCRIPTADO ~ DESC_PATOLOGIA_CRONICA, value.var = "value", fill = 0)
+# Spread in a single step.
+# This will create a new column for each unique element in the DESC_PATOLOGIA_CRONICA column, 
+# and fill the cells with a value of 1 for rows where the DESC_PATOLOGIA_CRONICA value matches 
+# the column name, and 0 for all other rows.
+pupa_opt2 <- dcast(pupa_opt, NUHSA_ENCRIPTADO ~ DESC_PATOLOGIA_CRONICA, value.var = "value", fill = 0)
 
-# Replace the values in the original data frame with 1 if any value in the row is greater than 0, and 0 otherwise
+pupa_opt3 <- 
+  dcast(
+    pupa_opt,
+    NUHSA_ENCRIPTADO ~ DESC_PATOLOGIA_CRONICA,
+    value.var = "COD_FEC_INI_PATOLOGIA",
+    fill = as.Date(NA)
+  )
+
+# Replace the values in the original dataframe with 1 if any value in the row is greater than 0, and 0 otherwise
 
 # Select the first column
 pupa_id <- pupa_opt[, 1]
@@ -101,7 +158,7 @@ remove(pupa)
 remove(pupa_dt)
 ```
 
-## periodos pandemicos
+## periodos_pandemicos
 
 Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente [enlace (exige red corporativa)](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
 
@@ -110,37 +167,6 @@ periodos_pandemicos_andalucia <-
   read.csv2("/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv") %>% 
   mutate(nombre_periodo = factor(nombre_periodo, ordered = TRUE),
          fecha_inicio = as.Date(fecha_inicio), fecha_fin = as.Date(fecha_fin))
-```
-
-## resultados_pruebas_COVID
-
-```{r RESULTADOS_PRUEBAS_COVID}
-# '_t' means total population, second data load
-# database importation and tidying
-resultados_pruebas_COVID <-
-  fread("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",
-        header = T,
-        encoding = 'UTF-8') %>% 
-  as.data.frame() %>% 
-  select(-TIPO_PRUEBA) %>% 
-  mutate(FECHA_MUESTRA = as.Date(as.character(FECHA_MUESTRA),
-                                 format = "%d/%m/%Y"))
-# infection count per person
-infect_COVID_num <-
-  resultados_pruebas_COVID %>%
-  group_by(NUHSA_ENCRIPTADO) %>%
-  summarise(infecc_covid_num = n())
-
-# first COVID infection with date available
-# TODO: pendientes de PRDA
-infect_COVID_first <-
-  resultados_pruebas_COVID %>%
-  group_by(NUHSA_ENCRIPTADO) %>%
-  filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA)) %>% 
-  rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
-  select(NUHSA_ENCRIPTADO, infect_COVID_first_date)
-
-remove(resultados_pruebas_COVID)
 ```
 
 ## episodios_cmbd
@@ -300,9 +326,7 @@ TODO STAGI: *Pedir campañas 2019-20.*
 TODO hay varias vacunas de neumo y gripe por paciente.
 TODO estudiar numero de infecciones
 ```{r}
-vacunas_t <- vroom(
-  "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_VACUNAS_TODO.txt"
-) %>%
+vacunas_t <- vroom("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_VACUNAS_TODO.txt") %>%
   lazy_dt() %>%
   as.data.frame() %>% 
   left_join(.,infect_COVID_first,by = "NUHSA_ENCRIPTADO") %>% 
