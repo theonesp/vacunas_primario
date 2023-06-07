@@ -1,9 +1,9 @@
 ---
-title: "01_dataset_creation"
+title: "01_dataset_creation_improved"
 output: html_document
 ---
 
-# Environment
+# Calling libraries
 
 ```{r}
 library(data.table)
@@ -16,13 +16,16 @@ library(lubridate)
 library(vroom)
 library(stringi)
 library(tidyr)
+library(ggplot2)
 library(parallel)
 library(janitor)
 library(purrr)
+```
 
-# defining functions
+# Defining functions
 
-special_date <- function(number){
+```{r}
+special_date <- function(number) {
   date <- if_else(number %in% c(-1, 0, NA), as.Date(NA), as.Date(as.character(number), format = "%Y%m%d"))
   return(date)
 }
@@ -30,12 +33,166 @@ special_date <- function(number){
 convertir_valores <- function(x) {ifelse(x == -1, 0, 1)}
 ```
 
+# Data Load and Wrangling
 
-# Data Load
+## resultados_pruebas_COVID
+
+```{r RESULTADOS_PRUEBAS_COVID}
+# '_t' means total population, second data load
+# database importation and tidying
+# TODO pendientes de PRDA
+resultados_pruebas_COVID <-
+  fread(
+    "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",
+    header = T,
+    encoding = 'UTF-8'
+  ) %>% 
+  as.data.frame() %>% 
+  select(-TIPO_PRUEBA) %>% 
+  mutate(FECHA_MUESTRA = as.Date(as.character(FECHA_MUESTRA), format = "%d/%m/%Y"))
+
+# PCRs with date available
+pcr_covid <- setDT(resultados_pruebas_COVID) %>%
+  lazy_dt(immutable = FALSE) %>% 
+  filter(
+    DESC_T_PRUEBA == "PCR" 
+    & !is.na(FECHA_MUESTRA) 
+    & FECHA_MUESTRA > ymd(20200229)
+    & FECHA_MUESTRA < ymd(20220401) # TODO revisar esta fecha. Creo que es la máxima de las vacunas recibidas
+    & RESULTADO %in% c("Positivo", "ositivo") 
+    # No he podido encontrar el push que borró este último filtro. No está en el 01dataset!
+  ) %>% 
+  group_by(NUHSA_ENCRIPTADO) %>% 
+  arrange(FECHA_MUESTRA) %>% 
+  mutate(n_infect = row_number()) %>% 
+  ungroup() %>% 
+  select(-c(DESC_T_PRUEBA, RESULTADO)) %>% 
+  as.data.frame()
+
+remove(resultados_pruebas_COVID)
+
+# count_people_per_amount_of_pcrs <- setDT(pcr_COVID) %>% 
+#   lazy_dt(immutable = FALSE) %>% 
+#   count(NUHSA_ENCRIPTADO) %>% 
+#   count(n) %>% 
+#   rename(count_pcrs = n, count_people_with_those_count_of_pcr = nn) %>% 
+#   as.data.frame()
+# remove(count_people_per_amount_of_pcrs)
+
+maxtest_per_person <- max(pcr_covid$n_infect)
+
+# someonegotreallytested <- setDT(pcr_COVID) %>% 
+#   lazy_dt(immutable = FALSE) %>% 
+#   group_by(NUHSA_ENCRIPTADO) %>% 
+#   filter(any(n_infect == maxtest_per_person)) %>% 
+#   ungroup() %>% 
+#   as.data.frame()
+# remove(someonegotreallytested)
+
+# NOTE: previous dataset was useful to understand how PCRs should be wrangled
+
+infect_covid <- setDT(pcr_covid) %>% 
+  lazy_dt() %>% 
+  group_by(NUHSA_ENCRIPTADO) %>% 
+  pivot_wider(names_from = n_infect, values_from = FECHA_MUESTRA) %>% 
+  ungroup() %>% 
+  as.data.frame()
+
+infect_maxtimediff <- setDT(pcr_covid) %>% 
+  lazy_dt(immutable = TRUE) %>% 
+  group_by(NUHSA_ENCRIPTADO) %>% 
+  mutate(maxtimediff = as.numeric(max(FECHA_MUESTRA) - min(FECHA_MUESTRA))) %>% 
+  ungroup() %>% 
+  select(NUHSA_ENCRIPTADO, maxtimediff) %>% 
+  distinct() %>% 
+  as.data.frame()
+
+infect_covid2 <- setDT(infect_covid) %>% 
+  lazy_dt(immutable = TRUE) %>% 
+  left_join(infect_maxtimediff, by = "NUHSA_ENCRIPTADO") %>% 
+  select(NUHSA_ENCRIPTADO, maxtimediff, everything()) %>% 
+  as.data.frame()
+
+remove(pcr_covid)
+remove(infect_covid)
+remove(infect_maxtimediff)
+gc()
+
+
+
+infect_covid_oneinf <- setDT(infect_covid2) %>% 
+  lazy_dt(immutable = TRUE) %>% 
+  filter(maxtimediff < 90) %>% 
+  select(NUHSA_ENCRIPTADO, pcr1 = `1`) %>% 
+  as.data.frame()
+
+infect_covid_plusoneinf_raw <- setDT(infect_covid2) %>% 
+  lazy_dt(immutable = TRUE) %>% 
+  filter(maxtimediff > 89) %>% 
+  select(-maxtimediff) %>% 
+  rename_with(~paste0("pcr", .x), -NUHSA_ENCRIPTADO) %>% 
+  select(2:20, NUHSA_ENCRIPTADO) %>% 
+  as.data.frame()
+
+# Due to the low amount of rows in this dataset, I perform the operations with tidyverse only
+
+# Sorry for the scarce elegance of this code
+infect_covid_plusoneinf_raw2 <- infect_covid_plusoneinf_raw %>% 
+  mutate(
+    pcr19 = if_else(pcr19 - pcr18 < 50 | is.na(pcr19), as.Date(NA), pcr19),
+    pcr18 = if_else(pcr18 - pcr17 < 50 | is.na(pcr18), as.Date(NA), pcr18),
+    pcr17 = if_else(pcr17 - pcr16 < 50 | is.na(pcr17), as.Date(NA), pcr17),
+    pcr16 = if_else(pcr16 - pcr15 < 50 | is.na(pcr16), as.Date(NA), pcr16),
+    pcr15 = if_else(pcr15 - pcr14 < 50 | is.na(pcr15), as.Date(NA), pcr15),
+    pcr14 = if_else(pcr14 - pcr13 < 50 | is.na(pcr14), as.Date(NA), pcr14),
+    pcr13 = if_else(pcr13 - pcr12 < 50 | is.na(pcr13), as.Date(NA), pcr13),
+    pcr12 = if_else(pcr12 - pcr11 < 50 | is.na(pcr12), as.Date(NA), pcr12),
+    pcr11 = if_else(pcr11 - pcr10 < 50 | is.na(pcr11), as.Date(NA), pcr11),
+    pcr10 = if_else(pcr10 - pcr9 < 50 | is.na(pcr10), as.Date(NA), pcr10),
+    pcr9 = if_else(pcr9 - pcr8 < 50 | is.na(pcr9), as.Date(NA), pcr9),
+    pcr8 = if_else(pcr8 - pcr7 < 50 | is.na(pcr8), as.Date(NA), pcr8),
+    pcr7 = if_else(pcr7 - pcr6 < 50 | is.na(pcr7), as.Date(NA), pcr7),
+    pcr6 = if_else(pcr6 - pcr5 < 50 | is.na(pcr6), as.Date(NA), pcr6),
+    pcr5 = if_else(pcr5 - pcr4 < 50 | is.na(pcr5), as.Date(NA), pcr5),
+    pcr4 = if_else(pcr4 - pcr3 < 50 | is.na(pcr4), as.Date(NA), pcr4),
+    pcr3 = if_else(pcr3 - pcr2 < 50 | is.na(pcr3), as.Date(NA), pcr3),
+    pcr2 = if_else(pcr2 - pcr1 < 50 | is.na(pcr2), as.Date(NA), pcr2),
+  ) %>% 
+  select_if(~sum(is.na(.x)) < nrow(infect_covid_plusoneinf_raw))
+  
+ncolsminus1 <- ncol(infect_covid_plusoneinf_raw2) - 1
+
+infect_covid_plusoneinf_raw3 <- infect_covid_plusoneinf_raw2 %>% 
+  rename_with(~paste0("sss", 1:(ncol(infect_covid_plusoneinf_raw2) - 1)), -NUHSA_ENCRIPTADO)
+
+# TODO code might not work from here ALVARO
+
+nas_per_column <- vector()
+for (i in 1:(ncol(infect_covid_plusoneinf_raw) - 1)) {
+  nas_per_column[i] <- sum(is.na(infect_covid_plusoneinf_raw[i]))
+}
+
+# TODO bien!!!!! hacerlo así y a tomar porsaco. Evalúa primero cómo ha funcionado lo que has hecho
+# y revisa bien el 50 o si pones otra cosa
+# hacer la línea con excel
+# prueba a buscar el nuhsa EN5772272782 en infect_covid_plusoneinf_raw y prueba
+# arrastra a las pcrs hacia la izquierda y vuelve a calcular un maxtimediff a ver si alguna te sale ->>
+# por debajo de los 90 días!!!!
+
+# TODO ALVARO vas por aqui
+
+
+# infection count per person
+infect_COVID_num <- resultados_pruebas_COVID %>%
+  group_by(NUHSA_ENCRIPTADO) %>%
+  summarise(infecc_covid_num = n())
+
+
+
+remove(resultados_pruebas_COVID)
+```
 
 ## poblacion_diana
-
-Se filtra el sexo en dos posibles categorías: hombre y mujer. Otros eran menor al 0.1%.
 
 ```{r}
 poblacion_diana <- 
@@ -58,38 +215,7 @@ poblacion_diana$age <- trunc((poblacion_diana$COD_FEC_NACIMIENTO %--% '2020-03-0
 poblacion_diana$mortality <- convertir_valores(poblacion_diana$FEC_FALLECIMIENTO)
 ```
 
-## resultados_pruebas_COVID
-
-```{r RESULTADOS_PRUEBAS_COVID}
-# '_t' means total population, second data load
-# database importation and tidying
-resultados_pruebas_COVID <-
-  fread(
-    "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_TEST_COVID.txt",
-    header = T,
-    encoding = 'UTF-8'
-  ) %>% 
-  as.data.frame() %>% 
-  select(-TIPO_PRUEBA) %>% 
-  mutate(FECHA_MUESTRA = as.Date(as.character(FECHA_MUESTRA), format = "%d/%m/%Y"))
-
-# infection count per person
-infect_COVID_num <- resultados_pruebas_COVID %>%
-  group_by(NUHSA_ENCRIPTADO) %>%
-  summarise(infecc_covid_num = n())
-
-# first COVID infection with date available
-# TODO pendientes de PRDA
-infect_COVID_first <- resultados_pruebas_COVID %>%
-  group_by(NUHSA_ENCRIPTADO) %>%
-  filter(row_number() == 1 & DESC_T_PRUEBA == 'PCR' & !is.na(FECHA_MUESTRA)) %>% 
-  rename(infect_COVID_first_date = FECHA_MUESTRA) %>%
-  select(NUHSA_ENCRIPTADO, infect_COVID_first_date)
-
-remove(resultados_pruebas_COVID)
-```
-
-## pupa (Periodo-Usuario-Patologías)
+## pupa (Periodo-Usuario-PAtologías)
 
 ```{r}
 # Load datatable and remove duplicates
@@ -97,13 +223,13 @@ pupa <-
   fread(
     "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt", header = T, encoding = 'Latin-1'
   ) %>% 
-  as.data.frame()
+  as.data.frame() 
 
 pupa %<>% distinct()
 
 # First, dates need to be converted from the original source; missing or -1 in COD_FEC_FIN_PATOLOGIA ->>
 # means that the comorbidity was still active at the time the dataset was extracted from BPS.
-# Also, we transform character variables to get rid of capital letters and accents
+# Also, we transform character variables to get rid of capital letters and accents.
 pupa <- setDT(pupa) %>% 
   lazy_dt(immutable = FALSE) %>% 
   mutate(
@@ -114,42 +240,118 @@ pupa <- setDT(pupa) %>%
   as.data.frame()
   # date of first covid test in our dataset
 
-
-# TODO
 # TODO FILTER by admission or infection date? IT IS INTENDED TO BE DONE BY INFECTION DATE
 
-# Convert the dataframe to a data.table since dplyr is not efficient enough
-pupa_dt <- setDT(pupa)
+curable_comorb <- c(
+  "asma", "diabetes", "hipertension", "cancer.de.mama", "cancer.de.tiroides",
+  "melanoma.de.piel", "linfoma.no.hodgkin", "leucemia", "enfermedad.de.hodgkin",
+  "cancer.de.bronquio.y.pulmon", "cancer.de.prostata", "cancer.de.testiculo", "cancer.de.vejiga",
+  "cancer.de.pancreas", "cancer.de.rinon.y.pelvis.renal", "cancer.colorrectal", "cancer.de.estomago",
+  "cancer.de.cabeza.y.cuello", "cancer.de.higado.y.vias.biliares", "cancer.de.hueso.y.tejidos.blandos",
+  "cancer.de.cuello.uterino", "cancer.de.utero", "cancer.de.ovario", "cancer.inmunoproliferativo",
+  "sarcoma.de.kaposi"
+)
 
-# DEPRECATED
-# Group by and mutate in a single step
-pupa_opt <-
-  pupa_dt[, value := 1, by = c("NUHSA_ENCRIPTADO", "DESC_PATOLOGIA_CRONICA")]
+incurable_comorb <- c(
+  "cardiopatia.isquemica", "cirrosis.hepatica", "epoc", "hepatopatia.cronica.excepto.cirrosis",
+  "insuficiencia.cardiaca", "insuficiencia.renal.cronica", "vih"
+)
 
-# Spread in a single step.
-# This will create a new column for each unique element in the DESC_PATOLOGIA_CRONICA column, 
-# and fill the cells with a value of 1 for rows where the DESC_PATOLOGIA_CRONICA value matches 
-# the column name, and 0 for all other rows.
-pupa_opt <- dcast(pupa_opt, NUHSA_ENCRIPTADO ~ DESC_PATOLOGIA_CRONICA, value.var = "value", fill = 0)
+pupa_not_repeated <- setDT(pupa) %>% 
+  lazy_dt(immutable = FALSE) %>% 
+  group_by(NUHSA_ENCRIPTADO, DESC_PATOLOGIA_CRONICA) %>% 
+  mutate(row_index = row_number()) %>% 
+  filter(all(row_index == 1)) %>% 
+  ungroup() %>% 
+  as.data.table()
 
-# Replace the values in the original dataframe with 1 if any value in the row is greater than 0, and 0 otherwise
+pupa_not_repeated_fixed <- pupa_not_repeated %>% 
+  lazy_dt(immutable = FALSE) %>% 
+  mutate(
+    COD_FEC_FIN_PATOLOGIA = if_else(
+      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
+      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
+      COD_FEC_FIN_PATOLOGIA,
+      as.Date(NA)
+    )
+  ) %>%
+  filter(COD_FEC_FIN_PATOLOGIA > ymd(20200229) | is.na(COD_FEC_FIN_PATOLOGIA)) %>% 
+  select(-row_index) %>% 
+  as.data.table()
 
-# Select the first column
-pupa_id <- pupa_opt[, 1]
+pupa_repeated <- setDT(pupa) %>% 
+  lazy_dt(immutable = FALSE) %>% 
+  group_by(NUHSA_ENCRIPTADO, DESC_PATOLOGIA_CRONICA) %>% 
+  mutate(row_index = row_number()) %>% 
+  filter(any(row_index > 1)) %>% 
+  ungroup() %>% 
+  as.data.table()
 
-# Select the columns starting from the second column
-pupa_selected <- pupa_opt[, 2:ncol(pupa_opt)]
+pupa_repeated_fixed <- pupa_repeated %>% 
+  lazy_dt(immutable = FALSE) %>% 
+  mutate(
+    COD_FEC_FIN_PATOLOGIA = if_else(
+      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
+      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
+      COD_FEC_FIN_PATOLOGIA,
+      as.Date(NA)
+    )
+  ) %>% 
+  group_by(NUHSA_ENCRIPTADO, DESC_PATOLOGIA_CRONICA) %>% 
+  filter(COD_FEC_INI_PATOLOGIA == min(COD_FEC_INI_PATOLOGIA, na.rm = TRUE)) %>% 
+  mutate(row_index2 = row_number()) %>% 
+  filter(row_index2 == 1) %>% 
+  # hago estos dos pasos previos porque con el filter min previo a veces se filtra más de uno
+  ungroup() %>% 
+  filter(COD_FEC_FIN_PATOLOGIA > ymd(20200229) | is.na(COD_FEC_FIN_PATOLOGIA)) %>% 
+  select(-c(row_index, row_index2)) %>% 
+  as.data.table()
+  
+pupa_dt <- as.data.frame(pupa_not_repeated_fixed) %>% 
+  bind_rows(as.data.frame(pupa_repeated_fixed)) %>% 
+  as.data.table()
 
-# Replace the values in the selected columns with 1 if they are greater than 0, and 0 otherwise
-pupa_selected <- apply(pupa_selected, 2, function(x) ifelse(x > 0, 1, 0))
-
-# Append the transformed columns to the first column
-pupa_opt <- cbind(pupa_id, pupa_selected)
-
-remove(pupa_id)
-remove(pupa_selected)
 remove(pupa)
+remove(pupa_not_repeated)
+remove(pupa_not_repeated_fixed)
+remove(pupa_repeated)
+remove(pupa_repeated_fixed)
+
+
+
+# Creation of a data.table where row = person, plus start and end dates for all comorbidities
+
+pupa_pivot_fechaini <- pupa_dt %>% 
+  lazy_dt() %>% 
+  pivot_wider(
+    id_cols = NUHSA_ENCRIPTADO,
+    names_from = DESC_PATOLOGIA_CRONICA,
+    values_from = COD_FEC_INI_PATOLOGIA
+  ) %>% 
+  rename_with(~paste0(.x, "_fechaini"), !NUHSA_ENCRIPTADO) %>% 
+  as.data.table()
+
+pupa_pivot_fechafin <- pupa_dt %>% 
+  lazy_dt() %>% 
+  pivot_wider(
+    id_cols = NUHSA_ENCRIPTADO,
+    names_from = DESC_PATOLOGIA_CRONICA,
+    values_from = COD_FEC_FIN_PATOLOGIA,
+  ) %>% 
+  rename_with(~paste0(.x, "_fechafin"), !NUHSA_ENCRIPTADO) %>% 
+  as.data.table()
+
+pupa_dates <- pupa_pivot_fechaini %>% 
+  lazy_dt() %>% 
+  left_join(pupa_pivot_fechafin, by = "NUHSA_ENCRIPTADO") %>% 
+  as.data.frame() %>% 
+  select(sort(colnames(.))) %>%
+  select(NUHSA_ENCRIPTADO, everything())
+
 remove(pupa_dt)
+remove(pupa_pivot_fechafin)
+remove(pupa_pivot_fechaini)
+gc()
 ```
 
 ## periodos_pandemicos
