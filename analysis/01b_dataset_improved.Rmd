@@ -14,6 +14,7 @@ library(dplyr, warn.conflicts = FALSE)
 library(magrittr)
 library(lubridate)
 library(vroom)
+library(stringr)
 library(stringi)
 library(tidyr)
 library(ggplot2)
@@ -79,8 +80,7 @@ remove(resultados_pruebas_COVID)
 #   as.data.frame()
 # remove(count_people_per_amount_of_pcrs)
 
-maxtest_per_person <- max(pcr_covid$n_infect)
-
+# maxtest_per_person <- max(pcr_covid$n_infect)
 # someonegotreallytested <- setDT(pcr_COVID) %>% 
 #   lazy_dt(immutable = FALSE) %>% 
 #   group_by(NUHSA_ENCRIPTADO) %>% 
@@ -130,54 +130,37 @@ infect_covid_plusoneinf_raw <- setDT(infect_covid2) %>%
   lazy_dt(immutable = TRUE) %>% 
   filter(maxtimediff > 89) %>% 
   select(-maxtimediff) %>% 
-  rename_with(~paste0("pcr", .x), -NUHSA_ENCRIPTADO) %>% 
   select(2:20, NUHSA_ENCRIPTADO) %>% 
   as.data.frame()
 
-# Due to the low amount of rows in this dataset, I perform the operations with tidyverse only
+# Due to the low amount of rows in this dataset, I perform some operations with tidyverse only
 
-# Sorry for the scarce elegance of this code
-infect_covid_plusoneinf_raw2 <- infect_covid_plusoneinf_raw %>% 
-  mutate(
-    pcr19 = if_else(pcr19 - pcr18 < 50 | is.na(pcr19), as.Date(NA), pcr19),
-    pcr18 = if_else(pcr18 - pcr17 < 50 | is.na(pcr18), as.Date(NA), pcr18),
-    pcr17 = if_else(pcr17 - pcr16 < 50 | is.na(pcr17), as.Date(NA), pcr17),
-    pcr16 = if_else(pcr16 - pcr15 < 50 | is.na(pcr16), as.Date(NA), pcr16),
-    pcr15 = if_else(pcr15 - pcr14 < 50 | is.na(pcr15), as.Date(NA), pcr15),
-    pcr14 = if_else(pcr14 - pcr13 < 50 | is.na(pcr14), as.Date(NA), pcr14),
-    pcr13 = if_else(pcr13 - pcr12 < 50 | is.na(pcr13), as.Date(NA), pcr13),
-    pcr12 = if_else(pcr12 - pcr11 < 50 | is.na(pcr12), as.Date(NA), pcr12),
-    pcr11 = if_else(pcr11 - pcr10 < 50 | is.na(pcr11), as.Date(NA), pcr11),
-    pcr10 = if_else(pcr10 - pcr9 < 50 | is.na(pcr10), as.Date(NA), pcr10),
-    pcr9 = if_else(pcr9 - pcr8 < 50 | is.na(pcr9), as.Date(NA), pcr9),
-    pcr8 = if_else(pcr8 - pcr7 < 50 | is.na(pcr8), as.Date(NA), pcr8),
-    pcr7 = if_else(pcr7 - pcr6 < 50 | is.na(pcr7), as.Date(NA), pcr7),
-    pcr6 = if_else(pcr6 - pcr5 < 50 | is.na(pcr6), as.Date(NA), pcr6),
-    pcr5 = if_else(pcr5 - pcr4 < 50 | is.na(pcr5), as.Date(NA), pcr5),
-    pcr4 = if_else(pcr4 - pcr3 < 50 | is.na(pcr4), as.Date(NA), pcr4),
-    pcr3 = if_else(pcr3 - pcr2 < 50 | is.na(pcr3), as.Date(NA), pcr3),
-    pcr2 = if_else(pcr2 - pcr1 < 50 | is.na(pcr2), as.Date(NA), pcr2),
+prueba1 <- setDT(infect_covid_plusoneinf_raw) %>% 
+  lazy_dt(immutable = FALSE) %>% 
+  pivot_longer(
+    1:(ncol(.) - 1),
+    names_to = "orden_pcr",
+    values_to = "fecha_pcr"
   ) %>% 
+  mutate(orden_pcr = as.numeric(orden_pcr)) %>% 
+  arrange(NUHSA_ENCRIPTADO, orden_pcr) %>% 
+  mutate(diff = as.numeric(fecha_pcr - lag(fecha_pcr, n = 1))) %>% 
+  mutate(
+    diff = if_else(orden_pcr == 1, as.numeric(NA), diff),
+    fecha_pcr = if_else(
+      orden_pcr > 1 & (is.na(fecha_pcr) | diff < 50), as.Date(NA), fecha_pcr
+    )
+  ) %>% 
+  select(-diff) %>% 
+  arrange(NUHSA_ENCRIPTADO, fecha_pcr) %>% 
+  mutate(new_diff = as.numeric(fecha_pcr - lag(fecha_pcr, n = 1))) %>% 
+  # pivot_wider(id_cols = NUHSA_ENCRIPTADO, names_from = "orden_pcr", values_from = "fecha_pcr") %>% 
+  as.data.frame()
+
+prueba1 <- prueba1 %>% 
+  rename_with(~paste0("pcr", .x), -NUHSA_ENCRIPTADO) %>% 
   select_if(~sum(is.na(.x)) < nrow(infect_covid_plusoneinf_raw))
-  
-ncolsminus1 <- ncol(infect_covid_plusoneinf_raw2) - 1
 
-infect_covid_plusoneinf_raw3 <- infect_covid_plusoneinf_raw2 %>% 
-  rename_with(~paste0("sss", 1:(ncol(infect_covid_plusoneinf_raw2) - 1)), -NUHSA_ENCRIPTADO)
-
-# TODO code might not work from here ALVARO
-
-nas_per_column <- vector()
-for (i in 1:(ncol(infect_covid_plusoneinf_raw) - 1)) {
-  nas_per_column[i] <- sum(is.na(infect_covid_plusoneinf_raw[i]))
-}
-
-# TODO bien!!!!! hacerlo así y a tomar porsaco. Evalúa primero cómo ha funcionado lo que has hecho
-# y revisa bien el 50 o si pones otra cosa
-# hacer la línea con excel
-# prueba a buscar el nuhsa EN5772272782 en infect_covid_plusoneinf_raw y prueba
-# arrastra a las pcrs hacia la izquierda y vuelve a calcular un maxtimediff a ver si alguna te sale ->>
-# por debajo de los 90 días!!!!
 
 # TODO ALVARO vas por aqui
 
