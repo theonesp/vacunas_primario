@@ -240,10 +240,15 @@ poblacion_diana <-
     encoding = 'Latin-1'
   )
 
-# Hashtagged because there are no duplicates:
-# poblacion_diana <- poblacion_diana %>% 
-#   distinct() %>% 
+# Hashtagged because there are no exact duplicates:
+# poblacion_diana <- poblacion_diana %>%
+#   distinct() %>%
 #   as.data.frame()
+
+# SS <- poblacion_diana %>% 
+#   count(NUHSA_ENCRIPTADO) %>% 
+#   filter(n > 1)
+
 
 poblacion_diana2 <- setDT(poblacion_diana) %>% 
   lazy_dt(immutable = TRUE) %>% 
@@ -260,7 +265,7 @@ poblacion_diana2 <- setDT(poblacion_diana) %>%
     mortality = convertir_valores(FEC_FALLECIMIENTO)
   ) %>% 
   mutate(age = trunc(age)) %>% 
-  select(-c(COD_FEC_NACIMIENTO, COD_SEXO, COD_MUNICIPIO, DESC_MUNICIPIO, FEC_FALLECIMIENTO)) %>% 
+  # select(-c(COD_FEC_NACIMIENTO, COD_SEXO, COD_MUNICIPIO, DESC_MUNICIPIO, FEC_FALLECIMIENTO)) %>% 
   as.data.frame()
 
 
@@ -287,28 +292,44 @@ poblacion_diana2 <- setDT(poblacion_diana) %>%
 ############################
 ############################
 
-# After checking the cases, there were ................
-# After checking the cases, no one were older than 120 years.
-
 poblacion_diana3 <- setDT(poblacion_diana2) %>% 
   lazy_dt(immutable = TRUE) %>% 
-  left_join(infect_covid4, by = "NUHSA_ENCRIPTADO") %>% 
   filter(
-    !is.na(infect_covid_first_date)
+    NUHSA_ENCRIPTADO %in% unique(infect_covid4$NUHSA_ENCRIPTADO)
     & DESC_SEXO %in% c("Mujer", "Hombre")
     & age < 121
   ) %>% 
   as.data.frame()
 
-infect_covid5 <- infect_covid4 %>% 
+nuhsas_excluded_bc_ofsex <- setDT(poblacion_diana2) %>% 
+  lazy_dt(immutable = TRUE) %>% 
   filter(
-    !NUHSA_ENCRIPTADO %in% setdiff(infect_covid4$NUHSA_ENCRIPTADO, poblacion_diana3$NUHSA_ENCRIPTADO)
-  )
+    NUHSA_ENCRIPTADO %in% unique(infect_covid4$NUHSA_ENCRIPTADO)
+    & !DESC_SEXO %in% c("Mujer", "Hombre")
+  ) %>% 
+  left_join(infect_covid4, by = "NUHSA_ENCRIPTADO") %>%
+  pull(NUHSA_ENCRIPTADO)
+
+nuhsas_excluded_bc_ofage <- setDT(poblacion_diana2) %>% 
+  lazy_dt(immutable = TRUE) %>% 
+  filter(
+    NUHSA_ENCRIPTADO %in% unique(infect_covid4$NUHSA_ENCRIPTADO)
+    & age > 120
+  ) %>% 
+  left_join(infect_covid4, by = "NUHSA_ENCRIPTADO") %>%
+  pull(NUHSA_ENCRIPTADO)
+
+# After checking the cases, there were 59 infections (cases) with sex other than "male" or "female".
+# After checking the cases, no one were older than 120 years.
+
+infect_covid5 <- infect_covid4 %>% filter(NUHSA_ENCRIPTADO %in% unique(poblacion_diana3$NUHSA_ENCRIPTADO))
 
 
 
 remove(poblacion_diana)
 remove(poblacion_diana2)
+remove(nuhsas_excluded_bc_ofsex)
+remove(nuhsas_excluded_bc_ofage)
 remove(infect_covid4)
 gc()
 ```
@@ -342,8 +363,6 @@ pupa <- setDT(pupa) %>%
   ) %>% 
   filter(COD_FEC_INI_PATOLOGIA < ymd(20220401)) %>% 
   as.data.frame()
-
-# TODO FILTER by admission or infection date? IT IS INTENDED TO BE DONE BY INFECTION DATE
 
 
 
@@ -380,8 +399,10 @@ pupa_not_repeated_fixed <- pupa_not_repeated %>%
   lazy_dt(immutable = FALSE) %>% 
   mutate(
     COD_FEC_FIN_PATOLOGIA = if_else(
-      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
-      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
+      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] 
+       & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
+      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] 
+         & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
       COD_FEC_FIN_PATOLOGIA,
       as.Date(NA)
     )
@@ -402,8 +423,10 @@ pupa_repeated_fixed <- pupa_repeated %>%
   lazy_dt(immutable = FALSE) %>% 
   mutate(
     COD_FEC_FIN_PATOLOGIA = if_else(
-      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
-      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
+      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] 
+       & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
+      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] 
+         & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
       COD_FEC_FIN_PATOLOGIA,
       as.Date(NA)
     )
@@ -443,7 +466,8 @@ gc()
 
 
 ########################################################################################################
-# 
+# Joining with infections and filtering out comorbs not present at diagnosis of infection. >>
+# Creating a data table where row = infection + indicator "1" if comorbidity was present at diagnosis.
 
 pupa2 <- setDT(pupa_dt) %>% 
   lazy_dt(immutable = TRUE) %>% 
@@ -453,98 +477,20 @@ pupa2 <- setDT(pupa_dt) %>%
     COD_FEC_INI_PATOLOGIA <= infect_covid_first_date
     & COD_FEC_FIN_PATOLOGIA >= infect_covid_first_date
   ) %>% 
+  mutate(dummy_indic = 1) %>%  # TODO vas por aquí ÁLVARO
+  pivot_wider(
+    id_cols = c(NUHSA_ENCRIPTADO, orden_infeccion),
+    names_from = DESC_PATOLOGIA_CRONICA,
+    values_from = dummy_indic,
+  ) %>% 
   as.data.frame()
 
-
-
-
-
-
-
-
-
-########################################################################################################
-# Creating a data table where row = person + start and end dates for all comorbidities.
-# 
-# 
-# 
-# 
-# 
-# 
-pupa_pivot_fechaini <- pupa_dt %>% 
-  lazy_dt() %>% 
-  pivot_wider(
-    id_cols = NUHSA_ENCRIPTADO,
-    names_from = DESC_PATOLOGIA_CRONICA,
-    values_from = COD_FEC_INI_PATOLOGIA
-  ) %>% 
-  rename_with(~paste0(.x, "_fechaini"), !NUHSA_ENCRIPTADO) %>%
-  as.data.table()
-
-pupa_pivot_fechafin <- pupa_dt %>% 
-  lazy_dt() %>% 
-  pivot_wider(
-    id_cols = NUHSA_ENCRIPTADO,
-    names_from = DESC_PATOLOGIA_CRONICA,
-    values_from = COD_FEC_FIN_PATOLOGIA,
-  ) %>% 
-  rename_with(~paste0(.x, "_fechafin"), !NUHSA_ENCRIPTADO) %>% 
-  as.data.table()
-
-pupa_dates <- pupa_pivot_fechaini %>% 
-  lazy_dt() %>% 
-  left_join(pupa_pivot_fechafin, by = "NUHSA_ENCRIPTADO") %>% 
-  as.data.frame() %>% 
-  select(sort(colnames(.))) %>%
-  select(NUHSA_ENCRIPTADO, everything())
+pupa2 %<>% clean_names() %>% rename(NUHSA_ENCRIPTADO = nuhsa_encriptado)
 
 
 
 remove(pupa_dt)
-remove(pupa_pivot_fechafin)
-remove(pupa_pivot_fechaini)
 gc()
-
-
-
-pupa_dates2 <- setDT(pupa_dates) %>% 
-  lazy_dt(immutable = TRUE) %>% 
-  left_join(infect_covid5, by = "NUHSA_ENCRIPTADO") %>% 
-  filter(!is.na(infect_covid_first_date)) %>% 
-  mutate(
-    across(
-      ends_with("_fechaini"), ~if_else(.x, )
-    ),
-    across(
-      ends_with("_fechafin"), 
-    )
-  )
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-pupa_dates <- pupa_dt %>% 
-  lazy_dt() %>% 
-  pivot_wider(
-    id_cols = NUHSA_ENCRIPTADO,
-    names_from = DESC_PATOLOGIA_CRONICA,
-    values_from = COD_FEC_FIN_PATOLOGIA,
-  ) %>% 
-  as.data.frame() %>% 
-  select(sort(colnames(.))) %>%
-  select(NUHSA_ENCRIPTADO, everything())
-
-
-
-
 ```
 
 ## Periodos pandémicos
@@ -556,7 +502,8 @@ periodos_pandemicos_andalucia <-
   read.csv2("/opt/datos_compartidos/vacunas_data/05_Periodos_pandemicos.csv") %>% 
   mutate(
     nombre_periodo = factor(nombre_periodo, ordered = TRUE),
-    fecha_inicio = as.Date(fecha_inicio), fecha_fin = as.Date(fecha_fin)
+    fecha_inicio = as.Date(fecha_inicio),
+    fecha_fin = as.Date(fecha_fin)
   )
 ```
 
@@ -609,6 +556,8 @@ J84.114	42	Neumonitis intersticial aguda
 J39.8	41	 Otras enfermedades especificadas del tracto respiratorio superior
 J84.115	15	Enfermedad pulmonar intersticial asociada a bronquiolitis respiratoria
 J84.113     Neumonitis intersticial no especificada idiopática
+B97.21     Coronavirus asociado al SARS como causa de enfermedades clasificadas bajo otro concepto
+B34.2      Infección debida a coronavirus, no especificada
 
 
 TODO hay 92k pacientes sin fecha de ingreso. Rafa: a mí ya salen todos con fecha de ingreso y de alta.
@@ -616,8 +565,7 @@ TODO puede ser que ya estuvieran ingresados.
 
 ```{r}
 ########################################################################################################
-# First, defining ICD codes of interest. >>
-# Loading data and initial cols transformations.
+# First, defining ICD codes of interest. Loading data and initial cols transformations.
 # We do not (cannot) have the date of transfer to ICU. 
 
 icd_ofinterest <- c(
@@ -625,7 +573,7 @@ icd_ofinterest <- c(
   "J98.01", "J18.0", "J84.9", "J96.91", "J96.90", "J96.92", "J84.89", "J81.0", "I26.99", "J06.9",
   "J98.9", "J95.89", "J12.9", "O98.52", "J84.111", "O98.513", "J20.8", "J96.11", "J00", "J12.81",
   "J84.114", "J39.8", "J84.115", "J84.113", 
-  "J12.82", "B97.21" , "B34.2" # NEWLY INTRODUCED
+  "J12.82", "B97.21" , "B34.2" # These three codes have been newly introduced
 )
 
 episodios_cmbd_raw <- 
@@ -635,39 +583,34 @@ episodios_cmbd_raw <-
   as.data.frame() %>% 
   select(-c(paste0("COD_D", 6:20), paste0("COD_P", 1:20))
   ) %>% 
-  # We are only evaluating the five first diagnoses. Procedures out
+  # We are only evaluating the five first diagnoses. Procedures out.
   mutate(
     across(c(COD_FEC_INGRESO, COD_FEC_ALTA), ~as.Date(as.character(.x), format = "%Y%m%d")),
     estancia_hospitalaria_dias = as.numeric(COD_FEC_ALTA - COD_FEC_INGRESO),
-    icu_stay_bin = as.factor(if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)), 0, 1))
+    icu_stay_bin = if_else((NUM_DIAS_UCI == 0 | is.na(NUM_DIAS_UCI)), 0, 1)
   )
 
 episodios_cmbd_raw %<>% distinct()
 
-
+as.numeric(ymd(20200909) - ymd(20200901))
 
 ########################################################################################################
 # Joining the "COVID infections" dataframe containing infect_covid_first_date. >>
-# Hospitalization that might be related to COVID will only be those occurring <30 days after PCR, with...
-# hospital discharge also happening before PCR sampling, or the same day.
+# Hospitalizations that might be related to COVID will only be those occurring <30 days after PCR, with...
+# hospital discharge also happening before PCR sampling, or the same day. >>
 
 episodios_cmbd <- episodios_cmbd_raw %>% 
-  left_join(infect_covid4, by = "NUHSA_ENCRIPTADO") %>% 
+  left_join(infect_covid5, by = "NUHSA_ENCRIPTADO") %>% 
+  filter(!is.na(infect_covid_first_date)) %>% 
   mutate(
-    infeccion_ingreso_dias = COD_FEC_INGRESO - infect_covid_first_date,
-    infeccion_alta_dias = COD_FEC_ALTA - infect_covid_first_date,
+    infeccion_ingreso_dias = as.numeric(COD_FEC_INGRESO - infect_covid_first_date),
+    infeccion_alta_dias = as.numeric(COD_FEC_ALTA - infect_covid_first_date),
     hosp_stay_bin = if_else(infeccion_ingreso_dias <= 30 & infeccion_alta_dias >= 0, 1, 0)
   ) %>% 
-  select(NUHSA_ENCRIPTADO, orden_infeccion, infect_covid_first_date, everything())
-
-
-
-########################################################################################################
-# Keeping only candidates to COVID-related hospitalizations, then filtering by ICD COVID-related codes...
-# to make sure they are indeed related to COVID. >>
-# Also we are keeping only first hospitalization that meet previous criteria.
-
-episodios_cmbd_first <- episodios_cmbd %>%
+  select(NUHSA_ENCRIPTADO, orden_infeccion, everything(), -infect_covid_first_date) %>%
+  # Keeping only candidates to COVID-related hospitalizations, then filtering by ICD COVID-related codes...
+  # to make sure they are indeed related to COVID. >>
+  # Also we are keeping only first hospitalization that meet previous criteria.
   filter(hosp_stay_bin == 1) %>%
   filter(
     COD_D1 %in% icd_ofinterest
@@ -676,18 +619,15 @@ episodios_cmbd_first <- episodios_cmbd %>%
     | COD_D4 %in% icd_ofinterest
     | COD_D5 %in% icd_ofinterest
   ) %>%
-  group_by(NUHSA_ENCRIPTADO) %>% # TODO agrupar según NUHSA y orden_infeccion
+  group_by(NUHSA_ENCRIPTADO, orden_infeccion) %>%
   arrange(COD_FEC_INGRESO) %>% 
   filter(row_number() == 1) %>% 
   ungroup() %>% 
-  select(
-    NUHSA_ENCRIPTADO, COD_FEC_INGRESO, COD_FEC_ALTA, estancia_hospitalaria_dias,
-    hosp_stay_bin, icu_stay_bin, infeccion_ingreso_dias
-  )
+  select(-c(COD_TIPO_INGRESO, DESC_TIPO_INGRESO, COD_TIPO_ALTA, DESC_TIPO_ALTA))
 
 
 
-remove(episodios_cmbd)
+remove(episodios_cmbd_raw)
 gc()
 ```
 
@@ -711,9 +651,7 @@ TODO estudiar numero de infecciones
 ```{r}
 ########################################################################################################
 # Loading data, then mutating date variables and calculating timediff between vaccine and infection. >>
-# Filtering out vaccines received <14 days before infection. >>
 # Vaccine names/brands should be levels, too. >>
-# Last, getting number of vaccines per infection.
 
 vacunas_raw <- vroom("/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_VACUNAS_TODO.txt") %>%
   as.data.frame() %>% 
@@ -732,7 +670,7 @@ vacunas_inprogress <- setDT(vacunas_raw) %>%
     | NOM_VACUNA == "COVID-19 Moderna"
     | NOM_VACUNA == "COVID-19 Novavax"
   ) %>% 
-  left_join(infect_covid4, by = "NUHSA_ENCRIPTADO") %>% 
+  left_join(infect_covid5, by = "NUHSA_ENCRIPTADO") %>% 
   filter(!is.na(infect_covid_first_date)) %>% 
   mutate(
     vac_infecc_umbral = days(infect_covid_first_date - FEC_VACUNACION) / days(1),
@@ -740,23 +678,40 @@ vacunas_inprogress <- setDT(vacunas_raw) %>%
   ) %>% 
   as.data.frame()
 
-# TODO se podría hacer un filter para quedarse sólo con las dosis puestas hace menos de seis meses.
-# TODO En concreto, si hace más de 6 meses de la última dosis, no estás inmunizado (como decía Juanlu).
-# TODO cómo que hacer left joins?? Podrías perder información, no?????? Estarías dejando atrás información de algunas infecciones?
-# TODO o quizás no, pero cuidado con hacer el join según sólo nuhsa y no nuhsa-infección
 
-vacunas_t_covid_pautas <- setDT(vacunas_inprogress) %>% 
+
+# Filtering out vaccines received <14 days before infection. >>
+# Last, getting number of vaccines per infection.
+vacunas2 <- setDT(vacunas_inprogress) %>% 
   lazy_dt(immutable = TRUE) %>% 
   filter(vac_infecc_umbral >= 14) %>%
+  as.data.frame()
+
+vacunas3 <- setDT(vacunas2) %>% 
+  lazy_dt(immutable = TRUE) %>% 
   group_by(NUHSA_ENCRIPTADO, orden_infeccion) %>%
-  summarise(pautas_covid = n()) %>% 
+  mutate(fec_maxvacuna = max(FEC_VACUNACION)) %>% 
   ungroup() %>% 
+  mutate(ultima_vac_infecc_dias = infect_covid_first_date - fec_maxvacuna) %>%
+  mutate(
+    inmun_meses_quant = days(ultima_vac_infecc_dias) / months(1),
+    inmun_menos6meses_bin = if_else(ultima_vac_infecc_dias < 183, 1, 0) # 182 == mean days of 6 months
+  ) %>%
+  mutate(inmun_meses_quant2 = trunc(inmun_meses_quant)) %>% 
+  group_by(NUHSA_ENCRIPTADO, orden_infeccion) %>%
+  summarise(
+    pautas_covid = n(),
+    inmun_menos6meses_bin = unique(inmun_menos6meses_bin),
+    inmun_meses_quant = unique(inmun_meses_quant2)
+  ) %>% 
+  ungroup() %>%
   as.data.frame()
 
 
 
 remove(vacunas_raw)
 remove(vacunas_inprogress)
+remove(vacunas2)
 gc()
 ```
 
@@ -765,16 +720,52 @@ gc()
 ```{r}
 print(Sys.time())
 estudio_vacunas_t_final <- Reduce(function(...) merge(..., all.x = TRUE), list(
-  infect_covid5
-  , poblacion_diana3 
-  , pupa2
-  , infect_COVID_num  
-  , episodios_cmbd_first 
-  , vacunas_t_covid_first
-  , vacunas_t_covid_full
-  , vacunas_t_covid_pautas
+  infect_covid5,
+  poblacion_diana3, 
+  pupa2,
+  vacunas3,
+  episodios_cmbd
 ))
 print(Sys.time())
+
+infect_bdu <- setDT(infect_covid5) %>% 
+  lazy_dt() %>% 
+  left_join(poblacion_diana3, by = "NUHSA_ENCRIPTADO") %>% 
+  as.data.frame()
+# unir estas dos partes?
+infect_bdu_pupa <- setDT(infect_bdu) %>% 
+  lazy_dt() %>% 
+  left_join(pupa2, by = c("NUHSA_ENCRIPTADO", "orden_infeccion")) %>% 
+  as.data.frame() %>% 
+  mutate(across(asma:vih, ~if_else(is.na(.x), 0, .x)))
+
+# TODO vas por aquí!!!!
+
+infect_bdu_pupa_cmbd <- setDT(infect_bdu_pupa) %>% 
+  lazy_dt() %>% 
+  left_join(episodios_cmbd, by = c("NUHSA_ENCRIPTADO", "orden_infeccion")) %>% 
+  as.data.frame() %>% 
+  mutate(across(c(icu_stay_bin, hosp_stay_bin), ~if_else(is.na(.x), 0, .x)))
+
+infect_bdu_pupa_cmbd_vacunas <- setDT(infect_bdu_pupa_cmbd) %>% 
+  lazy_dt() %>% 
+  left_join(vacunas3, by = c("NUHSA_ENCRIPTADO", "orden_infeccion")) %>% 
+  as.data.frame()
+
+# TODO recuerda hacer los join uno a uno para unir bien según tabla de datos
+
+
+
+# TODO
+# CUIDADO AQUI HACER EL JOIN COMORBILIDADES, INGRESOS Y VACUNAS POR NUHSA Y ORDEN INFECCION 
+# PARA NO PERDER LA GRANULARIDAD DE LAS COMORBILIDADES AJUSTADAS!!
+
+
+
+# TODO se podría hacer un filter para quedarse sólo con las dosis puestas hace menos de seis meses.
+# TODO En concreto, si hace más de 6 meses de la última dosis, no estás inmunizado (como decía Juanlu).
+
+
 ```
 
 # Selecting only required columns
