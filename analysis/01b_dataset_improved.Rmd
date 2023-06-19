@@ -34,9 +34,9 @@ special_date <- function(number) {
 convertir_valores <- function(x) {ifelse(x == -1, 0, 1)}
 ```
 
-# Data Load and Wrangling
+# Data Loading and Wrangling
 
-## resultados_pruebas_COVID
+## COVID tests
 
 ```{r RESULTADOS_PRUEBAS_COVID}
 # TODO pendientes de PRDA
@@ -75,6 +75,8 @@ resultados_pruebas_COVID %<>% distinct()
 ############################
 
 # Cases were checked and, after filtering out by study period, 10 cases were excluded.
+
+
 
 pcr_covid <- setDT(resultados_pruebas_COVID) %>%
   lazy_dt(immutable = FALSE) %>% 
@@ -227,7 +229,7 @@ remove(infect_covid_plusoneinf)
 gc()
 ```
 
-## poblacion_diana
+## Study population
 
 ```{r}
 ########################################################################################################
@@ -245,9 +247,6 @@ poblacion_diana <-
 #   distinct() %>%
 #   as.data.frame()
 
-# SS <- poblacion_diana %>% 
-#   count(NUHSA_ENCRIPTADO) %>% 
-#   filter(n > 1)
 
 
 poblacion_diana2 <- setDT(poblacion_diana) %>% 
@@ -265,7 +264,6 @@ poblacion_diana2 <- setDT(poblacion_diana) %>%
     mortality = convertir_valores(FEC_FALLECIMIENTO)
   ) %>% 
   mutate(age = trunc(age)) %>% 
-  # select(-c(COD_FEC_NACIMIENTO, COD_SEXO, COD_MUNICIPIO, DESC_MUNICIPIO, FEC_FALLECIMIENTO)) %>% 
   as.data.frame()
 
 
@@ -334,7 +332,7 @@ remove(infect_covid4)
 gc()
 ```
 
-## pupa (Periodo-Usuario-PAtologías)
+## pupa (Period-User-PAtholoyy)
 
 ```{r}
 ########################################################################################################
@@ -477,7 +475,7 @@ pupa2 <- setDT(pupa_dt) %>%
     COD_FEC_INI_PATOLOGIA <= infect_covid_first_date
     & COD_FEC_FIN_PATOLOGIA >= infect_covid_first_date
   ) %>% 
-  mutate(dummy_indic = 1) %>%  # TODO vas por aquí ÁLVARO
+  mutate(dummy_indic = 1) %>% 
   pivot_wider(
     id_cols = c(NUHSA_ENCRIPTADO, orden_infeccion),
     names_from = DESC_PATOLOGIA_CRONICA,
@@ -493,9 +491,11 @@ remove(pupa_dt)
 gc()
 ```
 
-## Periodos pandémicos
+## Pandemic waves/periods
 
-Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente [enlace (exige red corporativa)](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
+Información extraída del "Informe COVID-19 en Andalucía durante la fase aguda de la pandemia", elaborado
+por el Servicio de Estadísticas Sanitarias. Consejería de Salud y Familias. Disponible en el siguiente
+[enlace (exige red corporativa)](https://www.ieca.junta-andalucia.es/institutodeestadisticaycartografia/badea/operaciones/consulta/anual/50147?CodOper=b3_2314&codConsulta=50147).
 
 ```{r}
 periodos_pandemicos_andalucia <- 
@@ -507,13 +507,13 @@ periodos_pandemicos_andalucia <-
   )
 ```
 
-## Variantes COVID
+## COVID variant information
 
 ```{r}
 
 ```
 
-## episodios_cmbd
+## Inpatient records
 
 Episodios CMBD del 03/03/2019 al 01/04/2022.
 
@@ -560,8 +560,8 @@ B97.21     Coronavirus asociado al SARS como causa de enfermedades clasificadas 
 B34.2      Infección debida a coronavirus, no especificada
 
 
-TODO hay 92k pacientes sin fecha de ingreso. Rafa: a mí ya salen todos con fecha de ingreso y de alta.
-TODO puede ser que ya estuvieran ingresados.
+Hay 92k pacientes sin fecha de ingreso. Rafa: a mí ya salen todos con fecha de ingreso y de alta.
+Puede ser que ya estuvieran ingresados.
 
 ```{r}
 ########################################################################################################
@@ -631,7 +631,7 @@ remove(episodios_cmbd_raw)
 gc()
 ```
 
-## Vacunas
+## Vaccines
 
 Jaime M
 
@@ -643,10 +643,9 @@ Criterios de exclusión: pacientes de 5 dosis.
 -	Vacunas de neumococo en cualquier momento hasta el 31/03/2022.
 -	Todas las vacunas relacionadas con el COVID 19 hasta el 31/03/2022.
 
-TODO STAGI: *Pedir campañas 2019-20.* 
+STAGI: *Pedir campañas 2019-20.* 
 
-TODO hay varias vacunas de neumo y gripe por paciente.
-TODO estudiar numero de infecciones
+Hay varias vacunas de neumo y gripe por paciente.
 
 ```{r}
 ########################################################################################################
@@ -695,13 +694,13 @@ vacunas3 <- setDT(vacunas2) %>%
   mutate(ultima_vac_infecc_dias = infect_covid_first_date - fec_maxvacuna) %>%
   mutate(
     inmun_meses_quant = days(ultima_vac_infecc_dias) / months(1),
-    inmun_menos6meses_bin = if_else(ultima_vac_infecc_dias < 183, 1, 0) # 182 == mean days of 6 months
+    inmun_mas6meses_bin = if_else(ultima_vac_infecc_dias > 182, 1, 0) # 182 == mean days of 6 months
   ) %>%
   mutate(inmun_meses_quant2 = trunc(inmun_meses_quant)) %>% 
   group_by(NUHSA_ENCRIPTADO, orden_infeccion) %>%
   summarise(
     pautas_covid = n(),
-    inmun_menos6meses_bin = unique(inmun_menos6meses_bin),
+    inmun_mas6meses_bin = unique(inmun_mas6meses_bin),
     inmun_meses_quant = unique(inmun_meses_quant2)
   ) %>% 
   ungroup() %>%
@@ -718,28 +717,16 @@ gc()
 # Joining across datasets
 
 ```{r}
-print(Sys.time())
-estudio_vacunas_t_final <- Reduce(function(...) merge(..., all.x = TRUE), list(
-  infect_covid5,
-  poblacion_diana3, 
-  pupa2,
-  vacunas3,
-  episodios_cmbd
-))
-print(Sys.time())
+########################################################################################################
+# Joining across datasets. >>
+# Last creations and mutations of variables.
 
-infect_bdu <- setDT(infect_covid5) %>% 
+infect_bdu_pupa <- setDT(infect_covid5) %>% 
   lazy_dt() %>% 
   left_join(poblacion_diana3, by = "NUHSA_ENCRIPTADO") %>% 
-  as.data.frame()
-# unir estas dos partes?
-infect_bdu_pupa <- setDT(infect_bdu) %>% 
-  lazy_dt() %>% 
   left_join(pupa2, by = c("NUHSA_ENCRIPTADO", "orden_infeccion")) %>% 
   as.data.frame() %>% 
   mutate(across(asma:vih, ~if_else(is.na(.x), 0, .x)))
-
-# TODO vas por aquí!!!!
 
 infect_bdu_pupa_cmbd <- setDT(infect_bdu_pupa) %>% 
   lazy_dt() %>% 
@@ -750,251 +737,299 @@ infect_bdu_pupa_cmbd <- setDT(infect_bdu_pupa) %>%
 infect_bdu_pupa_cmbd_vacunas <- setDT(infect_bdu_pupa_cmbd) %>% 
   lazy_dt() %>% 
   left_join(vacunas3, by = c("NUHSA_ENCRIPTADO", "orden_infeccion")) %>% 
+  as.data.frame() %>% 
+  mutate(pautas_covid = if_else(is.na(pautas_covid), 0, as.numeric(pautas_covid)))
+
+# TODO explicar por qué los que no tenían ninguna dosis al momento de la infección tienen un valor NA en 
+# inmun_mas6meses_bin & inmun_meses_quant
+
+# TODO entiendo que este análisis habría que hacerlo sólo con los vacunados. No puedes asignarle un valor
+# "arbitrario" a los pacientes sin vacunar porque distorsionarías la medición del efecto de haberse 
+# vacunado en aquellso vacunados.
+
+
+
+############################
+############################
+############################
+############################
+# 
+# EXCLUSION CRITERIA 4:
+# More than 3 vaccine doses
+# 
+############################
+############################
+############################
+############################
+
+cases_more_than_3doses <- infect_bdu_pupa_cmbd_vacunas %>% 
+  filter(pautas_covid > 3) %>% 
+  pull(NUHSA_ENCRIPTADO)
+
+# There were 43 excluded cases due to reception of more than 3 vaccine doses
+
+
+########################################################################################################
+# Selecting only required columns. >>
+# Applying exclusion criteria #4
+
+cols_to_exclude <- c(
+  "NUHSA_ENCRIPTADO", "COD_FEC_NACIMIENTO", "COD_SEXO", 
+  "COD_MUNICIPIO", "DESC_MUNICIPIO", paste0("COD_D", 1:5)
+)
+
+estudio_vacunas_t_final_selected <- infect_bdu_pupa_cmbd_vacunas %>% 
+  filter(!NUHSA_ENCRIPTADO %in% cases_more_than_3doses) %>% 
+  select(-cols_to_exclude)
+
+
+
+remove(infect_covid5)
+remove(poblacion_diana3)
+remove(pupa2)
+remove(episodios_cmbd)
+remove(vacunas3)
+remove(infect_bdu_pupa)
+remove(infect_bdu_pupa_cmbd)
+remove(infect_bdu_pupa_cmbd_vacunas)
+gc()
+```
+
+# New variables creation/adjustment
+
+```{r}
+########################################################################################################
+# Cleaning the column names using clean_names()
+# Creating the mortality30d variable; 30 days is the assumed time limit to consider a death as caused...
+# by COVID. >>
+# Creating cancer_organo_solido and cancer_hematologico with value 1 if any kind of tumor is present.
+# Creating some other new variables (see code below).
+# Converting most to factor.
+
+estudio_vacunas_t_final_selected %<>%
+  clean_names() %>%
+  mutate(
+    infecc_previas = orden_infeccion - 1,
+    infecc_previas = as.factor(case_when(
+      infecc_previas == 2 ~ "Dos", infecc_previas == 1 ~ "Uno", infecc_previas == 0 ~ "Ninguna"
+    )),
+    infecc_previas = relevel(infecc_previas, ref = "Ninguna"),
+    orden_infeccion = as.factor(paste0(orden_infeccion, "ª infección")),
+    orden_infeccion = relevel(orden_infeccion, ref = "1ª infección"),
+    desc_sexo = droplevels(desc_sexo),
+    fec_fallecimiento = special_date(fec_fallecimiento),
+    age_fct_60years = as.factor(if_else(age > 59, "60 años o más", "Menor de 60 años")),
+    age_fct_60years = relevel(age_fct_60years, ref = "Menor de 60 años"),
+    mortality = as.factor(if_else(mortality == 1, "Sí", "No")),
+    mortality = relevel(mortality, ref = "No"),
+    mortality30d = as.factor(if_else(
+      fec_fallecimiento - infect_covid_first_date > 30 | is.na(fec_fallecimiento), "No", "Sí"
+    )),
+    mortality30d = relevel(mortality30d, ref = "No"),
+    cancer_organo_solido = 
+      cancer_colorrectal | cancer_de_bronquio_y_pulmon | cancer_de_cabeza_y_cuello
+      | cancer_de_cuello_uterino | cancer_de_estomago |cancer_de_higado_y_vias_biliares
+      | cancer_de_hueso_y_tejidos_blandos | cancer_de_mama | cancer_de_ovario | cancer_de_pancreas 
+      | cancer_de_prostata | cancer_de_rinon_y_pelvis_renal | cancer_de_testiculo | cancer_de_tiroides 
+      | cancer_de_utero | cancer_de_vejiga | melanoma_de_piel | sarcoma_de_kaposi,
+    cancer_hematologico = 
+      cancer_inmunoproliferativo | enfermedad_de_hodgkin | leucemia | linfoma_no_hodgkin,
+    cancer_organo_solido = as.numeric(cancer_organo_solido),
+    cancer_organo_solido = as.factor(if_else(cancer_organo_solido == 1, "Sí", "No")),
+    cancer_organo_solido = relevel(cancer_organo_solido, ref = "No"),
+    cancer_hematologico = as.numeric(cancer_hematologico),
+    cancer_hematologico = as.factor(if_else(cancer_hematologico == 1, "Sí", "No")),
+    cancer_hematologico = relevel(cancer_hematologico, ref = "No"),
+    num_dias_uci = as.numeric(num_dias_uci)
+  ) %>% 
+  select(-c(cancer_colorrectal:cancer_inmunoproliferativo)) %>%
+  select(-c(
+    melanoma_de_piel, sarcoma_de_kaposi, enfermedad_de_hodgkin, leucemia,
+    linfoma_no_hodgkin, fec_fallecimiento
+  ))
+
+df_levels_prev <- estudio_vacunas_t_final_selected %>% 
+  map(levels) %>% 
+  keep(~!is.null(.))
+
+max_length <- max(map_int(df_levels_prev, length))
+
+df_levels <- map(df_levels_prev, ~c(.x, rep(NA, max_length - length(.x)))) %>% 
   as.data.frame()
 
-# TODO recuerda hacer los join uno a uno para unir bien según tabla de datos
 
 
+############################
+############################
+############################
+############################
+# 
+# EXCLUSION CRITERIA 5:
+# Ppl <18yo with >2 doses
+# 
+############################
+############################
+############################
+############################
 
-# TODO
-# CUIDADO AQUI HACER EL JOIN COMORBILIDADES, INGRESOS Y VACUNAS POR NUHSA Y ORDEN INFECCION 
-# PARA NO PERDER LA GRANULARIDAD DE LAS COMORBILIDADES AJUSTADAS!!
+n_cases_under18yo_more2doses <- estudio_vacunas_t_final_selected %>% 
+  filter(age < 18) %>% 
+  filter(pautas_covid > 2) %>% 
+  nrow(.)
 
+# After checking for children under 18 yeras old vaccinated with more than 2 doses, 167 cases were excluded.
 
-
-# TODO se podría hacer un filter para quedarse sólo con las dosis puestas hace menos de seis meses.
-# TODO En concreto, si hace más de 6 meses de la última dosis, no estás inmunizado (como decía Juanlu).
-
-
+estudio_vacunas_t_final_selected %<>% filter(age > 17 | pautas_covid < 3)
 ```
 
-# Selecting only required columns
+# Checking at final stage for cases meeting exclusion criteria
 
 ```{r}
-cols_to_exclude <- c("NUHSA_ENCRIPTADO", "COD_FEC_NACIMIENTO")
-cols_to_include <- setdiff(names(estudio_vacunas_t_final), cols_to_exclude)
-estudio_vacunas_t_final_selected <- estudio_vacunas_t_final %>% select(cols_to_include)
-```
-
-# New variables creation / adjustment
-
-```{r}
-estudio_vacunas_t_final_selected %<>%
-  # Clean the column names using clean_names()
-  clean_names() %>% 
-  # Modify certain columns using mutate()
-  mutate(
-    # Set the infect_covid_first_date column to have a length of either 8 or 10 characters
-    infect_covid_first_date = case_when(
-      stri_length(as.character(infect_covid_first_date)) %in% c(8, 10) ~ infect_covid_first_date
-    ),
-    # Convert the hosp_stay_bin column to numeric
-    hosp_stay_bin = as.numeric(hosp_stay_bin),
-    # Convert the infeccion_ingreso_dias column to numeric
-    infeccion_ingreso_dias = as.numeric(infeccion_ingreso_dias)
-)
-
-
-estudio_vacunas_t_final_selected %<>%
-  mutate(  
-    # Set the mortality30d column to 1 if the difference between fec_fallecimiento and infect_covid_first_date is less than 31 days, 0 otherwise
-    mortality30d = case_when(
-      (ymd(fec_fallecimiento) - infect_covid_first_date) < 31 ~ 1,
-      T ~ 0
-    ),
-    # Set the estancia_hospitalaria_dias column to NA if hosp_stay_bin is not equal to 1, otherwise convert it to an integer
-    estancia_hospitalaria_dias = case_when(
-      hosp_stay_bin == 1 ~ as.integer(estancia_hospitalaria_dias),
-      T ~ NA_integer_
-    ),
-    # Convert covid_first_name to character, replace NAs with "No vacunado", and convert to factor
-    covid_first_name = as.character(covid_first_name),
-    covid_first_name = if_else(is.na(covid_first_name), "No vac", covid_first_name),
-    covid_first_name = factor(covid_first_name),
-    # Convert covid_full_name to character, replace NAs with "No vacunado o vacunado con menos de tres dosis", and convert to factor
-    covid_full_name = as.character(covid_full_name),
-    covid_full_name = if_else(is.na(covid_full_name), "No vac or <3 shots", covid_full_name),
-    covid_full_name = factor(covid_full_name),
-    # Convert pautas_covid to an ordered factor
-    pautas_covid = as.character(pautas_covid),
-    pautas_covid = if_else(is.na(pautas_covid), "0", pautas_covid),
-    pautas_covid = as.factor(pautas_covid)
-  ) %>% 
-  suppressWarnings()     
-
-# grouping cancers by type
-estudio_vacunas_t_final_selected %<>%
-  mutate(cancer_organo_solido = 
-    cancer_de_bronquio_y_pulmon | 
-      cancer_de_cabeza_y_cuello |
-      cancer_de_estomago |
-      cancer_de_hueso_y_tejidos_blandos |
-      cancer_de_mama |
-      cancer_de_ovario |
-      cancer_de_pancreas |
-      cancer_de_prostata |
-      cancer_de_rinon_y_pelvis_renal |
-      cancer_de_testiculo |
-      cancer_de_tiroides |
-      cancer_de_utero |
-      cancer_de_vejiga |
-      cancer_de_cuello_uterino |
-      melanoma_de_piel |
-      sarcoma_de_kaposi,
-    
-    cancer_hematologico = 
-      cancer_inmunoproliferativo |
-        enfermedad_de_hodgkin |
-        leucemia |
-        linfoma_no_hodgkin
-)
-
-estudio_vacunas_t_final_selected %<>% 
-  mutate(age_num = as.numeric(age),
-         estancia_hospitalaria_dias = as.numeric(estancia_hospitalaria_dias),
-         age_num_decada = age_num/10,
-         cancer_organo_solido = as.numeric(cancer_organo_solido),
-         cancer_organo_solido = if_else(is.na(cancer_organo_solido), 0, cancer_organo_solido),
-         cancer_hematologico = as.numeric(cancer_hematologico),
-         cancer_hematologico = if_else(is.na(cancer_hematologico), 0, cancer_hematologico),
-         icu_stay_bin = as.numeric(as.character(icu_stay_bin))
-         )
-
-# we want the factors in no particular order
-estudio_vacunas_t_final_selected <- estudio_vacunas_t_final_selected %>% 
-  mutate_at(c("desc_sexo", "pautas_covid"), droplevels)
-```
-
-# Adressing missingness
-
-## Mapping initial missingness
-
-```{r}
-# Count the number of missing values in each column of the data frame 
-miss_count <- colSums(is.na(estudio_vacunas_t_final_selected))
-
-# Calculate the percentage of missing values in each column
-miss_percent <- round(miss_count / nrow(estudio_vacunas_t_final_selected) * 100,2)
-
-# Order the results by the column names in the original data frame
-ordered_miss_percent <- miss_percent[order(names(estudio_vacunas_t_final_selected))]
-
-# Save the results in a new data frame
-miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Percent = ordered_miss_percent)
-```
-
-### Columns NA filling
-
-```{r}
-quien_tiene_na <- map_dfc(estudio_vacunas_t_final_selected, ~sum(is.na(.)))
-
-
-fill_cols_to_exclude <- 
-  estudio_vacunas_t_final_selected %>% 
-  # ALVARO: hago lo siguiente para ahorrar tiempo, escribiendo asma:vih
-  select(
-    infect_covid_first_date, cod_sexo, desc_sexo, cod_municipio, desc_municipio,
-    fec_fallecimiento, age, mortality, cod_fec_ingreso, cod_fec_alta,
-    infeccion_ingreso_dias, covid_first_name, covid_first_date,
-    covid_full_name, covid_full_date, pautas_covid, mortality30d,
-    cancer_organo_solido, cancer_hematologico, age_num, age_num_decada
-  ) %>% 
-  colnames()
-fill_cols_to_include <- setdiff(names(estudio_vacunas_t_final_selected), fill_cols_to_exclude)
-
-
-# ALVARO: codigo "de seguridad" para vigilar que el lapply no la lie parda
-summary_antes_lapply <- 
-  estudio_vacunas_t_final_selected %>% 
-  select(fill_cols_to_include) %>% 
-  mutate(
-    hosp_stay_bin = as.factor(hosp_stay_bin),
-    icu_stay_bin = as.factor(icu_stay_bin)
-  ) %>% 
-  summary()
-summary_antes_lapply
-
-
-estudio_vacunas_t_final_selected[, fill_cols_to_include] <- 
-  lapply(
-    estudio_vacunas_t_final_selected[, fill_cols_to_include], 
-    function(x) ifelse(is.na(x), 0, x)
+############################
+############################
+############################
+############################
+# 
+# EXCLUSION CRITERIA 1:
+# PCR dates above/below
+# study period
+# 
+if (sum(is.na(estudio_vacunas_t_final_selected$infect_covid_first_date)) == 0) {
+  "There are no people showing PCR sampling with unrecorded date"
+} else (
+  paste0(
+    "There are ", 
+    sum(is.na(estudio_vacunas_t_final_selected$infect_covid_first_date)), 
+    "people showing PCR sampling with unrecorded date"
   )
-
-
-# ALVARO: codigo "de seguridad" para vigilar que el lapply no la lie parda
-summary_despues_lapply <- 
-  estudio_vacunas_t_final_selected %>% 
-  select(fill_cols_to_include) %>% 
-  mutate(
-    hosp_stay_bin = as.factor(hosp_stay_bin),
-    icu_stay_bin = as.factor(icu_stay_bin)
-  ) %>% 
-  summary()
-summary_despues_lapply
+)
+if (min(estudio_vacunas_t_final_selected$infect_covid_first_date, na.rm = TRUE) >= ymd(20200301)) {
+  "There are no people showing PCR sampling with date prior to March 1st 2020"
+} else (
+  paste0(
+    "There are ", 
+    sum(estudio_vacunas_t_final_selected$infect_covid_first_date < ymd(20200301)), 
+    " people showing PCR sampling with date prior to March 1st 2020"
+  )
+)
+if (max(estudio_vacunas_t_final_selected$infect_covid_first_date, na.rm = TRUE) < ymd(20220401)) {
+  "There are no people showing PCR sampling with date later than March 31st 2022"
+} else (
+  paste0(
+    "There are ", 
+    sum(estudio_vacunas_t_final_selected$infect_covid_first_date > ymd(20220331)), 
+    " people showing PCR sampling with date later than March 31st 2022"
+  )
+)
+# 
+############################
+############################
+############################
+############################
+# 
+# EXCLUSION CRITERIA 2:
+# Sex other than male/female
+# or NA values
+# 
+if (sum(!estudio_vacunas_t_final_selected$desc_sexo %in% c("Hombre", "Mujer")) == 0) {
+  "There are no people with sex other than man or woman"
+} else (
+  paste0(
+    "There are ",
+    sum(!estudio_vacunas_t_final_selected$desc_sexo %in% c("Hombre", "Mujer")),
+    " people with sex other than man or woman"
+  )
+)
+if (sum(is.na(estudio_vacunas_t_final_selected$desc_sexo)) == 0) {
+  "There are no people with unkwown sex"
+} else (
+  paste0(
+    "There are ",
+    sum(is.na(estudio_vacunas_t_final_selected$desc_sexo)),
+    " people with unknown sex"
+  )
+)
+############################
+############################
+############################
+############################
+# 
+# EXCLUSION CRITERIA 3:
+# Age bigger than 120
+# or NA values
+# 
+if (sum(estudio_vacunas_t_final_selected$age > 120, na.rm = TRUE) == 0) {
+  "There are no people with age older than 120 years"
+} else (
+  paste0(
+    "There are ",
+    sum(estudio_vacunas_t_final_selected$age > 120, na.rm = TRUE),
+    " people with age older than 120 years"
+  )
+)
+if (sum(is.na(estudio_vacunas_t_final_selected$age)) == 0) {
+  "There are no people with unkwown age"
+} else (
+  paste0(
+    "There are ",
+    sum(is.na(estudio_vacunas_t_final_selected$age)),
+    " people with unknown age"
+  )
+)
+############################
+############################
+############################
+############################
+# 
+# EXCLUSION CRITERIA 4:
+# More than 3 vaccine doses
+# 
+if (
+  sum(
+    estudio_vacunas_t_final_selected$pautas_covid > 3, na.rm = TRUE
+  ) == 0
+) {
+  "There are no people with more than 3 COVID vaccine doses"
+} else (
+  paste0(
+    "There are ",
+    sum(estudio_vacunas_t_final_selected$pautas_covid > 3, na.rm = TRUE),
+    " people with more than 3 COVID vaccine doses"
+  )
+)
+############################
+############################
+############################
+############################
+# 
+# EXCLUSION CRITERIA 5:
+# Ppl <18yo with >2 doses
+# 
+if (
+  sum(
+    estudio_vacunas_t_final_selected$age < 18 & estudio_vacunas_t_final_selected$pautas_covid > 2, 
+    na.rm = TRUE
+  ) == 0
+) {
+  "There are no people under 18 years old with more than 2 COVID vaccine doses"
+} else (
+  paste0(
+    "There are ",
+    sum(
+      estudio_vacunas_t_final_selected$age < 18 & estudio_vacunas_t_final_selected$pautas_covid > 2,
+      na.rm = TRUE
+      ),
+    " people under 18 years old with more than 2 COVID vaccine doses"
+  )
+)
 ```
 
-### Mapping final missingness
+# Saving RDS
 
 ```{r}
-# Count the number of missing values in each column of the data frame 
-miss_count <- colSums(is.na(estudio_vacunas_t_final_selected))
-
-# Calculate the percentage of missing values in each column
-miss_percent <- round(miss_count / nrow(estudio_vacunas_t_final_selected) * 100,2)
-
-# Order the results by the column names in the original data frame
-ordered_miss_percent <- miss_percent[order(names(estudio_vacunas_t_final_selected))]
-
-# Save the results in a new data frame
-miss_percent_df <- data.frame(Column = names(ordered_miss_percent), Missing_Percent = ordered_miss_percent)
-```
-
-# Exclusion criteria
-
-No exclusion criteria by now.
-
-```{r}
-print('Número pacientes con infección COVID confirmada por PCR y fecha de infección disponible')
-a<-nrow(estudio_vacunas_t_final_selected)
-a
-
-print('Pacientes excluídos con Sexo No Especificado')
-estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (desc_sexo %in% c('Hombre','Mujer') )
-b<-nrow(estudio_vacunas_t_final_selected)
-a-b
-
-print('Pacientes excluídos con más de 4 dosis')
-estudio_vacunas_t_final_selected<-estudio_vacunas_t_final_selected %>% filter (pautas_covid %in% c('0','1','2','3','4'))
-c<-nrow(estudio_vacunas_t_final_selected)
-b-c
-
-print('Pacientes excluídos sin información de edad')
-estudio_vacunas_t_final_selected%<>%filter(!is.na(age))
-d<-nrow(estudio_vacunas_t_final_selected)
-c-d
-  
-print('Número final de pacientes')
-nrow(estudio_vacunas_t_final_selected)
-
-estudio_vacunas_t_final_selected <- 
-  estudio_vacunas_t_final_selected %>% 
-  filter((covid_first_date > ymd(20201226)) | is.na(covid_first_date))
-e <- nrow(estudio_vacunas_t_final_selected)
-d-e
-
-estudio_vacunas_t_final_selected <- 
-  estudio_vacunas_t_final_selected %>% 
-  filter(infect_covid_first_date > ymd(20200229))
-f <- nrow(estudio_vacunas_t_final_selected)
-e-f
-```
-
-# Saving Rds and Env
-
-```{r}
-saveRDS(estudio_vacunas_t_final_selected, file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
-
-# save.image(file='/opt/datos_compartidos/vacunas_data/Rfiles/vac_environment.RData')
+saveRDS(
+  estudio_vacunas_t_final_selected, 
+  file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds"
+)
 ```
 
