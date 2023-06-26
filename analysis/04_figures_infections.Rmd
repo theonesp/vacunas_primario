@@ -1,0 +1,690 @@
+---
+title: "04_figures_infections"
+output: html_document
+---
+
+# Environment
+
+```{r setup, include=FALSE}
+library(networkD3)
+library(dplyr)
+library(ggplot2)
+library(janitor)
+library(stringi)
+library(lubridate)
+library(rio)
+library(magrittr)
+```
+
+#Variants distribution in Spain
+
+```{r}
+ecdc_variants_history <- import("https://opendata.ecdc.europa.eu/covid19/virusvariant/csv/data.csv") %>% 
+  filter(source == "GISAID" & country == "Spain")
+
+
+
+ecdc_all_variants <- ecdc_variants_history %>% 
+  pull(variant) %>% 
+  unique(.)
+
+countA <- ecdc_variants_history %>% 
+  count(variant, name = "count") %>% 
+  slice_head(n = ceiling(nrow(.)/2))
+
+countB <- ecdc_variants_history %>% 
+  count(variant, name = "count") %>% 
+  slice_tail(n = floor(nrow(.)/2))
+
+table_variants_spain <- kable(list(countA, countB)) %>% kable_styling()
+
+
+
+variants_who_labels <- tribble(
+  ~who_label_family, ~lineage_and_additional_mutations,
+  "Omicron", "BA.2.75",
+  "Omicron", "BQ.1",
+  "Omicron", "XBB",
+  "Omicron", "XBB.1.5",
+  "Omicron", "CH.1.1",
+  "Omicron", "XBB.1.16",
+  "Omicron", "FE.1",
+  "Alpha", "B.1.1.7",
+  "Alpha", "B.1.1.7+E484K",
+  "Epsilon", "B.1.427/B.1.429",
+  "Unnamed", "B.1.616",
+  "Eta", "B.1.525",
+  "Theta", "P.3",
+  "Kappa", "B.1.617.1",
+  "Unnamed", "B.1.620",
+  "Unnamed", "B.1.617.3",
+  "Unnamed", "B.1.214.2",
+  "Unnamed", "A.23.1+E484K",
+  "Unnamed", "A.27",
+  "Unnamed", "A.28",
+  "Unnamed", "C.16",
+  "Beta", "B.1.351+P384L",
+  "Beta", "B.1.351+E516Q",
+  "Alpha", "B.1.1.7+L452R",
+  "Alpha", "B.1.1.7+S494P",
+  "Iota", "B.1.526",
+  "Unnamed", "B.1.526.1",
+  "Unnamed", "B.1.526.2",
+  "Zeta", "P.2",
+  "Unnamed", "B.1.1.519",
+  "Unnamed", "AV.1",
+  "Unnamed", "AT.1",
+  "Unnamed", "C.36+L452R",
+  "Gamma", "P.1+P681H",
+  "Mu", "B.1.621",
+  "Lambda", "C.37",
+  "Unnamed", "AY.4.2",
+  "Unnamed", "B.1.1.318",
+  "Delta", "B.1.617.2",
+  "Unnamed", "C.1.2",
+  "Delta", "B.1.617.2",
+  "Delta", "B.1.617.2",
+  "Delta", "B.1.617.2",
+  "Beta", "B.1.351",
+  "Gamma", "P.1",
+  "Unnamed", "B.1.640",
+  "Unnamed", "XF",
+  "Unnamed", "XD",
+  "Delta", "B.1.617.2",
+  "Omicron", "BA.1",
+  "Omicron", "BA.3",
+  "Omicron", "BA.2 + L452X",
+  "Omicron", "XAK",
+  "Omicron", "B.1.1.529 + R346X",
+  "Omicron", "B.1.1.529 + K444X, N460X",
+  "Omicron", "B.1.1.529 + N460X, F490X",
+  "Omicron", "BA.2.3.20",
+  "Omicron", "BF.7",
+  "Omicron", "BA.2",
+  "Omicron", "BA.4",
+  "Omicron", "BA.5",
+  "Omicron", "XBC",
+  "Omicron", "BN.1",
+  "Omicron", "XAY"
+) %>% 
+  mutate(
+    lineage_and_additional_mutations = if_else(
+      who_label_family == "Unnamed", "Unknown", lineage_and_additional_mutations
+    )
+  ) %>% 
+  distinct()
+
+
+
+variants_week_spain_labels <- ecdc_variants_history %>% 
+  select(-c(country, country_code, source, valid_denominator)) %>%
+  mutate(variant = if_else(variant %in% c("Other", "UNK"), "Unknown", variant)) %>% 
+  left_join(variants_who_labels, by = c("variant" = "lineage_and_additional_mutations")) %>% 
+  mutate(
+    who_label_family = case_when(
+      who_label_family %in% c("Omicron", "Delta", "Alpha", "Gamma", "Beta") ~ who_label_family,
+      TRUE ~ "Other variants or unnamed"
+    ),
+    percent_variant2 = number_detections_variant/number_sequenced*100
+  ) %>% 
+  filter(!is.nan(percent_variant2)) %>% 
+  mutate(year_week2 = gsub("-", "", year_week)) %>% 
+  filter(
+    !year_week2 %in% c(
+      "202006", paste0(2022, 14:52), paste0(20230, 1:9), paste0(2023, 10:23)
+    )) %>% 
+  select(who_label_family, percent_variant2, everything())
+
+
+
+variants_totalpercents_ranking <- variants_week_spain_labels %>% 
+  group_by(who_label_family) %>% 
+  summarise(weektotal_percent_sum = sum(percent_variant2)) %>% 
+  arrange(desc(weektotal_percent_sum))
+
+variants_ordered <- c("Omicron", "Delta", "Alpha", "Beta", "Gamma", "Other variants or unnamed")
+
+variants_week_spain_labels %<>% 
+  mutate(who_label_family = factor(who_label_family, levels = variants_ordered, ordered = TRUE))
+  
+
+
+cutpoints_variants_of_study <- variants_week_spain_labels %>% 
+  filter(who_label_family %in% c("Alpha", "Delta", "Omicron")) %>% 
+  mutate(
+    year_week = gsub("-", "", year_week),
+    year_week = as.numeric(year_week)
+  ) %>% 
+  arrange(who_label_family, year_week)
+
+
+
+begining_alpha <- 
+  ymd(20210308) # monday of isoweek 2021-10, when alpha started to account for >=75% of sequenced samples
+end_alpha <- 
+  ymd(20210606)
+begining_delta <- 
+  ymd(20210712)
+end_delta <- 
+  ymd(20211212)
+begining_omicron <- 
+  ymd(20211227)
+end_omicron <- 
+  ymd(20220331)
+
+
+
+variants_week_spain_labels2 <- variants_week_spain_labels %>% 
+  group_by(who_label_family, year_week) %>% 
+  summarise(percent_variant2 = sum(percent_variant2)) %>% 
+  ungroup()
+  
+alpha_col <- "#CBD5E8"
+delta_col <- "#FDCDAC"
+omicron_col <- "#B3E2CD"
+
+
+
+variants_week_spain_labels2 %>% 
+  ggplot() +
+  geom_rect(
+    xmin = "2021-10", xmax = "2021-22",
+    ymin = 0, ymax = 100,
+    fill = alpha_col, colour = NA, alpha = 0.2) +
+  geom_rect(
+    xmin = "2021-28", xmax = "2021-49",
+    ymin = 0, ymax = 100,
+    fill = delta_col, colour = NA, alpha = 0.2) +
+  geom_rect(
+    xmin = "2021-52", xmax = "2022-13",
+    ymin = 0, ymax = 100,
+    fill = omicron_col, colour = NA, alpha = 0.2) +
+  geom_line(
+    mapping = aes(x = year_week, y = percent_variant2, group = who_label_family, colour = who_label_family),
+    size = 1.5,
+    alpha = 1
+  ) +
+  scale_y_continuous(expand = expansion(add = c(0, 1))) +
+  # scale_x_date(expand = expansion(add = c(days(0), days(0)))) +
+  # scale_colour_brewer(palette = "Set2") +
+  scale_colour_manual(values = rev(c("#FFD92F", "#A6D854", "#E78AC3", "#8DA0CB", "#FC8D62", "#66C2A5"))) +
+  theme_minimal() + 
+  theme(
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 90, size = 6, hjust = 1, vjust = 0.5),
+    legend.title = element_blank()
+  ) +
+  labs(
+    x = "Epi week",
+    y = "Variants percent",
+    title = "Weekly proportion of SARS-CoV-2 variants sequenced in Spain",
+    caption = "Source: GISAID, www.ecdc.europa.eu/en/publications-data/data-virus-variants-covid-19-eueea"
+  )
+
+
+
+
+variants_week_spain_labels %>% 
+  ggplot() +
+  geom_col(
+    mapping = aes(x = year_week, y = percent_variant2, fill = who_label_family),
+    colour = NA,
+    width = 1,
+    alpha = 0.7
+  ) +
+  # Alpha variant label and line
+  # geom_segment(
+  #   x = "2021-10", xend = "2021-22",
+  #   y = 20, yend = 20,
+  #   colour = "red", size = 4, linetype = "solid",
+  #   arrow = arrow(length = unit(4, "mm"))
+  # ) +
+  # geom_vline(xintercept = "2021-10", colour = "red", size = 0.5, linetype = "solid") +
+  geom_text(
+    x = "2021-10", y = 20, label = "Alpha variant in 75% of sequenced samples",
+    size = 3, colour = "red", angle = 90, 
+    # vjust = 1.2
+  ) +
+  # Delta variant label and line
+  geom_vline(xintercept = "2021-28", colour = "grey25", size = 0.5, linetype = "solid") +
+  geom_text(
+    x = "2021-28", y = 20, label = "Delta variant at least 75%",
+    size = 3, colour = "grey25", angle = 90, vjust = 1.2
+  ) +
+  # Omicron variant label and line
+  geom_vline(xintercept = "2021-52", colour = "grey25", size = 0.5, linetype = "solid") +
+  geom_text(
+    x = "2021-52", y = 20, label = "Omicron variant at least 75%",
+    size = 3, colour = "grey25", angle = 90, vjust = 1.2
+  ) +
+  scale_y_continuous(expand = expansion(add = c(0, 0))) +
+  # scale_x_date(expand = expansion(add = c(days(0), days(0)))) +
+  scale_fill_brewer(palette = "Set3") +
+  theme_bw() + 
+  theme(
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 90, size = 6, hjust = 1, vjust = 0.5),
+    legend.title = element_blank()
+  ) +
+  labs(
+    x = "Epi week",
+    y = "Variants percent",
+    title = "Weekly proportion of SARS-CoV-2 variants sequenced in Spain",
+    caption = "Source: GISAID, www.ecdc.europa.eu/en/publications-data/data-virus-variants-covid-19-eueea"
+  )
+
+
+
+ggsave(
+  filename = "/opt/datos_compartidos/vacunas_data/figuras/variants_spain.png",
+  device = "png",
+  width = 8000,
+  height = 8000,
+  dpi = 700,
+  units = "px"
+)
+```
+
+
+# Upset Plot for describing categories
+
+```{r cars}
+upset(data=vacunas, intersections = NOM_VACUNA,group.by = COD_NUHSA_ENCRIPTADO, order.by = "freq")
+```
+
+# Sankey Plots
+
+## Data Load
+
+You can also embed plots, for example:
+
+```{r}
+
+
+# Read final dataset file 
+estudio_vacunas_t_final_selected <-
+  readRDS(file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+nrow(estudio_vacunas_t_final_selected)
+summary(estudio_vacunas_t_final_selected$pautas_covid)
+
+
+# Vaccinated and unvaccinated population before positive CODIV-19 infection by RT-PCR
+vacunados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")) %>%
+  nrow()
+vacunados
+
+no_vacunados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")) %>%
+  nrow()
+no_vacunados
+
+# Hospital admission data
+vacunados_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & hosp_stay_bin == 1) %>%
+  nrow()
+vacunados_ingresados
+
+vacunados_no_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & hosp_stay_bin == 0) %>%
+  nrow()
+vacunados_no_ingresados
+
+no_vacunados_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & hosp_stay_bin == 1) %>%
+  nrow()
+no_vacunados_ingresados
+
+no_vacunados_no_ingresados <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & hosp_stay_bin == 0) %>%
+  nrow()
+no_vacunados_no_ingresados
+
+
+# UCI admission data
+vacunados_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & icu_stay_bin == 1) %>%
+  nrow()
+vacunados_ingresados_uci
+
+vacunados_no_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & icu_stay_bin == 0) %>%
+  nrow()
+vacunados_no_ingresados_uci
+
+no_vacunados_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & icu_stay_bin == 1) %>%
+  nrow()
+no_vacunados_ingresados_uci
+
+no_vacunados_no_ingresados_uci <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & icu_stay_bin == 0) %>%
+  nrow()
+no_vacunados_no_ingresados_uci
+
+
+# Mortality data
+vacunados_muertos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & mortality30d == 1) %>%
+  nrow()
+vacunados_muertos
+
+vacunados_vivos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("1", "2", "3", "4")
+         & mortality30d == 0) %>%
+  nrow()
+vacunados_vivos
+
+no_vacunados_muertos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & mortality30d == 1) %>%
+  nrow()
+no_vacunados_muertos
+
+no_vacunados_vivos <-
+  estudio_vacunas_t_final_selected %>%
+  filter(pautas_covid %in% c("0")
+         & mortality30d == 0) %>%
+  nrow()
+no_vacunados_vivos
+
+```
+## Sankey Plot for Hospital Admission
+
+
+```{r}
+#Name of nodes
+A <- "Población de estudio"
+B <- "Vacunados"
+C <- "No Vacunados"
+D <- "No Hospitalizados"
+E <- "Hospitalizados"
+
+# Make a connection data frame
+source <- c(A, A, B, B, C, C)
+target <- c(B, C, D, E, D, E)
+value <- c(vacunados, no_vacunados, vacunados_no_ingresados, vacunados_ingresados, no_vacunados_no_ingresados, no_vacunados_ingresados)
+data <- data.frame(source, target, value)
+
+# From these flows we need to create a node data frame: it lists every entities involved in the flow
+nodes <-
+  data.frame("name" = c(
+    as.character(data$source),
+    as.character(data$target)
+    %>% unique()
+  ))
+
+# With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
+data$IDsource <- match(data$source, nodes$name) - 1
+data$IDtarget <- match(data$target, nodes$name) - 1
+
+
+## Add link types for coloring purpose
+data$group = as.factor(c("type_0",
+                         "type_0",
+                         "type_1",
+                         "type_2",
+                         "type_1",
+                         "type_2"))
+
+# Add a 'group' column to each node.
+nodes$group <-
+  as.factor(
+    c(
+      "node1",
+      "node1",
+      "node2",
+      "node2",
+      "node3",
+      "node3",
+      "node2",
+      "node3",
+      "node4",
+      "node5"
+    )
+  )
+
+# Give a color for each group
+my_color <-
+  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+
+# Create the Sankey diagram
+SankeyDiagram <- sankeyNetwork(
+  Links = data,
+  Nodes = nodes,
+  Source = "IDsource",
+  Target = "IDtarget",
+  Value = "value",
+  NodeID = "name",
+  colourScale = my_color,
+  LinkGroup = "group",
+  NodeGroup = "group",
+  fontSize = 16,
+  fontFamily = 34,
+  nodeWidth = 100,
+  nodePadding = 20,
+  height = 400,
+  width = 1100,
+  iterations = 32,
+  sinksRight = FALSE
+)
+
+# Print the Sankey diagram
+SankeyDiagram
+
+
+```
+
+## Sankey Plot for UCI Admission
+
+
+```{r}
+#Name of nodes
+A <- "Población de estudio"
+B <- "Vacunados"
+C <- "No Vacunados"
+G <- "No Ingresados en UCI"
+H <- "Ingresados en UCI"
+
+# Make a connection data frame
+source <- c(A, A, B, B, C, C)
+target <- c(B, C, G, H, G, H)
+value <- c(vacunados, no_vacunados, vacunados_no_ingresados_uci, vacunados_ingresados_uci, no_vacunados_no_ingresados_uci, no_vacunados_ingresados_uci)
+data <- data.frame(source, target, value)
+
+# From these flows we need to create a node data frame: it lists every entities involved in the flow
+nodes <-
+  data.frame("name" = c(
+    as.character(data$source),
+    as.character(data$target)
+    %>% unique()
+  ))
+
+# With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
+data$IDsource <- match(data$source, nodes$name) - 1
+data$IDtarget <- match(data$target, nodes$name) - 1
+
+
+## Add link types for coloring purpose
+data$group = as.factor(c("type_0",
+                         "type_0",
+                         "type_1",
+                         "type_2",
+                         "type_1",
+                         "type_2"))
+
+# Add a 'group' column to each node.
+nodes$group <-
+  as.factor(
+    c(
+      "node1",
+      "node1",
+      "node2",
+      "node2",
+      "node3",
+      "node3",
+      "node2",
+      "node3",
+      "node4",
+      "node5"
+    )
+  )
+
+# Give a color for each group
+my_color <-
+  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+
+# Create the Sankey diagram
+SankeyDiagram <- sankeyNetwork(
+  Links = data,
+  Nodes = nodes,
+  Source = "IDsource",
+  Target = "IDtarget",
+  Value = "value",
+  NodeID = "name",
+  colourScale = my_color,
+  LinkGroup = "group",
+  NodeGroup = "group",
+  fontSize = 16,
+  fontFamily = 34,
+  nodeWidth = 100,
+  nodePadding = 20,
+  height = 400,
+  width = 1100,
+  iterations = 32,
+  sinksRight = FALSE
+)
+
+# Print the Sankey diagram
+SankeyDiagram
+
+```
+
+## Sankey Plot for Survival/Mortality
+
+
+```{r}
+#Name of nodes
+A <- "Población de estudio"
+B <- "Vacunados"
+C <- "No Vacunados"
+I <- "Supervivientes"
+J <- "Fallecidos"
+
+# Make a connection data frame
+source <- c(A, A, B, B, C, C)
+target <- c(B, C, I, J, I, J)
+value <- c(vacunados, no_vacunados, vacunados_vivos, vacunados_muertos, no_vacunados_vivos, no_vacunados_muertos)
+data <- data.frame(source, target, value)
+
+# From these flows we need to create a node data frame: it lists every entities involved in the flow
+nodes <-
+  data.frame("name" = c(
+    as.character(data$source),
+    as.character(data$target)
+    %>% unique()
+  ))
+
+# With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
+data$IDsource <- match(data$source, nodes$name) - 1
+data$IDtarget <- match(data$target, nodes$name) - 1
+
+
+## Add link types for coloring purpose
+data$group = as.factor(c("type_0",
+                         "type_0",
+                         "type_1",
+                         "type_2",
+                         "type_1",
+                         "type_2"))
+
+# Add a 'group' column to each node.
+nodes$group <-
+  as.factor(
+    c(
+      "node1",
+      "node1",
+      "node2",
+      "node2",
+      "node3",
+      "node3",
+      "node2",
+      "node3",
+      "node4",
+      "node5"
+    )
+  )
+
+# Give a color for each group
+my_color <-
+  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+
+# Create the Sankey diagram
+SankeyDiagram <- sankeyNetwork(
+  Links = data,
+  Nodes = nodes,
+  Source = "IDsource",
+  Target = "IDtarget",
+  Value = "value",
+  NodeID = "name",
+  colourScale = my_color,
+  LinkGroup = "group",
+  NodeGroup = "group",
+  fontSize = 16,
+  fontFamily = 34,
+  nodeWidth = 100,
+  nodePadding = 20,
+  height = 400,
+  width = 1100,
+  iterations = 32,
+  sinksRight = FALSE
+)
+
+# Print the Sankey diagram
+SankeyDiagram
+```
+
+
+# Rentabilidad Edad
+
+```{r}
+# Definir los parámetros
+costo_hospitalizacion <- 4612.76
+precio_vacuna <- 31
+dosis_equiv <- 148
+nnt <- 148
+red_abs_riesgo <- 0.0068
+
+# Definir un vector de edades de 18 a 120
+edades <- 18:120
+
+# Calcular la rentabilidad para cada edad
+rentabilidad <- (costo_hospitalizacion/dosis_equiv) / nnt / (1 - red_abs_riesgo)
+
+# Crear un dataframe con los resultados
+df <- data.frame(edad = edades, rentabilidad = rentabilidad)
+
+```
+
