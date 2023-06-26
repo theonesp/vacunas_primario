@@ -1,0 +1,747 @@
+---
+title: "02b_modeling_improved"
+# output: html_document
+---
+
+# Environment
+
+```{r}
+library(magrittr)
+library(tableone)
+library(kableExtra)
+library(gtsummary)
+library(rio)
+library(summarytools)
+library(zoo)
+library(lubridate)
+library(vroom)
+library(stringr)
+library(stringi)
+library(tidyr)
+library(janitor)
+# library(skimr)
+library(mgcv)
+library(parallel)
+library(parglm)
+library(pROC)
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(feather)
+library(broom)
+library(htmlTable)
+library(purrr)
+library(parsnip)
+library(recipes)
+library(workflows)
+
+
+
+estudio_vacunas_t_final_selected <- 
+  readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds")
+
+
+
+comorb_no_cancer <- estudio_vacunas_t_final_selected %>% 
+  select(asma, cardiopatia_isquemica:diabetes, epoc:insuficiencia_renal_cronica, vih) %>% 
+  colnames(.)
+
+solid_cancers_vector <- estudio_vacunas_t_final_selected %>% 
+  select(cancer_colorrectal:cancer_de_vejiga, melanoma_de_piel, sarcoma_de_kaposi) %>% 
+  colnames(.)
+
+hemat_cancers_vector <- estudio_vacunas_t_final_selected %>% 
+  select(cancer_inmunoproliferativo, enfermedad_de_hodgkin, linfoma_no_hodgkin, leucemia) %>% 
+  colnames(.)
+
+
+
+estudio_vacunas_t_final_selected %<>% 
+  mutate(
+    variant_period = relevel(as.factor(variant_period), ref = "Dominance of Alpha variant"),
+    across(comorb_no_cancer, ~if_else(.x == 1, "Sí", "No")),
+    across(comorb_no_cancer, as.factor),
+    across(comorb_no_cancer, ~relevel(.x, ref = "No")),
+    across(c(hosp_stay_bin, icu_stay_bin), ~if_else(.x == 1, "Sí", "No")),
+    across(c(hosp_stay_bin, icu_stay_bin), ~as.factor(.x)),
+    across(c(hosp_stay_bin, icu_stay_bin), ~relevel(.x, ref = "No")),
+  )
+```
+
+# Creating functions
+
+```{r}
+# metric performance
+precision <- function(matrix) {
+  # True positive
+  tp <- matrix[2, 2]
+  # false positive
+  fp <- matrix[1, 2]
+  return (tp / (tp + fp))
+}
+
+recall <- function(matrix) {
+  # true positive
+  tp <- matrix[2, 2]
+  # false negative
+  fn <- matrix[2, 1]
+  return (tp / (tp + fn))
+}
+
+extract_coef_pval_OR <- function(model) {
+  as.data.frame(tibble(
+    term = names(model$coefficients),
+    estimate = model$coefficients,
+    std.error = sqrt(diag(vcov(model))),
+    statistic = model$coefficients / sqrt(diag(vcov(model))),
+    p.value = 2 * (1 - pnorm(abs(statistic))),
+    OR = round(exp(estimate), 2),
+    OR_CI_lower = round(exp(estimate - 1.96 * std.error), 2),
+    OR_CI_upper = round(exp(estimate + 1.96 * std.error), 2)
+  ))
+}
+```
+
+# Logistic regression. Outcome: hosp_stay_bin
+
+## Fitting the model
+
+```{r}
+logreg_hosp_stay_bin <- 
+  glm(
+    hosp_stay_bin ~ 
+      age + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
+      hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + 
+      insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + 
+      n_vacunas_covid + n_prev_infecc + ultima_inmun_infecc_bin,
+    data =  estudio_vacunas_t_final_selected,
+    family = binomial()
+  )
+```
+
+## Adjusted Odds Ratios for hospital stay
+
+```{r fig.height = 16, fig.width = 10}
+coef_pval_df_hosp_stay_bin <- extract_coef_pval_OR(logreg_hosp_stay_bin)
+
+# write.csv(
+#   coef_pval_df_hosp_stay_bin,
+#   "/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_hosp_stay_bin_manuscript.csv",
+#   col.names = F
+# )
+
+htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
+```
+
+## Forest Plot
+
+```{r}
+coef_pval_df_hosp_stay_bin2 <- 
+  coef_pval_df_hosp_stay_bin %>% 
+  mutate(
+    orden = case_when(
+      term == "age" ~ 1,
+      term == "desc_sexoHombre" ~ 2,
+      term == "asmaSí" ~ 3,
+      term == "cardiopatia_isquemicaSí" ~ 4,
+      term == "cirrosis_hepaticaSí" ~ 5,
+      term == "diabetesSí" ~ 6,
+      term == "epocSí" ~ 7,
+      term == "hepatopatia_cronica_excepto_cirrosisSí" ~ 8,
+      term == "hipertensionSí" ~ 9,
+      term == "insuficiencia_cardiacaSí" ~ 10,
+      term == "insuficiencia_renal_cronicaSí" ~ 11,
+      term == "vihSí" ~ 12,
+      term == "cancer_hematologicoSí" ~ 13,
+      term == "cancer_organo_solidoSí" ~ 14,
+      term == "n_vacunas_covidUna" ~ 15,
+      term == "n_vacunas_covidDos" ~ 16,
+      term == "n_vacunas_covidTres" ~ 17,
+      term == "n_prev_infeccUno" ~ 18,
+      term == "n_prev_infeccDos" ~ 19,
+      term == "ultima_inmun_infecc_binOne to three months" ~ 20,
+      term == "ultima_inmun_infecc_binThree to six months" ~ 21,
+      term == "ultima_inmun_infecc_binSix months or more" ~ 22,
+      term == "(Intercept)" ~ 23,
+      TRUE ~ 999
+    ),
+    term = case_when(
+      term == "age" ~ "Age (years)",
+      term == "desc_sexoHombre" ~ "Sex (male)",
+      term == "asmaSí" ~ "Asthma",
+      term == "cardiopatia_isquemicaSí" ~ "Ischemic heart disease",
+      term == "cirrosis_hepaticaSí" ~ "Cirrhosis",
+      term == "diabetesSí" ~ "Diabetes",
+      term == "epocSí" ~ "COPD",
+      term == "hepatopatia_cronica_excepto_cirrosisSí" ~ "Chronic liver disease (except cirrhosis)",
+      term == "hipertensionSí" ~ "Hipertension",
+      term == "insuficiencia_cardiacaSí" ~ "Heart failure",
+      term == "insuficiencia_renal_cronicaSí" ~ "Chronic kidney disease",
+      term == "vihSí" ~ "HIV+",
+      term == "cancer_hematologicoSí" ~ "Haematological cancer",
+      term == "cancer_organo_solidoSí" ~ "Solid organ cancer",
+      term == "n_vacunas_covidUna" ~ "1 vaccine dose",
+      term == "n_vacunas_covidDos" ~ "2 vaccine doses",
+      term == "n_vacunas_covidTres" ~ "3 vaccine doses",
+      term == "n_prev_infeccUno" ~ "1 previous infection",
+      term == "n_prev_infeccDos" ~ "2 previous infections",
+      term == "ultima_inmun_infecc_binOne to three months" ~ "1-3 months past since last exposure*",
+      term == "ultima_inmun_infecc_binThree to six months" ~ "3-6 months past since last exposure*",
+      term == "ultima_inmun_infecc_binSix months or more" ~ "6+ months past since last exposure*",
+      TRUE ~ term
+    )
+  ) %>% 
+  arrange(desc(orden)) %>% 
+  select(-orden) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(term = factor(term, levels = term, ordered = TRUE))
+
+
+ggplot(
+  coef_pval_df_hosp_stay_bin2, 
+  aes(x = term, y = OR, ymin = OR_CI_lower, ymax = OR_CI_upper)) +
+  geom_hline(yintercept = 1, colour = "blue", size = 0.5, linetype = "solid") +
+  geom_pointrange(alpha = 0.5, shape = 18, size = 0.8) +
+  geom_vline(xintercept = 0, size = 1.2) +
+  scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  scale_y_continuous(
+    breaks = c(0, 1, 2, 3, 4, 5, 6, 7, 8),
+    expand = expansion(add = c(0.1, 0.1))
+  ) +
+  # scale_y_log10(
+  #   limits=c(0.1, 4)
+  #   ) +
+  coord_flip() +
+  labs(y = "Odds Ratio", x = NULL) +
+  ggtitle("Adjusted Odds Ratios for hospital admission") +
+  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/forest_plot_hosp_stay_bin_manuscript2.png",
+  width = 3200,
+  height = 1750,
+  dpi = 300,
+  units = "px"
+)
+```
+
+## Model Performance
+
+```{r eval = FALSE, include = FALSE}
+y_test <- estudio_vacunas_final_selected$hosp_stay_bin
+
+predict <- predict(logreg_hosp_stay_bin, estudio_vacunas_final_selected, type = 'response')
+# confusion matrix
+table_mat <- table(y_test, predict > 0.85)
+table_mat
+
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.1))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
+```
+
+# Logistic regression. Outcome: icu_stay_bin
+
+## Fitting the model
+
+```{r}
+logreg_icu_stay_bin <- 
+  glm(
+    icu_stay_bin ~ 
+      age + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
+      hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + 
+      insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + 
+      n_vacunas_covid + n_prev_infecc + ultima_inmun_infecc_bin,
+    data = estudio_vacunas_t_final_selected,
+    family = binomial()
+  )
+
+```
+
+## Adjusted Odds ratio for ICU stay
+
+```{r fig.height = 16, fig.width = 10}
+coef_pval_df_logreg_icu_stay_bin <- extract_coef_pval_OR(logreg_icu_stay_bin)
+
+# write.csv(
+#   coef_pval_df_logreg_icu_stay_bin,
+#   "/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_icu_stay_bin_manuscript.csv",
+#   col.names = F
+# )
+
+htmlTable(coef_pval_df_logreg_icu_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
+```
+
+## Forest Plot
+
+```{r}
+coef_pval_df_logreg_icu_stay_bin2 <- 
+  coef_pval_df_logreg_icu_stay_bin %>% 
+  mutate(
+    orden = case_when(
+      term == "age" ~ 1,
+      term == "desc_sexoHombre" ~ 2,
+      term == "asmaSí" ~ 3,
+      term == "cardiopatia_isquemicaSí" ~ 4,
+      term == "cirrosis_hepaticaSí" ~ 5,
+      term == "diabetesSí" ~ 6,
+      term == "epocSí" ~ 7,
+      term == "hepatopatia_cronica_excepto_cirrosisSí" ~ 8,
+      term == "hipertensionSí" ~ 9,
+      term == "insuficiencia_cardiacaSí" ~ 10,
+      term == "insuficiencia_renal_cronicaSí" ~ 11,
+      term == "vihSí" ~ 12,
+      term == "cancer_hematologicoSí" ~ 13,
+      term == "cancer_organo_solidoSí" ~ 14,
+      term == "n_vacunas_covidUna" ~ 15,
+      term == "n_vacunas_covidDos" ~ 16,
+      term == "n_vacunas_covidTres" ~ 17,
+      term == "n_prev_infeccUno" ~ 18,
+      term == "n_prev_infeccDos" ~ 19,
+      term == "ultima_inmun_infecc_binOne to three months" ~ 20,
+      term == "ultima_inmun_infecc_binThree to six months" ~ 21,
+      term == "ultima_inmun_infecc_binSix months or more" ~ 22,
+      term == "(Intercept)" ~ 23,
+      TRUE ~ 999
+    ),
+    term = case_when(
+      term == "age" ~ "Age (years)",
+      term == "desc_sexoHombre" ~ "Sex (male)",
+      term == "asmaSí" ~ "Asthma",
+      term == "cardiopatia_isquemicaSí" ~ "Ischemic heart disease",
+      term == "cirrosis_hepaticaSí" ~ "Cirrhosis",
+      term == "diabetesSí" ~ "Diabetes",
+      term == "epocSí" ~ "COPD",
+      term == "hepatopatia_cronica_excepto_cirrosisSí" ~ "Chronic liver disease (except cirrhosis)",
+      term == "hipertensionSí" ~ "Hipertension",
+      term == "insuficiencia_cardiacaSí" ~ "Heart failure",
+      term == "insuficiencia_renal_cronicaSí" ~ "Chronic kidney disease",
+      term == "vihSí" ~ "HIV+",
+      term == "cancer_hematologicoSí" ~ "Haematological cancer",
+      term == "cancer_organo_solidoSí" ~ "Solid organ cancer",
+      term == "n_vacunas_covidUna" ~ "1 vaccine dose",
+      term == "n_vacunas_covidDos" ~ "2 vaccine doses",
+      term == "n_vacunas_covidTres" ~ "3 vaccine doses",
+      term == "n_prev_infeccUno" ~ "1 previous infection",
+      term == "n_prev_infeccDos" ~ "2 previous infections",
+      term == "ultima_inmun_infecc_binOne to three months" ~ "1-3 months past since last exposure*",
+      term == "ultima_inmun_infecc_binThree to six months" ~ "3-6 months past since last exposure*",
+      term == "ultima_inmun_infecc_binSix months or more" ~ "6+ months past since last exposure*",
+      TRUE ~ term
+    )
+  ) %>% 
+  arrange(desc(orden)) %>% 
+  select(-orden) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(
+    term = factor(term, levels = term, ordered = TRUE),
+    sobrepasa = case_when(
+      OR_CI_upper > (sort(coef_pval_df_logreg_icu_stay_bin$OR_CI_upper, decreasing = TRUE)[2] + 10) ~ 1,
+      TRUE ~ 0
+    ),
+    nuevo_OR_CI_upper = case_when(
+      OR_CI_upper > (sort(coef_pval_df_logreg_icu_stay_bin$OR_CI_upper, decreasing = TRUE)[2] + 10)
+        ~ sort(coef_pval_df_logreg_icu_stay_bin$OR_CI_upper, decreasing = TRUE)[2] + 0.1,
+      TRUE ~ OR_CI_upper
+    )
+  )
+
+
+
+ggplot(
+  coef_pval_df_logreg_icu_stay_bin2, 
+  aes(x = term, y = OR, ymin = OR_CI_lower, ymax = nuevo_OR_CI_upper)) +
+  geom_hline(yintercept = 1, colour = "blue", size = 0.5, linetype = "solid") +
+  geom_pointrange(alpha = 0.5, shape = 18, size = 0.8) +
+  geom_vline(xintercept = 0, size = 1.2) +
+  scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  geom_text(
+    data = coef_pval_df_logreg_icu_stay_bin2 %>% filter(sobrepasa == 1),
+    mapping = aes(x = term, y = nuevo_OR_CI_upper),
+    label = "▶", size = 3, family = "HiraKakuPro-W3", colour = "red", vjust = 0.4) +
+  # geom_point(data = coef_pval_df_logreg_icu_stay_bin2 %>% filter(sobrepasa = 1),
+  #            shape = 17,
+  #            ) +
+  scale_y_continuous(expand = expansion(add = c(0.1, 0.05))) +
+  # scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y = "Odds Ratio", x = NULL) +
+  ggtitle("Adjusted Odds Ratios for ICU admission") +
+  theme_minimal()
+
+# Save the plot as a PNG file
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/forest_plot_icu_stay_bin_manuscript2.png",
+  width = 3200,
+  height = 1750,
+  dpi = 300,
+  units = "px"
+)
+```
+
+## Model Performance
+
+```{r eval = FALSE, include = FALSE}
+y_test<-estudio_vacunas_final_selected$icu_stay_bin
+
+predict <- predict(logreg_icu_stay_bin, estudio_vacunas_final_selected, type = 'response')
+# confusion matrix
+table_mat <- table(y_test, predict > 0.1)
+table_mat
+
+accuracy <- sum(diag(table_mat)) / sum(table_mat)
+accuracy
+
+prec <- precision(table_mat)
+prec
+
+rec <- recall(table_mat)
+rec
+
+f1 <- 2 * ((prec * rec) / (prec + rec))
+f1
+
+#AUTOC plot
+
+predicted_bin<-as.numeric(c(predict > 0.3))
+rocobj <- roc(y_test, predicted_bin)
+
+auc <- round(auc(y_test, predicted_bin),2)
+
+#create ROC plot
+ggroc(rocobj, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', auc, ')'))
+
+metrics<-round(as.data.frame(rbind(accuracy,auc)),2)
+metrics$metric<-rownames(metrics)
+metrics$metric<-toupper(metrics$metric)
+
+names(metrics)<-c('Value', 'Metric')
+
+ggplot(data=metrics, aes(x=Metric, y=Value)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()
+```
+
+# Logistic regression. Outcome: mortality30d
+
+## Fitting the model
+
+```{r}
+logreg_mortality <- 
+  glm(
+    mortality30d ~ 
+      age + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
+      hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + 
+      insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + 
+      n_vacunas_covid + n_prev_infecc + ultima_inmun_infecc_bin,
+    data = estudio_vacunas_t_final_selected,
+    family = binomial()
+  )
+
+```
+
+## Adjusted Odds ratios for mortality within 30 days past infection
+
+```{r fig.height = 16, fig.width = 10}
+coef_pval_df_logreg_mortality <- extract_coef_pval_OR(logreg_mortality)
+
+# write.csv(
+#   coef_pval_df_logreg_mortality,
+#   "/opt/datos_compartidos/vacunas_data/tablas/coef_pval_df_logreg_mortality_manuscript.csv",
+#   col.names = F
+# )
+
+htmlTable(coef_pval_df_logreg_mortality[,c("term","OR","OR_CI_lower","OR_CI_upper")])
+```
+
+## Forest Plot
+
+```{r}
+coef_pval_df_logreg_mortality2 <- 
+  coef_pval_df_logreg_mortality %>% 
+  mutate(orden = case_when(
+    term == "age" ~ 1,
+      term == "desc_sexoHombre" ~ 2,
+      term == "asmaSí" ~ 3,
+      term == "cardiopatia_isquemicaSí" ~ 4,
+      term == "cirrosis_hepaticaSí" ~ 5,
+      term == "diabetesSí" ~ 6,
+      term == "epocSí" ~ 7,
+      term == "hepatopatia_cronica_excepto_cirrosisSí" ~ 8,
+      term == "hipertensionSí" ~ 9,
+      term == "insuficiencia_cardiacaSí" ~ 10,
+      term == "insuficiencia_renal_cronicaSí" ~ 11,
+      term == "vihSí" ~ 12,
+      term == "cancer_hematologicoSí" ~ 13,
+      term == "cancer_organo_solidoSí" ~ 14,
+      term == "n_vacunas_covidUna" ~ 15,
+      term == "n_vacunas_covidDos" ~ 16,
+      term == "n_vacunas_covidTres" ~ 17,
+      term == "n_prev_infeccUno" ~ 18,
+      term == "n_prev_infeccDos" ~ 19,
+      term == "ultima_inmun_infecc_binOne to three months" ~ 20,
+      term == "ultima_inmun_infecc_binThree to six months" ~ 21,
+      term == "ultima_inmun_infecc_binSix months or more" ~ 22,
+      term == "(Intercept)" ~ 23,
+      TRUE ~ 999
+    ),
+    term = case_when(
+      term == "age" ~ "Age (years)",
+      term == "desc_sexoHombre" ~ "Sex (male)",
+      term == "asmaSí" ~ "Asthma",
+      term == "cardiopatia_isquemicaSí" ~ "Ischemic heart disease",
+      term == "cirrosis_hepaticaSí" ~ "Cirrhosis",
+      term == "diabetesSí" ~ "Diabetes",
+      term == "epocSí" ~ "COPD",
+      term == "hepatopatia_cronica_excepto_cirrosisSí" ~ "Chronic liver disease (except cirrhosis)",
+      term == "hipertensionSí" ~ "Hipertension",
+      term == "insuficiencia_cardiacaSí" ~ "Heart failure",
+      term == "insuficiencia_renal_cronicaSí" ~ "Chronic kidney disease",
+      term == "vihSí" ~ "HIV+",
+      term == "cancer_hematologicoSí" ~ "Haematological cancer",
+      term == "cancer_organo_solidoSí" ~ "Solid organ cancer",
+      term == "n_vacunas_covidUna" ~ "1 vaccine dose",
+      term == "n_vacunas_covidDos" ~ "2 vaccine doses",
+      term == "n_vacunas_covidTres" ~ "3 vaccine doses",
+      term == "n_prev_infeccUno" ~ "1 previous infection",
+      term == "n_prev_infeccDos" ~ "2 previous infections",
+      term == "ultima_inmun_infecc_binOne to three months" ~ "1-3 months past since last exposure*",
+      term == "ultima_inmun_infecc_binThree to six months" ~ "3-6 months past since last exposure*",
+      term == "ultima_inmun_infecc_binSix months or more" ~ "6+ months past since last exposure*",
+      TRUE ~ term)) %>% 
+  arrange(desc(orden)) %>% 
+  select(-orden) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(term = factor(term, levels = term, ordered = TRUE))
+
+
+ggplot(
+  coef_pval_df_logreg_mortality2, 
+  aes(x = term, y = OR, ymin = OR_CI_lower, ymax = OR_CI_upper)) +
+  geom_hline(yintercept = 1, colour = "blue", size = 0.5, linetype = "solid") +
+  geom_pointrange(alpha = 0.5, shape = 18, size = 0.8) +
+  geom_vline(xintercept = 0, size = 1.2) +
+  scale_x_discrete(expand = expansion(add = c(1, 0.8))) + 
+  scale_y_continuous(expand = expansion(add = c(0.1, 0.1))) +
+  # scale_y_log10(limits=c(0.1, 4)) +
+  coord_flip() +
+  labs(y = "Odds Ratio", x = NULL) +
+  ggtitle("Adjusted Odds Ratio for mortality within 30 days from infection") +
+  theme_minimal()
+
+
+
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/forest_plot_mortality30d_manuscript2.png",
+  width = 3200,
+  height = 1750,
+  dpi = 300,
+  units = "px"
+)
+```
+
+# Data subsetting prior to regressions
+
+```{r}
+# A function created to make my life a tiny bit easier. 
+# Not fancy, but practical
+subsetting <- function(lev_vacc_vctr, age_gr, variant) {
+  output <- estudio_vacunas_t_final_selected %>% 
+    filter(
+      n_vacunas_covid %in% lev_vacc_vctr
+      & age_fct_60years == age_gr
+      & variant_period == variant
+    ) %>% 
+    mutate(across(c(n_vacunas_covid, age_fct_60years, variant_period), droplevels))
+  return(output)
+}
+
+# Subsetting: two doses
+twodoses_over60alpha <- subsetting(c("Dos", "Ninguna"), "60 años o más", "Dominance of Alpha variant")
+twodoses_over60delta <- subsetting(c("Dos", "Ninguna"), "60 años o más", "Dominance of Delta variant")
+twodoses_over60omicron <- subsetting(c("Dos", "Ninguna"), "60 años o más", "Dominance of Omicron variant")
+
+twodoses_under60alpha <- subsetting(c("Dos", "Ninguna"), "Menor de 60 años", "Dominance of Alpha variant")
+twodoses_under60delta <- subsetting(c("Dos", "Ninguna"), "Menor de 60 años",  "Dominance of Delta variant")
+twodoses_under60omicron <- subsetting(c("Dos", "Ninguna"), "Menor de 60 años", "Dominance of Omicron variant")
+
+# Subsetting: three doses
+threedoses_over60alpha <- subsetting(c("Tres", "Ninguna"), "60 años o más", "Dominance of Alpha variant")
+threedoses_over60delta <- subsetting(c("Tres", "Ninguna"), "60 años o más", "Dominance of Delta variant")
+threedoses_over60omicron <- subsetting(c("Tres", "Ninguna"), "60 años o más", "Dominance of Omicron variant")
+
+threedoses_under60alpha <- subsetting(c("Tres", "Ninguna"), "Menor de 60 años", "Dominance of Alpha variant")
+threedoses_under60delta <- subsetting(c("Tres", "Ninguna"), "Menor de 60 años",  "Dominance of Delta variant")
+threedoses_under60omicron <- subsetting(c("Tres", "Ninguna"), "Menor de 60 años", "Dominance of Omicron variant")
+```
+
+# Logistic regressions adjusted for age group and variant. Outcome: HOSPITAL ADMISSION
+
+```{r}
+flights_recipe <- 
+  recipe(
+    arr_delay ~ ., 
+    # Model outcome should be placed in LHS. predictors should be found in RHS.
+    # Variables may be listed by name, or you can use the dot (.) to indicate all other variables
+    data = flight_data
+    # This doesn’t change the data itself; it is only used as a reference for the variables...
+    # and their types, like factors, integers, dates, etc
+  ) %>% 
+  update_role(flight, time_hour, new_role = "ID") %>% 
+  # new role "ID" is custom; it is made as we name it inside the function
+  # This tells the recipe to keep the two variables as NEITHER predictor NOR outcome (out of formula)
+  step_dummy(all_nominal_predictors()) %>% 
+  # For factor variables, standard practice is to convert them into dummy or indicator variables...
+  # to make them numeric. These are binary values for each level of the factor.
+  # Unlike the standard model formula methods in R, a recipe does not automatically create...
+  # dummy variables for you; you’ll need to tell your recipe to add this step (step_dummy)
+  step_zv(all_predictors())
+  # Since factor levels and thus dummy variables come from reference data, when the recipe is applied...
+  # to datasets that do not contain some levels in a variable, the correspondant dummy column...
+  # would contain all zeros. This is a “zero-variance predictor” that has no information...
+  # within the column. It usually causes warnings and other issues. step_zv() will remove columns...
+  # from the data when the variable have a single value.
+
+
+colnames(estudio_vacunas_t_final_selected)
+vars_to_exclude <- estudio_vacunas_t_final_selected %>% 
+  select() %>% 
+  colnames(.)
+
+custom_recipe <- function(model_outcome, data) {
+  recipe <- 
+    recipe({{model_outcome}} ~ ., data = data) %>% 
+    update_role(flight, time_hour, new_role = "ID")
+}
+
+
+
+
+
+
+linear_regr_fit <- 
+  workflow() %>% 
+  add_model(logistic_reg()) %>% 
+  add_recipe(custom_recipe(model_outcome = , data = .....)) %>% 
+  fit(data = .....)
+
+
+
+
+
+
+
+
+
+vars_to_exclude <- estudio_vacunas_t_final_selected %>% 
+  select(
+    nuhsa_encriptado:prev_infect_date, fec_fallecimiento, mortality,
+    cancer_colorrectal:cancer_inmunoproliferativo, enfermedad_de_hodgkin, leucemia:sarcoma_de_kaposi,
+    cod_fec_ingreso:estancia_hospitalaria_dias, infeccion_ingreso_dias, infeccion_alta_dias,
+    ultima_inmun_infecc_meses_quant
+    
+  ) %>% 
+  colnames(.)
+
+or_glm_under60_alpha_2doses <- 
+  glm(
+    hosp_stay_bin ~ 
+      age + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
+      hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + 
+      insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + 
+      n_vacunas_covid + n_prev_infecc,
+    data = under60_alpha_2doses,
+    family = binomial()
+  ) %>% 
+  extract_coef_pval_OR() %>% 
+  mutate(
+    VE = (1 - OR) * 100,
+    VE_CI_lower = (1 - OR_CI_lower) * 100,
+    VE_CI_upper = (1 - OR_CI_upper) * 100,
+    age_group = "Under 60 years old",
+    variant = "Alpha",
+    dose_comparison = "2 doses"
+  )
+
+
+
+
+summary(over60_alpha_2doses)
+over60_alpha_2doses <- estudio_vacunas_t_final_selected %>% 
+  filter(
+    age_fct_60years == "60 años o más"
+    & variant_period == "Dominance of Alpha variant"
+    & n_vacunas_covid %in% c("Dos", "Ninguna")
+  ) %>% 
+  mutate(n_vacunas_covid = droplevels(n_vacunas_covid))
+sapply(lapply(over60_alpha_2doses, unique), length)
+or_glm_over60_alpha_2doses <- 
+  glm(
+    hosp_stay_bin ~ 
+      age + 
+      desc_sexo + 
+      asma + 
+      cardiopatia_isquemica + 
+      cirrosis_hepatica + 
+      diabetes + 
+      epoc + 
+      hepatopatia_cronica_excepto_cirrosis + 
+      hipertension + 
+      insuficiencia_cardiaca + 
+      insuficiencia_renal_cronica +
+      # vih +
+      cancer_hematologico +
+      cancer_organo_solido + 
+      n_vacunas_covid +
+      n_prev_infecc +
+      ultima_inmun_infecc_bin
+    ,
+    data = over60_alpha_2doses,
+    family = binomial()
+  ) %>% 
+  extract_coef_pval_OR() %>% 
+  mutate(
+    VE = (1 - OR) * 100,
+    VE_CI_lower = (1 - OR_CI_lower) * 100,
+    VE_OR_CI_upper = (1 - OR_CI_upper) * 100,
+    age_group = "60 years old or more",
+    variant = "Alpha",
+    dose_comparison = "2 doses"
+  )
+
+# para dos dosis incluir desde los 12 años. para tres dosis, incluir desde los 18 años
+```
+

@@ -11,9 +11,148 @@ library(magrittr)
 library(tableone)
 library(kableExtra)
 library(gtsummary)
+library(rio)
+library(purrr)
+library(summarytools)
+library(zoo)
+library(lubridate)
+library(vroom)
+library(stringr)
+library(stringi)
+library(tidyr)
+library(ggplot2)
+library(parallel)
+library(janitor)
 
-estudio_vacunas_t_final_selected <- readRDS(file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+
+
+estudio_vacunas_t_final_selected <- readRDS(
+  "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds"
+)
+
+
+
+comorb_no_cancer <- estudio_vacunas_t_final_selected %>% 
+  select(asma, cardiopatia_isquemica:diabetes, epoc:insuficiencia_renal_cronica, vih) %>% 
+  colnames(.)
+
+solid_cancers_vector <- estudio_vacunas_t_final_selected %>% 
+  select(cancer_colorrectal:cancer_de_vejiga, melanoma_de_piel, sarcoma_de_kaposi) %>% 
+  colnames(.)
+
+hemat_cancers_vector <- estudio_vacunas_t_final_selected %>% 
+  select(cancer_inmunoproliferativo, enfermedad_de_hodgkin, linfoma_no_hodgkin, leucemia) %>% 
+  colnames(.)
+
+
+
+estudio_vacunas_t_final_selected %<>% 
+  mutate(
+    variant_period = relevel(as.factor(variant_period), ref = "Alpha"),
+    across(comorb_no_cancer, ~if_else(.x == 1, "Sí", "No")),
+    across(comorb_no_cancer, as.factor),
+    across(comorb_no_cancer, ~relevel(.x, ref = "No")),
+    across(c(hosp_stay_bin, icu_stay_bin), ~if_else(.x == 1, "Sí", "No")),
+    across(c(hosp_stay_bin, icu_stay_bin), ~as.factor(.x)),
+    across(c(hosp_stay_bin, icu_stay_bin), ~relevel(.x, ref = "No")),
+  )
 ```
+
+# Table 1
+
+```{r}
+str(estudio_vacunas_t_final_selected)
+
+
+##############################################################################################################
+# Total columns
+
+numeric_total <- 
+  bind_rows(
+    estudio_vacunas_t_final_selected %>% 
+      select(age) %>% 
+      map_dfc(mean) %>% 
+      mutate(statistic = "mean"),
+    estudio_vacunas_t_final_selected %>% 
+      select(age) %>% 
+      map_dfc(sd) %>% 
+      mutate(statistic = "sd")
+  ) %>% 
+  mutate(age = as.numeric(age)) %>% 
+  pivot_wider(names_from = 2, values_from = 1) %>% 
+  mutate(variable = "Age, years: mean (SD)")
+
+factor_total <- 
+  bind_rows(
+    estudio_vacunas_t_final_selected %>% 
+      select(is.factor) %>% 
+      map_dfc(mean) %>% 
+      mutate(statistic = "mean"),
+    estudio_vacunas_t_final_selected %>% 
+      select(age) %>% 
+      map_dfc(sd) %>% 
+      mutate(statistic = "sd")
+  ) %>% 
+  mutate(age = as.numeric(age)) %>% 
+  pivot_wider(names_from = 2, values_from = 1) %>% 
+  mutate(variable = "Age, years: mean (SD)")
+
+asss <- estudio_vacunas_t_final_selected %>% 
+  select(where(is.factor))
+  summarise(across(everything(), ~prop.table(table(.x)) * 100))
+dd <- summary(asss) %>% as.data.frame()
+
+percentages <- sapply(asss, function(var) prop.table(table(var)) * 100)
+percentages %>% as.data.frame(.)
+
+
+
+
+t1 <- estudio_vacunas_t_final_selected %>%
+  select(-c(fec_fallecimiento, infeccion_ingreso_dias)) %>%
+  tbl_summary(
+    by = hosp_stay_bin
+    # statistic = list(
+    #   all_continuous() ~ "{mean} ({sd})"
+    # ),
+    # digits = list(
+    #   age ~ 2
+    # )
+  )
+
+
+t1_total_age <- estudio_vacunas_t_final_selected %>%
+  select(age) %>%
+  tbl_summary(
+    # by = hosp_stay_bin,
+    statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    digits = list(age ~ 2)
+  )
+t1_total_age
+
+
+
+t1_total_categ <- estudio_vacunas_t_final_selected %>%
+  select(where(is.factor)) %>%
+  tbl_summary(
+    # by = hosp_stay_bin,
+    statistic = list(all_categorical() ~ "{n} ({p}%)")
+    # digits = list(age ~ 2)
+  )
+t1_total_categ
+
+
+
+t1_byhosp_categ <- estudio_vacunas_t_final_selected %>%
+  select(where(is.factor)) %>%
+  tbl_summary(
+    by = hosp_stay_bin,
+    statistic = list(all_categorical() ~ "{n} ({p}%)")
+    # digits = list(age ~ 2)
+  )
+t1_byhosp_categ
+```
+
 
 # Table 2A
 

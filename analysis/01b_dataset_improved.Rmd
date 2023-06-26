@@ -1,5 +1,5 @@
 ---
-title: "01_dataset_creation_improved"
+title: "01b_dataset_improved"
 output: html_document
 ---
 
@@ -95,8 +95,6 @@ pcr_covid <- setDT(resultados_pruebas_COVID) %>%
   ungroup() %>% 
   select(-c(DESC_T_PRUEBA, RESULTADO)) %>% 
   as.data.frame()
-
-
 
 remove(resultados_pruebas_COVID)
 
@@ -220,8 +218,9 @@ infect_covid4 <- setDT(infect_covid3) %>%
   as.data.frame() %>% 
   arrange(NUHSA_ENCRIPTADO, orden_infeccion)
 
-
-
+nuhsas_infect_covid4 <- infect_covid4$NUHSA_ENCRIPTADO
+asd <- infect_covid4 %>% 
+  count(orden_infeccion)
 remove(infect_covid2)
 remove(infect_covid3)
 remove(infect_covid_oneinf)
@@ -278,6 +277,7 @@ poblacion_diana2 <- setDT(poblacion_diana) %>%
 # EXCLUSION CRITERIA 2:
 # Sex other than male/female
 # or NA values
+# 
 ############################
 ############################
 ############################
@@ -285,6 +285,7 @@ poblacion_diana2 <- setDT(poblacion_diana) %>%
 # 
 # EXCLUSION CRITERIA 3:
 # Age bigger than 120
+# or smaller than 12
 # or NA values
 # 
 ############################
@@ -295,9 +296,10 @@ poblacion_diana2 <- setDT(poblacion_diana) %>%
 poblacion_diana3 <- setDT(poblacion_diana2) %>% 
   lazy_dt(immutable = TRUE) %>% 
   filter(
-    NUHSA_ENCRIPTADO %in% unique(infect_covid4$NUHSA_ENCRIPTADO)
+    NUHSA_ENCRIPTADO %in% unique(nuhsas_infect_covid4)
     & DESC_SEXO %in% c("Mujer", "Hombre")
     & age < 121
+    & age > 11
   ) %>% 
   as.data.frame()
 
@@ -308,19 +310,22 @@ nuhsas_excluded_bc_ofsex <- setDT(poblacion_diana2) %>%
     & !DESC_SEXO %in% c("Mujer", "Hombre")
   ) %>% 
   left_join(infect_covid4, by = "NUHSA_ENCRIPTADO") %>%
+  filter(!is.na(orden_infeccion)) %>% 
   pull(NUHSA_ENCRIPTADO)
 
 nuhsas_excluded_bc_ofage <- setDT(poblacion_diana2) %>% 
   lazy_dt(immutable = TRUE) %>% 
   filter(
     NUHSA_ENCRIPTADO %in% unique(infect_covid4$NUHSA_ENCRIPTADO)
-    & age > 120
+    & (age > 120 |age < 12)
   ) %>% 
   left_join(infect_covid4, by = "NUHSA_ENCRIPTADO") %>%
+  filter(!is.na(orden_infeccion)) %>% 
   pull(NUHSA_ENCRIPTADO)
 
-# After checking the cases, there were 59 infections (cases) with sex other than "male" or "female".
+# After checking the cases, there were 59 infections (cases) with sex other than "male" or "female". People: 
 # After checking the cases, no one were older than 120 years.
+# After checking the cases, 78261 cases were younger than 12 years. People: 
 
 
 
@@ -335,7 +340,7 @@ infect_covid5 <- setDT(infect_covid4) %>%
   ungroup() %>% 
   as.data.frame()
 
-
+asd <- count(infect_covid5, NUHSA_ENCRIPTADO)
 
 remove(poblacion_diana)
 remove(poblacion_diana2)
@@ -351,6 +356,7 @@ gc()
 ```{r}
 ##############################################################################################################
 # Loading data and removing duplicates.
+
 pupa <- 
   fread(
     "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_PUPA.txt", header = T, encoding = 'Latin-1'
@@ -383,6 +389,7 @@ pupa <- setDT(pupa) %>%
 # Many comorbidities were inserted by physicians in their daily activity. Some were also introduced...
 # more than once by different people. For some comorbs, we consider that lasting less than a...
 # specified time lapse is indicative of a coding error, attempted to be fixed later.
+# FINALLY NOT USED.
 
 curable_comorb <- c(
   "asma", "diabetes", "hipertension", "cancer.de.mama", "cancer.de.tiroides",
@@ -409,19 +416,18 @@ pupa_not_repeated <- setDT(pupa) %>%
 
 pupa_not_repeated_fixed <- pupa_not_repeated %>% 
   lazy_dt(immutable = FALSE) %>% 
-  mutate(
-    COD_FEC_FIN_PATOLOGIA = if_else(
-      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] 
-       & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
-      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] 
-         & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
-      COD_FEC_FIN_PATOLOGIA,
-      as.Date(NA)
-    )
-  ) %>%
-  filter(COD_FEC_FIN_PATOLOGIA > ymd(20200229) | is.na(COD_FEC_FIN_PATOLOGIA)) %>% 
+  filter(
+    is.na(COD_FEC_FIN_PATOLOGIA) 
+    | (COD_FEC_FIN_PATOLOGIA > ymd(20200229) & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
+  ) %>% 
   select(-row_index) %>% 
   as.data.table()
+
+
+
+# saveRDS(pupa_not_repeated_fixed, "/opt/datos_compartidos/vacunas_data/Rfiles/pupa_not_repeated_fixed.rds")
+
+
 
 pupa_repeated <- setDT(pupa) %>% 
   lazy_dt(immutable = FALSE) %>% 
@@ -429,38 +435,43 @@ pupa_repeated <- setDT(pupa) %>%
   mutate(row_index = row_number()) %>% 
   filter(any(row_index > 1)) %>% 
   ungroup() %>% 
+  filter(
+    is.na(COD_FEC_FIN_PATOLOGIA) 
+    | (COD_FEC_FIN_PATOLOGIA > ymd(20200229) & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
+  ) %>% 
   as.data.table()
 
 pupa_repeated_fixed <- pupa_repeated %>% 
   lazy_dt(immutable = FALSE) %>% 
-  mutate(
-    COD_FEC_FIN_PATOLOGIA = if_else(
-      (DESC_PATOLOGIA_CRONICA %in% curable_comorb[1:3] 
-       & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 179)
-      | (DESC_PATOLOGIA_CRONICA %in% curable_comorb[4:25] 
-         & COD_FEC_FIN_PATOLOGIA - COD_FEC_INI_PATOLOGIA > 1825),
-      COD_FEC_FIN_PATOLOGIA,
-      as.Date(NA)
-    )
-  ) %>% 
   group_by(NUHSA_ENCRIPTADO, DESC_PATOLOGIA_CRONICA) %>% 
-  mutate(
-    COD_FEC_INI_PATOLOGIA = min(COD_FEC_INI_PATOLOGIA, na.rm = TRUE),
-    COD_FEC_FIN_PATOLOGIA = if_else(
-      all(is.na(COD_FEC_FIN_PATOLOGIA)),
-      as.Date(NA),
-      min(COD_FEC_INI_PATOLOGIA, na.rm = TRUE),
-    ),
-    row_index2 = row_number()
-  ) %>% 
-  filter(row_index2 == 1) %>% 
+  filter(all(row_number() == 1)) %>% 
   ungroup() %>% 
-  filter(COD_FEC_FIN_PATOLOGIA > ymd(20200229) | is.na(COD_FEC_FIN_PATOLOGIA)) %>% 
-  select(-c(row_index, row_index2)) %>% 
+  select(-row_index) %>% 
+  as.data.table()
+
+pupa_repeated_fixed2 <- pupa_repeated %>% 
+  lazy_dt(immutable = FALSE) %>% 
+  group_by(NUHSA_ENCRIPTADO, DESC_PATOLOGIA_CRONICA) %>% 
+  filter(any(row_number() > 1) & all(is.na(COD_FEC_FIN_PATOLOGIA))) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  select(-row_index) %>% 
+  as.data.table()
+
+pupa_repeated_fixed3 <- pupa_repeated %>% 
+  lazy_dt(immutable = FALSE) %>% 
+  group_by(NUHSA_ENCRIPTADO, DESC_PATOLOGIA_CRONICA) %>% 
+  filter(any(row_number() > 1) & any(!is.na(COD_FEC_FIN_PATOLOGIA))) %>% 
+  filter(!is.na(COD_FEC_FIN_PATOLOGIA)) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  select(-row_index) %>% 
   as.data.table()
 
 pupa_dt <- as.data.frame(pupa_not_repeated_fixed) %>% 
   bind_rows(as.data.frame(pupa_repeated_fixed)) %>% 
+  bind_rows(as.data.frame(pupa_repeated_fixed2)) %>% 
+  bind_rows(as.data.frame(pupa_repeated_fixed3)) %>% 
   mutate(
     COD_FEC_FIN_PATOLOGIA = if_else(is.na(COD_FEC_FIN_PATOLOGIA), ymd(20301231), COD_FEC_FIN_PATOLOGIA)
   ) %>% # NAs originally meant the comorbidity was still active. So, pushing them to the future.
@@ -627,7 +638,8 @@ gc()
 
 Jaime M
 
-TODO address non european shots: grepl('COVID-19 Sinopharm|COVID-19 Sputnik V|COVID-19 Covishield|COVID-19 CoronaVac (Sinovac Biotech)|COVID-19 CanSinoBIO|COVID-19 Covaxin|COVID-19 HIPRA')
+TODO address non european shots: grepl('COVID-19 Sinopharm|COVID-19 Sputnik V|COVID-19 Covishield|
+COVID-19 CoronaVac (Sinovac Biotech)|COVID-19 CanSinoBIO|COVID-19 Covaxin|COVID-19 HIPRA')
 
 Criterios de exclusión: pacientes de 5 dosis.
 
@@ -681,10 +693,8 @@ vacunas2 <- setDT(vacunas_inprogress) %>%
 vacunas3 <- setDT(vacunas2) %>% 
   lazy_dt(immutable = TRUE) %>% 
   group_by(NUHSA_ENCRIPTADO, orden_infeccion) %>%
-  mutate(
-    fec_ultima_vac = max(FEC_VACUNACION),
-    fec_ultima_inmun = max(fec_ultima_vac, unique(prev_infect_date), na.rm = TRUE)
-  ) %>% 
+  mutate(fec_ultima_vac = max(FEC_VACUNACION)) %>% 
+  mutate(fec_ultima_inmun = max(fec_ultima_vac, unique(prev_infect_date), na.rm = TRUE)) %>% 
   ungroup() %>% 
   mutate(
     ultima_vac_infecc_dias = infect_covid_first_date - fec_ultima_vac,
@@ -692,10 +702,7 @@ vacunas3 <- setDT(vacunas2) %>%
   ) %>%
   mutate(
     ultima_vac_infecc_meses_quant = days(ultima_vac_infecc_dias) / months(1),
-    ultima_vac_infecc_mas6meses_bin = if_else(ultima_vac_infecc_dias > 182, 1, 0),
     ultima_inmun_infecc_meses_quant = days(ultima_inmun_infecc_dias) / months(1),
-    ultima_inmun_infecc_mas6meses_bin = if_else(ultima_inmun_infecc_dias > 182, 1, 0)
-    # 182 == mean days of 6 months
   ) %>%
   mutate(
     ultima_vac_infecc_meses_quant2 = trunc(ultima_vac_infecc_meses_quant),
@@ -705,9 +712,7 @@ vacunas3 <- setDT(vacunas2) %>%
   summarise(
     n_vacunas_covid = n(),
     n_prev_infecc = unique(orden_infeccion) - 1,
-    ultima_vac_infecc_mas6meses_bin = unique(ultima_vac_infecc_mas6meses_bin),
     ultima_vac_infecc_meses_quant = unique(ultima_vac_infecc_meses_quant2),
-    ultima_inmun_infecc_mas6meses_bin = unique(ultima_inmun_infecc_mas6meses_bin),
     ultima_inmun_infecc_meses_quant = unique(ultima_inmun_infecc_meses_quant2)
   ) %>% 
   ungroup() %>%
@@ -728,6 +733,11 @@ gc()
 ##############################################################################################################
 # Joining across datasets. >>
 # Last creations and mutations of variables.
+
+infect_covid5 <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/infect_covid5.rds")
+poblacion_diana3 <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/poblacion_diana3.rds")
+pupa2 <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/pupa2b.rds")
+vacunas3 <- readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/vacunas3.rds")
 
 infect_bdu_pupa <- setDT(infect_covid5) %>% 
   lazy_dt() %>% 
@@ -774,7 +784,7 @@ cases_more_than_3doses <- infect_bdu_pupa_cmbd_vacunas %>%
   filter(n_vacunas_covid > 3) %>% 
   pull(NUHSA_ENCRIPTADO)
 
-# There were 43 excluded cases due to reception of more than 3 vaccine doses
+# There were 38 excluded cases due to reception of more than 3 vaccine doses. PEOPLE: 33
 
 
 ##############################################################################################################
@@ -821,15 +831,32 @@ estudio_vacunas_t_final_selected %<>%
     n_prev_infecc = if_else(n_vacunas_covid == 0, orden_infeccion - 1, n_prev_infecc),
     n_exposi = if_else(n_vacunas_covid == 0, n_prev_infecc, n_exposi),
     ultima_inmun_infecc_dias = if_else(
-      n_vacunas_covid == 0, infect_covid_first_date - prev_infect_date, 999
+      n_vacunas_covid == 0 & !is.na(prev_infect_date),
+      infect_covid_first_date - prev_infect_date,
+      999 # problema en la resta q no contempla el NA
     ),
     ultima_inmun_infecc_meses_quant = if_else(
-      n_vacunas_covid == 0, trunc(days(ultima_inmun_infecc_dias) / months(1)), ultima_inmun_infecc_meses_quant
+      n_vacunas_covid == 0 & !is.na(prev_infect_date),
+      trunc(days(ultima_inmun_infecc_dias) / months(1)),
+      ultima_inmun_infecc_meses_quant
     ),
-    ultima_inmun_infecc_mas6meses_bin = if_else(
-      n_vacunas_covid == 0, if_else(ultima_inmun_infecc_dias > 182, 1, 0), ultima_inmun_infecc_mas6meses_bin
+    ultima_vac_infecc_bin = case_when(
+      n_vacunas_covid != 0 & ultima_vac_infecc_meses_quant < 1 ~ "Less than one month",
+      n_vacunas_covid != 0 & ultima_vac_infecc_meses_quant < 3 ~ "One to three months",
+      n_vacunas_covid != 0 & ultima_vac_infecc_meses_quant < 6 ~ "Three to six months",
+      n_vacunas_covid != 0 & ultima_vac_infecc_meses_quant >= 6 ~ "Six months or more",
+      TRUE ~ NA_character_,
     ),
-    # 182 == mean days of 6 months
+    ultima_inmun_infecc_bin = case_when(
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_meses_quant < 1 ~
+        "Less than one month",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_meses_quant < 3 ~
+        "One to three months",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_meses_quant < 6 ~
+        "Three to six months",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_meses_quant >= 6 ~
+        "Six months or more"
+    )
   ) %>% 
   select(-ultima_inmun_infecc_dias)
 
@@ -875,7 +902,7 @@ estudio_vacunas_t_final_selected %<>%
       | cancer_de_cabeza_y_cuello
       | cancer_de_cuello_uterino 
       | cancer_de_estomago 
-      |cancer_de_higado_y_vias_biliares
+      | cancer_de_higado_y_vias_biliares
       | cancer_de_hueso_y_tejidos_blandos 
       | cancer_de_mama 
       | cancer_de_ovario 
@@ -899,8 +926,14 @@ estudio_vacunas_t_final_selected %<>%
     cancer_hematologico = as.numeric(cancer_hematologico),
     cancer_hematologico = as.factor(if_else(cancer_hematologico == 1, "Sí", "No")),
     cancer_hematologico = relevel(cancer_hematologico, ref = "No"),
-    num_dias_uci = as.numeric(num_dias_uci)
+    num_dias_uci = as.numeric(num_dias_uci),
+    ultima_vac_infecc_bin = as.factor(ultima_vac_infecc_bin),
+    ultima_vac_infecc_bin = relevel(ultima_vac_infecc_bin, ref = "Less than one month"),
+    ultima_inmun_infecc_bin = as.factor(ultima_inmun_infecc_bin),
+    ultima_inmun_infecc_bin = relevel(ultima_inmun_infecc_bin, ref = "Less than one month")
   )
+
+
 
 df_levels_prev <- estudio_vacunas_t_final_selected %>% 
   map(levels) %>% 
@@ -928,10 +961,10 @@ df_levels <- map(df_levels_prev, ~c(.x, rep(NA, max_length - length(.x)))) %>%
 
 n_cases_under18yo_more2doses <- estudio_vacunas_t_final_selected %>% 
   filter(age < 18) %>% 
-  filter(n_vacunas_covid %in% c("Tres", "Cuatro", "Cinco")) %>% 
-  nrow(.)
+  filter(n_vacunas_covid == "Tres") %>% 
+  count(nuhsa_encriptado)
 
-# After checking for children under 18 yeras old vaccinated with more than 2 doses, 167 cases were excluded.
+# After checking for children under 18 years old vaccinated with more than 2 doses, 150 cases (AND PPL) were excluded.
 
 estudio_vacunas_t_final_selected %<>% 
   filter(age > 17 | n_vacunas_covid %in% c("Ninguna", "Una", "Dos"))
@@ -1061,7 +1094,11 @@ variants_week_spain_labels <- ecdc_variants_history %>%
     percent_variant2 = number_detections_variant/number_sequenced*100
   ) %>% 
   filter(!is.nan(percent_variant2)) %>% 
-  filter(year_week != "2020-06") %>% 
+  mutate(year_week2 = gsub("-", "", year_week)) %>% 
+  filter(
+    !year_week2 %in% c(
+      "202006", paste0(2022, 14:52), paste0(20230, 1:9), paste0(2023, 10:23)
+    )) %>% 
   select(who_label_family, percent_variant2, everything())
 
 
@@ -1071,42 +1108,10 @@ variants_totalpercents_ranking <- variants_week_spain_labels %>%
   summarise(weektotal_percent_sum = sum(percent_variant2)) %>% 
   arrange(desc(weektotal_percent_sum))
 
-variants_ordered <- pull(variants_totalpercents_ranking, who_label_family)
+variants_ordered <- c("Omicron", "Delta", "Alpha", "Beta", "Gamma", "Other variants or unnamed")
 
 variants_week_spain_labels %<>% 
   mutate(who_label_family = factor(who_label_family, levels = rev(variants_ordered), ordered = TRUE))
-
-
-
-variants_week_spain_labels %>% 
-  ggplot() +
-  geom_col(
-    mapping = aes(x = year_week, y = percent_variant2, fill = who_label_family),
-    colour = NA,
-    width = 1
-  ) +
-  scale_y_continuous(expand = expansion(add = c(0, 1))) +
-  scale_fill_brewer(palette = "Set3") +
-  theme_bw() + 
-  theme(
-    axis.text.x = element_text(angle = 90, size = 3.5, hjust = 1, vjust = 0.5),
-    legend.title = element_blank()
-  ) +
-  labs(
-    x = "Epi week",
-    y = "Variants percent",
-    title = "Weekly proportion of SARS-CoV-2 variants sequenced in Spain",
-    caption = "Source: GISAID, www.ecdc.europa.eu/en/publications-data/data-virus-variants-covid-19-eueea"
-  )
-
-ggsave(
-  filename = "/opt/datos_compartidos/vacunas_data/figuras/variants_spain.png",
-  device = "png",
-  width = 8000,
-  height = 8000,
-  dpi = 700,
-  units = "px"
-)
 
 
 
@@ -1119,10 +1124,18 @@ cutpoints_variants_of_study <- variants_week_spain_labels %>%
   arrange(who_label_family, year_week)
 
 
-begining_alpha <- ymd(20210221) # as it is the monday of isoweek 2021-07, when alpha overcame 50% of sequencing
-begining_delta <- ymd(20210704)
-begining_omicron <- ymd(20211226)
-end_omicron <- ymd(20220331)
+begining_alpha <- 
+  ymd(20210308) # monday of isoweek 2021-10, when alpha started to account for >=75% of sequenced samples
+end_alpha <- 
+  ymd(20210606)
+begining_delta <- 
+  ymd(20210712)
+end_delta <- 
+  ymd(20211212)
+begining_omicron <- 
+  ymd(20211227)
+end_omicron <- 
+  ymd(20220331)
 
 
 
@@ -1131,12 +1144,19 @@ end_omicron <- ymd(20220331)
 estudio_vacunas_t_final_selected %<>% 
   mutate(
    variant_period = case_when(
-     infect_covid_first_date >= begining_alpha & infect_covid_first_date < begining_delta ~ "Alpha",
-     infect_covid_first_date >= begining_delta & infect_covid_first_date < begining_omicron ~ "Delta",
-     infect_covid_first_date >= begining_omicron & infect_covid_first_date < end_omicron ~ "Omicron",
-     TRUE ~ "Before Alpha predominance (prior to Feb 21st, 2021)"
+     infect_covid_first_date < begining_alpha ~ "Variants before predominance of Alpha variant",
+     infect_covid_first_date >= begining_alpha & infect_covid_first_date <= end_alpha ~ "Dominance of Alpha variant",
+     infect_covid_first_date > end_alpha & infect_covid_first_date < begining_delta ~ 
+       "Alpha/Delta variant predominance transition",
+     infect_covid_first_date >= begining_delta & infect_covid_first_date <= end_delta ~ "Dominance of Delta variant",
+     infect_covid_first_date > end_delta & infect_covid_first_date < begining_omicron ~ 
+       "Delta/Omicron variant predominance transition",
+     infect_covid_first_date >= begining_omicron & infect_covid_first_date <= end_omicron ~ "Dominance of Omicron variant"
    ) 
   )
+
+
+summary(factor(estudio_vacunas_t_final_selected$variant_period))
 ```
 
 # Checking at final stage for cases meeting exclusion criteria
@@ -1287,6 +1307,11 @@ if (
 saveRDS(
   estudio_vacunas_t_final_selected, 
   file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds"
+)
+
+saveRDS(
+  variants_week_spain_labels,
+  file = "/opt/datos_compartidos/vacunas_data/Rfiles/variants_week_spain_labels.rds",
 )
 ```
 
