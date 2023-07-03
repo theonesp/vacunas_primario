@@ -3,7 +3,7 @@ title: "01_dataset_infections"
 # output: html_document
 ---
 
-# Calling libraries
+# Environment
 
 ```{r}
 library(data.table)
@@ -1299,6 +1299,35 @@ if (
     " people under 18 years old with more than 2 COVID vaccine doses"
   )
 )
+```
+
+# Final adjustments on the dataset
+
+```{r}
+comorb_no_cancer <- estudio_vacunas_t_final_selected %>% 
+  select(asma, cardiopatia_isquemica:diabetes, epoc:insuficiencia_renal_cronica, vih) %>% 
+  colnames(.)
+
+solid_cancers_vector <- estudio_vacunas_t_final_selected %>% 
+  select(cancer_colorrectal:cancer_de_vejiga, melanoma_de_piel, sarcoma_de_kaposi) %>% 
+  colnames(.)
+
+hemat_cancers_vector <- estudio_vacunas_t_final_selected %>% 
+  select(cancer_inmunoproliferativo, enfermedad_de_hodgkin, linfoma_no_hodgkin, leucemia) %>% 
+  colnames(.)
+
+
+
+estudio_vacunas_t_final_selected %<>% 
+  mutate(
+    variant_period = relevel(as.factor(variant_period), ref = "Dominance of Alpha variant"),
+    across(comorb_no_cancer, ~if_else(.x == 1, "Sí", "No")),
+    across(comorb_no_cancer, as.factor),
+    across(comorb_no_cancer, ~relevel(.x, ref = "No")),
+    across(c(hosp_stay_bin, icu_stay_bin), ~if_else(.x == 1, "Sí", "No")),
+    across(c(hosp_stay_bin, icu_stay_bin), ~as.factor(.x)),
+    across(c(hosp_stay_bin, icu_stay_bin), ~relevel(.x, ref = "No")),
+  )
 ```
 
 # Saving RDS

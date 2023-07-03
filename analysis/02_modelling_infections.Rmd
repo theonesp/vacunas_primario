@@ -34,39 +34,17 @@ library(purrr)
 library(parsnip)
 library(recipes)
 library(workflows)
+library(lme4)
+library(boot)
+```
 
+# Load Data
 
-
+```{r}
 estudio_vacunas_t_final_selected <- 
   readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds")
-
-
-
-comorb_no_cancer <- estudio_vacunas_t_final_selected %>% 
-  select(asma, cardiopatia_isquemica:diabetes, epoc:insuficiencia_renal_cronica, vih) %>% 
-  colnames(.)
-
-solid_cancers_vector <- estudio_vacunas_t_final_selected %>% 
-  select(cancer_colorrectal:cancer_de_vejiga, melanoma_de_piel, sarcoma_de_kaposi) %>% 
-  colnames(.)
-
-hemat_cancers_vector <- estudio_vacunas_t_final_selected %>% 
-  select(cancer_inmunoproliferativo, enfermedad_de_hodgkin, linfoma_no_hodgkin, leucemia) %>% 
-  colnames(.)
-
-
-
-estudio_vacunas_t_final_selected %<>% 
-  mutate(
-    variant_period = relevel(as.factor(variant_period), ref = "Dominance of Alpha variant"),
-    across(comorb_no_cancer, ~if_else(.x == 1, "Sí", "No")),
-    across(comorb_no_cancer, as.factor),
-    across(comorb_no_cancer, ~relevel(.x, ref = "No")),
-    across(c(hosp_stay_bin, icu_stay_bin), ~if_else(.x == 1, "Sí", "No")),
-    across(c(hosp_stay_bin, icu_stay_bin), ~as.factor(.x)),
-    across(c(hosp_stay_bin, icu_stay_bin), ~relevel(.x, ref = "No")),
-  )
 ```
+
 
 # Creating functions
 
@@ -102,9 +80,11 @@ extract_coef_pval_OR <- function(model) {
 }
 ```
 
-# Logistic regression. Outcome: hosp_stay_bin
+# Outcome: hosp_stay_bin
 
-## Fitting the model
+## Logistic regression
+
+### Fitting the model
 
 ```{r}
 logreg_hosp_stay_bin <- 
@@ -119,7 +99,7 @@ logreg_hosp_stay_bin <-
   )
 ```
 
-## Adjusted Odds Ratios for hospital stay
+### Adjusted Odds Ratios for hospital stay
 
 ```{r fig.height = 16, fig.width = 10}
 coef_pval_df_hosp_stay_bin <- extract_coef_pval_OR(logreg_hosp_stay_bin)
@@ -133,7 +113,7 @@ coef_pval_df_hosp_stay_bin <- extract_coef_pval_OR(logreg_hosp_stay_bin)
 htmlTable(coef_pval_df_hosp_stay_bin[,c("term","OR","OR_CI_lower","OR_CI_upper")])
 ```
 
-## Forest Plot
+### Forest Plot
 
 ```{r}
 coef_pval_df_hosp_stay_bin2 <- 
@@ -226,7 +206,7 @@ ggsave(
 )
 ```
 
-## Model Performance
+### Model Performance
 
 ```{r eval = FALSE, include = FALSE}
 y_test <- estudio_vacunas_final_selected$hosp_stay_bin
@@ -270,6 +250,103 @@ ggplot(data=metrics, aes(x=Metric, y=Value)) +
   geom_text(aes(label=Value), vjust=1.6, color="white", size=3.5)+
   theme_minimal()
 ```
+
+## General Additive Modeling (GAM)
+
+The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+
+### Fitting the model
+
+In this study, a generalized additive model (GAM) with a binomial family was employed to model binary outcomes, akin to logistic regression, in the context of public health. The objective was to estimate the relationship between the binary response variable, namely hospital stay (hosp_stay_bin), and a range of predictor variables, including age, sex (desc_sexo), asthma (asma), ischemic heart disease (cardiopatia_isquemica), hepatic cirrhosis (cirrosis_hepatica), diabetes, chronic obstructive pulmonary disease (epoc), chronic hepatopathy excluding cirrhosis (hepatopatia_cronica_excepto_cirrosis), hypertension, heart failure (insuficiencia_cardiaca), chronic renal insufficiency (insuficiencia_renal_cronica), HIV infection (vih), hematologic cancer, solid organ cancer, number of COVID-19 vaccines received (n_vacunas_covid), number of previous infections (n_prev_infecc), and a binary indicator of the most recent immunization or infection (ultima_inmun_infecc_bin).
+
+The GAM model utilized the gam function, fitting a smooth and flexible non-linear relationship between age (s(age, k = 3, bs = "cr")) and the binary outcome. Smooth functions and regression splines were employed for the remaining predictor variables, which were crucial in capturing potential non-linear associations with the hospital stay. 
+
+```{r}
+logreg_hosp_stay_bin <- gam(
+  hosp_stay_bin ~ 
+    # s(age, k = 3, bs = "cr")
+    s(age) + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
+    hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + 
+    insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + 
+    n_vacunas_covid + n_prev_infecc + ultima_inmun_infecc_bin,
+  data = estudio_vacunas_t_final_selected,
+  family = binomial()
+)
+```
+
+### Odds Ratio and forest plot
+
+The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+
+```{r}
+# Obtain odds ratios and confidence intervals
+coeffs <- coef(logreg_hosp_stay_bin)
+exp_coeffs <- exp(coeffs)
+conf_intervals <- confint(logreg_hosp_stay_bin)
+lower_ci <- exp(conf_intervals[, "2.5 %"])
+upper_ci <- exp(conf_intervals[, "97.5 %"])
+
+# Create a data frame for the forest plot
+forest_data <- data.frame(
+  Variable = names(coeffs),
+  OddsRatio = exp_coeffs,
+  LowerCI = lower_ci,
+  UpperCI = upper_ci
+)
+
+# Create the forest plot using ggplot
+plot <- ggplot(forest_data, aes(x = OddsRatio, y = Variable)) +
+  geom_point() +
+  geom_errorbarh(
+    aes(xmin = LowerCI, xmax = UpperCI),
+    height = 0.2,
+    color = "blue"
+  ) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(x = "Odds Ratio", y = "Variable") +
+  theme_bw()
+
+# Display the plot
+print(plot)
+
+```
+### Performance
+
+```{r}
+# Create a confusion matrix
+table_mat <- table(y_test, predict > 0.90)
+
+# Calculate true positives, false positives, and false negatives
+tp <- table_mat[2, 2]
+fp <- table_mat[1, 2]
+fn <- table_mat[2, 1]
+
+# Calculate precision
+prec <- tp / (tp + fp)
+
+# Calculate recall
+rec <- tp / (tp + fn)
+
+# Calculate F1 score
+f1 <- 2 * (prec * rec) / (prec + rec)
+
+# Create a table with the metrics
+metrics_table <- data.frame(
+  Model = "logreg_hosp_stay_bin",
+  Precision = prec,
+  Recall = rec,
+  F1_Score = f1
+)
+
+# Print the table
+print(metrics_table)
+```
+### Non-Linear Relationship Plot
+
+```{r}
+
+```
+
 
 # Logistic regression. Outcome: icu_stay_bin
 
