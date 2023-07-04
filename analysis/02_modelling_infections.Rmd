@@ -262,7 +262,7 @@ In this study, a generalized additive model (GAM) with a binomial family was emp
 The GAM model utilized the gam function, fitting a smooth and flexible non-linear relationship between age (s(age, k = 3, bs = "cr")) and the binary outcome. Smooth functions and regression splines were employed for the remaining predictor variables, which were crucial in capturing potential non-linear associations with the hospital stay. 
 
 ```{r}
-logreg_hosp_stay_bin <- gam(
+plot <- gam(
   hosp_stay_bin ~ 
     # s(age, k = 3, bs = "cr")
     s(age) + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
@@ -279,37 +279,111 @@ logreg_hosp_stay_bin <- gam(
 The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
 
 ```{r}
-# Obtain odds ratios and confidence intervals
-coeffs <- coef(logreg_hosp_stay_bin)
-exp_coeffs <- exp(coeffs)
-conf_intervals <- confint(logreg_hosp_stay_bin)
-lower_ci <- exp(conf_intervals[, "2.5 %"])
-upper_ci <- exp(conf_intervals[, "97.5 %"])
+# Extract the model coefficients and their confidence intervals
+coef_data <- data.frame(coef = coef(gam_hosp_stay_bin))
+se <- sqrt(diag(vcov(gam_hosp_stay_bin)))
+z_value <- qnorm(0.975)  # 95% confidence level (two-sided)
 
-# Create a data frame for the forest plot
-forest_data <- data.frame(
-  Variable = names(coeffs),
-  OddsRatio = exp_coeffs,
-  LowerCI = lower_ci,
-  UpperCI = upper_ci
+# Calculate the odds ratios and their respective lower and upper confidence limits
+coef_data$OR <- exp(coef_data$coef)
+coef_data$OR_lower <- exp(coef_data$coef - z_value * se)
+coef_data$OR_upper <- exp(coef_data$coef + z_value * se)
+
+# Calculate the p-values
+p_values <- 2 * (1 - pnorm(abs(coef_data$coef) / se))
+coef_data$p_value <- p_values
+
+# Create a variable to store the predictor names
+coef_data$predictor <- rownames(coef_data)
+# Remove the row with name 's(age).8' from coef_data
+coef_data <- subset(coef_data, predictor != 's(age).8')
+
+# Set the predictor variable as a factor with levels in alphabetical order
+coef_data$predictor <- factor(coef_data$predictor, levels = sort(coef_data$predictor))
+
+# Define the label names for the predictors
+label_names <- c(
+  "(Intercept)" = "Intercept",
+  "desc_sexoHombre" = "Gender: Male",
+  "desc_sexoMujer" = "Gender: Female",
+  "asmaSí" = "Asthma: Yes",
+  "cardiopatia_isquemicaSí" = "Ischemic Heart Disease: Yes",
+  "cirrosis_hepaticaSí" = "Hepatic Cirrhosis: Yes",
+  "diabetesSí" = "Diabetes: Yes",
+  "epocSí" = "COPD: Yes",
+  "hepatopatia_cronica_excepto_cirrosisSí" = "Chronic Hepatic Disease (except Cirrhosis): Yes",
+  "hipertensionSí" = "Hypertension: Yes",
+  "insuficiencia_cardiacaSí" = "Heart Failure: Yes",
+  "insuficiencia_renal_cronicaSí" = "Chronic Renal Insufficiency: Yes",
+  "vihSí" = "HIV: Yes",
+  "cancer_hematologicoSí" = "Hematologic Cancer: Yes",
+  "cancer_organo_solidoSí" = "Solid Organ Cancer: Yes",
+  "n_vacunas_covidDos" = "Number of COVID Vaccines: 2",
+  "n_vacunas_covidTres" = "Number of COVID Vaccines: 3",
+  "n_vacunas_covidUna" = "Number of COVID Vaccines: 1",
+  "n_prev_infeccDos" = "Number of Previous Infections: 2",
+  "n_prev_infeccUno" = "Number of Previous Infections: 1",
+  "ultima_inmun_infecc_binOne to three months" = "Last Immunization/Infection: One to Three Months Ago",
+  "ultima_inmun_infecc_binSix months or more" = "Last Immunization/Infection: Six Months or More Ago",
+  "ultima_inmun_infecc_binThree to six months" = "Last Immunization/Infection: Three to Six Months Ago",
+  "s(age).1" = "Age Bin Nº 1",
+  "s(age).2" = "Age Bin Nº 2",
+  "s(age).3" = "Age Bin Nº 3",
+  "s(age).4" = "Age Bin Nº 4",
+  "s(age).5" = "Age Bin Nº 5",
+  "s(age).6" = "Age Bin Nº 6",
+  "s(age).7" = "Age Bin Nº 7",
+  "s(age).9" = "Age Bin Nº 9"
 )
 
-# Create the forest plot using ggplot
-plot <- ggplot(forest_data, aes(x = OddsRatio, y = Variable)) +
-  geom_point() +
-  geom_errorbarh(
-    aes(xmin = LowerCI, xmax = UpperCI),
-    height = 0.2,
-    color = "blue"
-  ) +
+# Assign the labels to the predictor levels
+levels(coef_data$predictor) <- label_names[levels(coef_data$predictor)]
+
+# Set up the forest plot using ggplot2
+forest_plot <- ggplot(coef_data, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor)) +
+  geom_point(size = 2, color = "#2c3e50") +
+  geom_errorbarh(height = 0.2, color = "#2c3e50")  +
   geom_vline(xintercept = 1, linetype = "dashed") +
-  labs(x = "Odds Ratio", y = "Variable") +
-  theme_bw()
+  labs(x = "Odds Ratio", y = "Predictor", title = expression("Forest Plot of Odds Ratios and Confidence Intervals for" ~ 
+                                                               "Hospital Admission Prediction")) +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("#27ae60", "#c0392b"),
+    breaks = c("#27ae60", "#c0392b"),
+    labels = c("Adverse", "Protective")
+  )
 
-# Display the plot
-print(plot)
+# Set up the forest plot using ggplot2
+forest_plot <- ggplot(coef_data, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor)) +
+  geom_point(size = 2, color = "#2c3e50") +
+  geom_errorbarh(height = 0.2, color = "#2c3e50")  +  # Increased whisker width
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(x = "Odds Ratio", y = "Predictor", title = expression("Odds Ratios and Confidence Intervals for Hospital Admission Prediction")) +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("#c0392b", "#27ae60"),  # Exchanged colors
+    breaks = c("#c0392b", "#27ae60"),
+    labels = c("Adverse", "Protective"),
+    name = "Effect on Outcome"  # Changed legend title
+  )
 
+# Apply color modifications to lines and whiskers
+forest_plot <- forest_plot +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50")
+  ) +
+  geom_linerange(data = subset(coef_data, OR_lower > 1 & OR_upper > 1), aes(color = "#c0392b")) +
+  geom_linerange(data = subset(coef_data, OR_lower < 1 & OR_upper < 1), aes(color = "#27ae60"))
+
+# Display the forest plot
+print(forest_plot)
 ```
+
 ### Performance
 
 ```{r}
@@ -332,7 +406,7 @@ f1 <- 2 * (prec * rec) / (prec + rec)
 
 # Create a table with the metrics
 metrics_table <- data.frame(
-  Model = "logreg_hosp_stay_bin",
+  Model = "gam_hosp_stay_bin",
   Precision = prec,
   Recall = rec,
   F1_Score = f1
@@ -344,7 +418,7 @@ print(metrics_table)
 ### Non-Linear Relationship Plot
 
 ```{r}
-
+plot()
 ```
 
 
