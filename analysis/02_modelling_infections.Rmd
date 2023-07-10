@@ -24,9 +24,8 @@ library(mgcv)
 library(parallel)
 library(parglm)
 library(pROC)
-library(ggplot2)
 library(tibble)
-library(dplyr)
+library(tidyverse)
 library(feather)
 library(broom)
 library(htmlTable)
@@ -262,13 +261,13 @@ In this study, a generalized additive model (GAM) with a binomial family was emp
 The GAM model utilized the gam function, fitting a smooth and flexible non-linear relationship between age (s(age, k = 3, bs = "cr")) and the binary outcome. Smooth functions and regression splines were employed for the remaining predictor variables, which were crucial in capturing potential non-linear associations with the hospital stay. 
 
 ```{r}
-plot <- gam(
+gam_hosp_stay_bin <- gam(
   hosp_stay_bin ~ 
     # s(age, k = 3, bs = "cr")
-    s(age) + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
+    s(n_vacunas_covid,  k = 3 ) + age + desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + 
     hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + 
     insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido + 
-    n_vacunas_covid + n_prev_infecc + ultima_inmun_infecc_bin,
+    n_prev_infecc + ultima_inmun_infecc_bin,
   data = estudio_vacunas_t_final_selected,
   family = binomial()
 )
@@ -415,10 +414,39 @@ metrics_table <- data.frame(
 # Print the table
 print(metrics_table)
 ```
+
 ### Non-Linear Relationship Plot
 
 ```{r}
-plot()
+library(ggplot2)
+
+p <- plot(gam_hosp_stay_bin)
+
+# Check the length of the vectors
+length_x <- length(p[[1]]$x)
+length_y <- length(p[[1]]$raw)
+length_se <- length(p[[1]]$se)
+
+# Ensure all vectors have the same length
+min_length <- min(length_x, length_y, length_se)
+p[[1]]$x <- p[[1]]$x[1:min_length]
+p[[1]]$raw <- p[[1]]$raw[1:min_length]
+p[[1]]$se <- p[[1]]$se[1:min_length]
+
+# Convert plot data to a dataframe
+plot_data <- data.frame(x = p[[1]]$x, y = p[[1]]$raw, se = p[[1]]$se)
+
+# Calculate upper and lower bounds of the confidence interval
+plot_data$upper <- plot_data$y + 1.96 * plot_data$se
+plot_data$lower <- plot_data$y - 1.96 * plot_data$se
+
+# Plot the data
+ggplot(plot_data, aes(x = x, y = y)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) +
+  geom_line() +
+  labs(x = "X Axis", y = "Chances of Suffering the Outcome") +
+  theme_minimal()
+
 ```
 
 
