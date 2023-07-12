@@ -975,6 +975,9 @@ remove(df_levels)
 remove(df_levels_prev)
 ```
 
+
+
+
 # Adding COVID predominant variant information (Spain)
 
 Data regarding variants circulating per european country and epiweek were obtained
@@ -1328,47 +1331,37 @@ estudio_vacunas_t_final_selected %<>%
     across(c(hosp_stay_bin, icu_stay_bin), ~as.factor(.x)),
     across(c(hosp_stay_bin, icu_stay_bin), ~relevel(.x, ref = "No")),
   )
+```
 
-#re-coding number of shots
+# Recoding variables
 
-# Overwrite the values in the column with the mapped values
-estudio_vacunas_t_final_selected$n_vacunas_covid <- recode(estudio_vacunas_t_final_selected$n_vacunas_covid,
-                                                            "Ninguna" = 0,
-                                                            "Una" = 1,
-                                                            "Dos" = 2,
-                                                            "Tres" = 3,
-                                                            #.default = NA
-                                                           )
-
-estudio_vacunas_t_final_selected$n_vacunas_covid<-as.numeric((estudio_vacunas_t_final_selected$n_vacunas_covid))
-
-estudio_vacunas_t_final_selected$n_vacunas_covid<-as.factor((estudio_vacunas_t_final_selected$n_vacunas_covid))
-
-
-age_breaks <- c(18, 24, 35, 45, 60, 70, 80, 120)
-# Establezco estos puntos de corte pensando en los puntos de inflexión vitales que hacen que cambien tus...
-# actividades, tu nivel de exposición y tu percepción de riesgo
-month(ymd(20210301))
-
+```{r}
 estudio_vacunas_t_final_selected %<>% 
   mutate(
-    # across(comorb_no_cancer, ~if_else(.x == 1, "Sí", "No")),
-    # across(comorb_no_cancer, as.factor),
-    # across(comorb_no_cancer, ~relevel(.x, ref = "No")),
-  # NEW
-    age_breaks = case_when(
-   between(age, 0, 18) ~  "edad 0 a 18",
-  between(age, 19, 24) ~  "edad 19 a 24",
-  between(age, 25, 35) ~  "edad 25 a 35",
-  between(age, 36, 45) ~  "edad 36 a 45",
-  between(age, 46, 60) ~  "edad 46 a 60",
-  between(age, 61, 70) ~  "edad 61 a 70",
-  between(age, 71, 80) ~  "edad 71 a 80",
-  between(age, 81, 120) ~ "edad 81 a 120",
-  TRUE ~ NA_character_
+    variant_period = recode(
+      variant_period,
+      "Variants before predominance of Alpha variant" = "Before α",
+      "Dominance of Alpha variant" = "α",
+      "Alpha/Delta variant predominance transition" = "α/Δ transition",
+      "Dominance of Delta variant" = "Δ",
+      "Delta/Omicron variant predominance transition" = "Δ/Ό transition",
+      "Dominance of Omicron variant" = "Ό"
+    )
   )
-)
-  
+```
+
+
+# Releveling factors
+
+```{r}
+estudio_vacunas_t_final_selected$n_vacunas_covid <- factor(estudio_vacunas_t_final_selected$n_vacunas_covid, levels = c("Ninguna", "Una", "Dos", "Tres"))
+estudio_vacunas_t_final_selected$n_prev_infecc <- factor(estudio_vacunas_t_final_selected$n_prev_infecc, levels = c("Ninguna", "Uno", "Dos"))
+estudio_vacunas_t_final_selected$n_exposi <- factor(estudio_vacunas_t_final_selected$n_exposi, levels = c("Ninguna", "Una", "Dos", "Tres", "Cuatro", "Cinco"))
+estudio_vacunas_t_final_selected$orden_infeccion <- factor(estudio_vacunas_t_final_selected$orden_infeccion, levels = unique(estudio_vacunas_t_final_selected$orden_infeccion))
+estudio_vacunas_t_final_selected$age_fct_60years <- factor(estudio_vacunas_t_final_selected$age_fct_60years, levels = c("Menor de 60 años", "60 años o más"))
+estudio_vacunas_t_final_selected$variant_period <- as.factor(estudio_vacunas_t_final_selected$variant_period)
+estudio_vacunas_t_final_selected$variant_period <- relevel(estudio_vacunas_t_final_selected$variant_period, ref = "Before α")
+
 ```
 
 # Saving RDS
