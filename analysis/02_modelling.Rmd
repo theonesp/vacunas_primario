@@ -124,7 +124,7 @@ test_data <- split_data$test_data
 # Train the GAM model
 gam_hosp_stay_bin <- 
   gam(
-    hosp_stay_bin ~ s(age, k = 6) + n_vacunas_covid + desc_sexo + variant_period + 
+    hosp_stay_bin ~ s(age, k = 8) + n_vacunas_covid + desc_sexo + variant_period + 
       asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +  hepatopatia_cronica_excepto_cirrosis + 
       hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + 
       cancer_organo_solido + n_prev_infecc + ultima_inmun_infecc_bin,
@@ -137,8 +137,8 @@ test_data$predicted <- predict(gam_hosp_stay_bin, newdata = test_data, type = "r
 test_data$predicted_bin <- ifelse(test_data$predicted > 0.5, 1, 0)
 
 # Calculate precision, recall, and F1 score
-precision <- sum(test_data$predicted_bin == 1 & test_data$hosp_stay_bin == 1) / sum(test_data$predicted_bin == 1)
-recall <- sum(test_data$predicted_bin == 1 & test_data$hosp_stay_bin == 1) / sum(test_data$hosp_stay_bin == 1)
+precision <- sum(test_data$predicted_bin == 1 & test_data$hosp_stay_bin == "Sí") / sum(test_data$predicted_bin == 1)
+recall <- sum(test_data$predicted_bin == 1 & test_data$hosp_stay_bin == "Sí") / sum(test_data$hosp_stay_bin == "Sí")
 f1 <- 2 * precision * recall / (precision + recall)
 
 # Print the results
@@ -234,7 +234,8 @@ asd <- coef_data %>% filter(predictor != "Age (group 4: 69-87)")
 # Set up the forest plot using ggplot2
 forest_plot <- 
   ggplot(
-    coef_data %>% filter(predictor != "Age (group 4: 69-87)"), 
+    coef_data, 
+    # %>% filter(predictor != "Age (group 4: 69-87)"), 
     aes(
       x = OR, xmin = OR_lower, xmax = OR_upper,
       y = predictor
@@ -264,9 +265,9 @@ forest_plot <-
     axis.ticks = element_blank(),
     axis.text.x = element_text(color = "#2c3e50"),
     axis.text.y = element_text(color = "#2c3e50")
-  )
-  # geom_linerange(data = subset(coef_data, OR_lower > 1 & OR_upper > 1), aes(color = "#c0392b")) +
-  # geom_linerange(data = subset(coef_data, OR_lower < 1 & OR_upper < 1), aes(color = "#27ae60"))
+  ) +
+  geom_linerange(data = subset(coef_data, OR_lower > 1 & OR_upper > 1), aes(color = "#c0392b")) +
+  geom_linerange(data = subset(coef_data, OR_lower < 1 & OR_upper < 1), aes(color = "#27ae60"))
 
 # Display the forest plot
 print(forest_plot)
