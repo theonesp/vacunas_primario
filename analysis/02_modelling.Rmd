@@ -124,7 +124,7 @@ test_data <- split_data$test_data
 # Train the GAM model
 gam_hosp_stay_bin <- 
   gam(
-    hosp_stay_bin ~ s(age, k = 8) + n_vacunas_covid + desc_sexo + variant_period + 
+    hosp_stay_bin ~ s(age, k = 4) + n_vacunas_covid + desc_sexo + variant_period + 
       asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +  hepatopatia_cronica_excepto_cirrosis + 
       hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + 
       cancer_organo_solido + n_prev_infecc + ultima_inmun_infecc_bin,
@@ -230,7 +230,6 @@ filter(predictor != "(Intercept)") %>%
 # Order the dataset based on predictor column
 coef_data <- coef_data[order(coef_data$predictor), ]
 
-asd <- coef_data %>% filter(predictor != "Age (group 4: 69-87)")
 # Set up the forest plot using ggplot2
 forest_plot <- 
   ggplot(
