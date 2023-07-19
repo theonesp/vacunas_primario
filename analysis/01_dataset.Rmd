@@ -579,6 +579,8 @@ icd_ofinterest <- c(
   "J12.82", "B97.21" , "B34.2" # These three codes have been newly introduced
 )
 
+icd_toexclude <- c("J90", "J81.0", "I26.99", "J95.89", "O98.52", "O98.513", "J96.11", "J00")
+
 episodios_cmbd_raw <- 
   fread(
     "/opt/datos_compartidos/vacunas_data/total/ENC_VACUNAS_CMBD.txt", header = T, encoding = "Latin-1"
@@ -622,6 +624,13 @@ episodios_cmbd <- episodios_cmbd_raw %>%
     | COD_D4 %in% icd_ofinterest
     | COD_D5 %in% icd_ofinterest
   ) %>%
+  filter(
+    !COD_D1 %in% icd_toexclude
+    & !COD_D2 %in% icd_toexclude
+    & !COD_D3 %in% icd_toexclude
+    & !COD_D4 %in% icd_toexclude
+    & !COD_D5 %in% icd_toexclude
+  ) %>% 
   group_by(NUHSA_ENCRIPTADO, orden_infeccion) %>%
   arrange(COD_FEC_INGRESO) %>% 
   filter(row_number() == 1) %>% 
@@ -832,7 +841,7 @@ estudio_vacunas_t_final_selected %<>%
     n_exposi = if_else(n_vacunas_covid == 0, n_prev_infecc, n_exposi),
     ultima_inmun_infecc_dias = if_else(
       n_vacunas_covid == 0 & !is.na(prev_infect_date),
-      infect_covid_first_date - prev_infect_date,
+      as.numeric(infect_covid_first_date - prev_infect_date),
       999 # problema en la resta q no contempla el NA
     ),
     ultima_inmun_infecc_meses_quant = if_else(
@@ -1348,7 +1357,6 @@ estudio_vacunas_t_final_selected %<>%
       "Dominance of Omicron variant" = "Ό"
     )
   )
-
 ```
 
 
