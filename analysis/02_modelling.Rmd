@@ -9,35 +9,19 @@ title: "02_modelling_infections"
 library(magrittr)
 library(tableone)
 library(kableExtra)
-library(gtsummary)
-library(rio)
 library(summarytools)
-library(zoo)
-library(lubridate)
 library(vroom)
 library(stringr)
 library(stringi)
 library(tidyr)
-library(janitor)
-# library(skimr)
 library(mgcv)
-library(parallel)
 library(parglm)
-library(pROC)
 library(tibble)
 library(tidyverse)
-library(feather)
-library(broom)
-library(htmlTable)
-library(purrr)
-library(parsnip)
-library(recipes)
-library(workflows)
 library(lme4)
 library(boot)
 library(caTools)
 library(caret)
-library(mgcv)
 library(pROC)
 ```
 
@@ -47,7 +31,6 @@ library(pROC)
 estudio_vacunas_t_final_selected <- 
   readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds")
 ```
-
 
 # Creating functions
 
@@ -136,7 +119,7 @@ f1_score <- function(data, lev = NULL, model = NULL) {
 
 # Train the GAM model
 gam_hosp_stay_bin <- gam(
-  hosp_stay_bin ~ s(age, k = 6) + n_vacunas_covid + desc_sexo + variant_period #+ desc_municipio 
+  hosp_stay_bin ~ s(age, k = 6) + n_vacunas_covid + desc_sexo + variant_period 
   + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +  hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca +
     insuficiencia_renal_cronica + vih + cancer_hematologico + cancer_organo_solido +
     n_prev_infecc + ultima_inmun_infecc_bin,

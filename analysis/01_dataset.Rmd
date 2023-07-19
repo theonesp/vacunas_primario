@@ -1348,6 +1348,7 @@ estudio_vacunas_t_final_selected %<>%
       "Dominance of Omicron variant" = "Ό"
     )
   )
+
 ```
 
 
@@ -1362,6 +1363,12 @@ estudio_vacunas_t_final_selected$age_fct_60years <- factor(estudio_vacunas_t_fin
 estudio_vacunas_t_final_selected$variant_period <- as.factor(estudio_vacunas_t_final_selected$variant_period)
 estudio_vacunas_t_final_selected$variant_period <- relevel(estudio_vacunas_t_final_selected$variant_period, ref = "Before α")
 
+estudio_vacunas_t_final_selected$ultima_inmun_infecc_bin <- factor(
+  estudio_vacunas_t_final_selected$ultima_inmun_infecc_bin,
+  levels = c(NA, "Less than one month", "One to three months", "Six months or more", "Three to six months" ),
+  labels = c("Ninguna", "Less than one month", "One to three months", "Six months or more", "Three to six months"),
+  exclude = NULL  # This ensures that <NA> is treated as a regular level
+)
 ```
 
 # Saving RDS
