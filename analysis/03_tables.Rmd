@@ -28,33 +28,6 @@ library(janitor)
 
 estudio_vacunas_t_final_selected <- 
   readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds")
-
-
-
-comorb_no_cancer <- estudio_vacunas_t_final_selected %>% 
-  select(asma, cardiopatia_isquemica:diabetes, epoc:insuficiencia_renal_cronica, vih) %>% 
-  colnames(.)
-
-solid_cancers_vector <- estudio_vacunas_t_final_selected %>% 
-  select(cancer_colorrectal:cancer_de_vejiga, melanoma_de_piel, sarcoma_de_kaposi) %>% 
-  colnames(.)
-
-hemat_cancers_vector <- estudio_vacunas_t_final_selected %>% 
-  select(cancer_inmunoproliferativo, enfermedad_de_hodgkin, linfoma_no_hodgkin, leucemia) %>% 
-  colnames(.)
-
-
-
-estudio_vacunas_t_final_selected %<>% 
-  mutate(
-    variant_period = relevel(as.factor(variant_period), ref = "Dominance of Alpha variant"),
-    across(comorb_no_cancer, ~if_else(.x == 1, "Sí", "No")),
-    across(comorb_no_cancer, as.factor),
-    across(comorb_no_cancer, ~relevel(.x, ref = "No")),
-    across(c(hosp_stay_bin, icu_stay_bin), ~if_else(.x == 1, "Sí", "No")),
-    across(c(hosp_stay_bin, icu_stay_bin), ~as.factor(.x)),
-    across(c(hosp_stay_bin, icu_stay_bin), ~relevel(.x, ref = "No")),
-  )
 ```
 
 # Table 1
@@ -106,6 +79,7 @@ t1_byhosp_categ <- estudio_vacunas_t_final_selected %>%
   select(-c(mortality, mortality30d, icu_stay_bin)) %>% 
   tbl_summary(
     by = hosp_stay_bin,
+    percent = "row",
     statistic = list(all_categorical() ~ "{n} ({p}%)")
     # digits = list(age ~ 2)
   )
@@ -119,6 +93,7 @@ t1_byhosp_categ
 # Description by ICU stay
 
 t1_byicu_age_icu_duration <- estudio_vacunas_t_final_selected %>%
+  filter(hosp_stay_bin == "Sí") %>% 
   select(icu_stay_bin, age, estancia_hospitalaria_dias, num_dias_uci) %>%
   tbl_summary(
     by = icu_stay_bin,
@@ -135,10 +110,12 @@ t1_byicu_age_icu_duration
 
 
 t1_byicu_categ <- estudio_vacunas_t_final_selected %>%
+  filter(hosp_stay_bin == "Sí") %>% 
   select(where(is.factor)) %>%
   select(-c(mortality, mortality30d, hosp_stay_bin)) %>% 
   tbl_summary(
     by = icu_stay_bin,
+    percent = "row",
     statistic = list(all_categorical() ~ "{n} ({p}%)")
     # digits = list(age ~ 2)
   )
@@ -172,6 +149,7 @@ t1_bymortality_categ <- estudio_vacunas_t_final_selected %>%
   select(-c(mortality, icu_stay_bin, hosp_stay_bin)) %>% 
   tbl_summary(
     by = mortality30d,
+    percent = "row",
     statistic = list(all_categorical() ~ "{n} ({p}%)")
     # digits = list(age ~ 2)
   )

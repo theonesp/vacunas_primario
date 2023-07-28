@@ -234,7 +234,6 @@ coef_data <- coef_data[order(coef_data$predictor), ]
 forest_plot <- 
   ggplot(
     coef_data, 
-    # %>% filter(predictor != "Age (group 4: 69-87)"), 
     aes(
       x = OR, xmin = OR_lower, xmax = OR_upper,
       y = predictor
@@ -273,7 +272,7 @@ print(forest_plot)
 
 # Save the last forest plot rendered
 ggsave(
-  "/opt/datos_compartidos/vacunas_data/figuras/forest_hospstay_infections_gam_filtered.jpeg",
+  "/opt/datos_compartidos/vacunas_data/figuras/forest_hospstay_infections_gam.jpeg",
   device = "jpeg",
   units = "px",
   dpi = 300,
@@ -287,7 +286,7 @@ ggsave(
 #### Age
 
 ```{r}
-gam_plot_hosp_stay_bin<-plot(gam_hosp_stay_bin, pages = 0)
+gam_plot_hosp_stay_bin <- plot(gam_hosp_stay_bin, pages = 0)
 
 # Extract the data from gam_plot_hosp_stay_bin
 x <- gam_plot_hosp_stay_bin[[1]]$x
@@ -300,7 +299,11 @@ lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) * 100
 upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) * 100
 
 # Create a data frame with x, fit_chance, and se
-df <- data.frame(x = x, fit_chance = fit_chance, lower_bound_chance = lower_bound_chance, upper_bound_chance = upper_bound_chance)
+df <- 
+  data.frame(
+    x = x, fit_chance = fit_chance, 
+    lower_bound_chance = lower_bound_chance, upper_bound_chance = upper_bound_chance
+  )
 
 # Create the plot
 ggplot(df, aes(x = x, y = fit_chance)) +
@@ -309,8 +312,20 @@ ggplot(df, aes(x = x, y = fit_chance)) +
   labs(x = "Age", y = "Probability of Hospital Admission (%)") +
   ylim(0, 100) + 
   xlim(14,120) +
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.background = element_rect(fill = "white"))
+
+# Saving the plot
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/hosp_stay_probability.jpeg",
+  device = "jpeg",
+  units = "px",
+  dpi = 300,
+  width = 4000,
+  height = 2000
+)
 ```
+
 #### Vaccines
 
 ```{r}
@@ -318,19 +333,24 @@ library(ggplot2)
 
 
 # Filter the coefficient data for the number of COVID vaccines
-number_of_vaccines <- coef_data[grep("Number of COVID Vaccines", coef_data$predictor), ]
+number_of_vaccines_df <- coef_data[grep("Number of COVID Vaccines", coef_data$predictor), ]
 
 # Calculate the percentage chance of Hospital Admission
-number_of_vaccines_df$fit_chance <- 100 - ((1 - number_of_vaccines$OR) * 100)
-number_of_vaccines_df$lower_bound_chance <- 100 - ((1 - number_of_vaccines$OR_upper) * 100)
-number_of_vaccines_df$upper_bound_chance <- 100 - ((1 - number_of_vaccines$OR_lower) * 100)
+# number_of_vaccines_df$fit_chance <- 100 - ((1 - number_of_vaccines$OR) * 100)
+# number_of_vaccines_df$lower_bound_chance <- 100 - ((1 - number_of_vaccines$OR_upper) * 100)
+# number_of_vaccines_df$upper_bound_chance <- 100 - ((1 - number_of_vaccines$OR_lower) * 100)
+number_of_vaccines_df$fit_chance <- (1 - number_of_vaccines_df$OR) * 100
+number_of_vaccines_df$lower_bound_chance <- (1 - number_of_vaccines_df$OR_upper) * 100
+number_of_vaccines_df$upper_bound_chance <- (1 - number_of_vaccines_df$OR_lower) * 100
+
 
 
 # Convert "number_of_vaccines" to factor with desired order
-number_of_vaccines_df$number_of_vaccines <- factor(number_of_vaccines_df$number_of_vaccines,
-                                                   levels = c("Number of COVID Vaccines (1)",
-                                                              "Number of COVID Vaccines (2)",
-                                                              "Number of COVID Vaccines (3)"))
+number_of_vaccines_df$number_of_vaccines <- 
+  factor(
+    number_of_vaccines_df$predictor,
+    levels = c("Number of COVID Vaccines (1)", "Number of COVID Vaccines (2)", "Number of COVID Vaccines (3)")
+  )
 
 
 # Create the ggplot
@@ -339,10 +359,23 @@ ggplot(number_of_vaccines_df, aes(x = number_of_vaccines, y = fit_chance, group 
   geom_line() +
   geom_point() +
   labs(
-       x = "Number of COVID Vaccines",
-       y = "Probability of Hospital Admission (%)") +
+    # x = "Number of COVID Vaccines",
+    # y = "Probability of Hospital Admission (%)"
+    y = "Vaccine effectiveness"
+  ) +
   ylim(0, 100) + 
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.background = element_rect(fill = "white"))
+
+# Saving the plot
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/VE_hosp_stay.jpeg",
+  device = "jpeg",
+  units = "px",
+  dpi = 300,
+  width = 4000,
+  height = 2000
+)
 ```
 
 
@@ -366,18 +399,25 @@ set.seed(123)
 
 # Split the data into training and testing sets with balanced outcome percentages
 split_ratio <- 0.9
-split_data <- balanced_split(estudio_vacunas_t_final_selected, "icu_stay_bin", split_ratio)
+split_data <- 
+  balanced_split(
+    estudio_vacunas_t_final_selected, 
+    # %>% filter(hosp_stay_bin == "Sí"), 
+    "icu_stay_bin", 
+    split_ratio
+  )
 train_data <- split_data$train_data
 test_data <- split_data$test_data
 
 # Train the GAM model
 gam_icu_stay_bin <- 
   gam(
-    icu_stay_bin ~ s(age, k = 6) + n_vacunas_covid + desc_sexo + variant_period + 
+    icu_stay_bin ~ s(age, k = 3) + n_vacunas_covid + desc_sexo + variant_period + 
       asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +  hepatopatia_cronica_excepto_cirrosis + 
       hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + 
       cancer_organo_solido + n_prev_infecc + ultima_inmun_infecc_bin,
     data = train_data,
+    # data = estudio_vacunas_t_final_selected %>% filter(hosp_stay_bin == "Sí"),
     family = binomial()
   )
 
@@ -386,8 +426,8 @@ test_data$predicted <- predict(gam_icu_stay_bin, newdata = test_data, type = "re
 test_data$predicted_bin <- ifelse(test_data$predicted > 0.5, 1, 0)
 
 # Calculate precision, recall, and F1 score
-precision <- sum(test_data$predicted_bin == 1 & test_data$icu_stay_bin == 1) / sum(test_data$predicted_bin == 1)
-recall <- sum(test_data$predicted_bin == 1 & test_data$icu_stay_bin == 1) / sum(test_data$icu_stay_bin == 1)
+precision <- sum(test_data$predicted_bin == 1 & test_data$icu_stay_bin == "Sí") / sum(test_data$predicted_bin == 1)
+recall <- sum(test_data$predicted_bin == 1 & test_data$icu_stay_bin == "Sí") / sum(test_data$icu_stay_bin == "Sí")
 f1 <- 2 * precision * recall / (precision + recall)
 
 # Print the results
@@ -432,260 +472,25 @@ variable_order <-
     "HIV+", "Haematologic cancer", "Solid organ cancer"
   ))
 
-
-
-coef_data %<>% 
-filter(predictor != "(Intercept)") %>% 
-  mutate(
-    predictor = case_when(
-      # predictor == "(Intercept)" ~ "Intercept",
-      predictor == "desc_sexoHombre" ~ "Gender (male)",
-      predictor == "s(age).1" ~ "Age (group 1: 12-30)",
-      predictor == "s(age).2" ~ "Age (group 2: 31-49)",
-      predictor == "s(age).3" ~ "Age (group 3: 50-68)",
-      predictor == "s(age).4" ~ "Age (group 4: 69-87)",
-      predictor == "s(age).5" ~ "Age (group 5: 88-120)",
-      predictor == "variant_periodBefore α" ~ "Period before α predominance",
-      predictor == "variant_periodα" ~ "Period of α predominance",
-      predictor == "variant_periodα/Δ transition" ~ "α-Δ transition period",
-      predictor == "variant_periodΔ" ~ "Period of Δ predominance",
-      predictor == "variant_periodΔ/Ό transition" ~ "Δ-Ό transition period",
-      predictor == "variant_periodΌ" ~ "Period of Ό predominance",
-      predictor == "n_vacunas_covidUna" ~ "Number of COVID Vaccines (1)",
-      predictor == "n_vacunas_covidDos" ~ "Number of COVID Vaccines (2)",
-      predictor == "n_vacunas_covidTres" ~ "Number of COVID Vaccines (3)",
-      predictor == "n_prev_infeccUno" ~ "Number of Previous Infections (1)",
-      predictor == "n_prev_infeccDos" ~ "Number of Previous Infections (2)",
-      predictor == "ultima_inmun_infecc_binLess than one month" ~ "Last vaccination/infection (<1 month ago)",
-      predictor == "ultima_inmun_infecc_binOne to three months" ~ "Last vaccination/infection (1-3 months ago)",
-      predictor == "ultima_inmun_infecc_binThree to six months" ~ "Last vaccination/infection (3-6 months ago)",
-      predictor == "ultima_inmun_infecc_binSix months or more" ~ "Last vaccination/infection (>6 months ago)",
-      predictor == "asmaSí" ~ "Asthma",
-      predictor == "cardiopatia_isquemicaSí" ~ "Ischemic heart disease",
-      predictor == "cirrosis_hepaticaSí" ~ "Hepatic cirrhosis",
-      predictor == "diabetesSí" ~ "Diabetes",
-      predictor == "epocSí" ~ "Chronic Obstructive Pulmonary Disease (COPD)",
-      predictor == "hepatopatia_cronica_excepto_cirrosisSí" ~ "Chronic Hepatic Disease (except cirrhosis)",
-      predictor == "hipertensionSí" ~ "Hypertension",
-      predictor == "insuficiencia_cardiacaSí" ~ "Heart failure",
-      predictor == "insuficiencia_renal_cronicaSí" ~ "Chronic kidney disease",
-      predictor == "vihSí" ~ "HIV+",
-      predictor == "cancer_hematologicoSí" ~ "Haematologic cancer",
-      predictor == "cancer_organo_solidoSí" ~ "Solid organ cancer"
-    ),
-    predictor = factor(predictor, levels = variable_order)
-  )
-
-# Order the dataset based on predictor column
-coef_data <- coef_data[order(coef_data$predictor), ]
-
-asd <- coef_data %>% filter(predictor != "Age (group 4: 69-87)")
-# Set up the forest plot using ggplot2
-forest_plot <- 
-  ggplot(
-    coef_data %>% 
-      filter(predictor != "Age (group 4: 69-87)" & predictor != "Number of Previous Infections (2)"),
-    aes(
-      x = OR, xmin = OR_lower, xmax = OR_upper,
-      y = predictor
-      # y = reorder(predictor, -as.numeric(factor(predictor, levels = variable_order)))
-    )
-  ) +
-  geom_point(size = 2, color = "#2c3e50") +
-  geom_errorbarh(height = 0.2, color = "#2c3e50") +
-  geom_vline(xintercept = 1, linetype = "dashed") +
-  labs(
-    x = "Odds Ratio", 
-    y = "Predictor", 
-    title = "Odds Ratios and Confidence Intervals for ICU Admission Prediction"
-  ) +
-  theme_minimal() +
-  scale_color_manual(
-    values = c("#c0392b", "#27ae60"),
-    breaks = c("#c0392b", "#27ae60"),
-    labels = c("Adverse", "Protective"),
-    name = "Effect on Outcome"
-  ) +
-  theme(
-    plot.background = element_rect(fill = "white"),
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor.y = element_blank(),
-    plot.title = element_text(hjust = 0.5),
-    axis.ticks = element_blank(),
-    axis.text.x = element_text(color = "#2c3e50"),
-    axis.text.y = element_text(color = "#2c3e50")
-  )
-  # geom_linerange(data = subset(coef_data, OR_lower > 1 & OR_upper > 1), aes(color = "#c0392b")) +
-  # geom_linerange(data = subset(coef_data, OR_lower < 1 & OR_upper < 1), aes(color = "#27ae60"))
-
-# Display the forest plot
-print(forest_plot)
-
-# Save the last forest plot rendered
-ggsave(
-  "/opt/datos_compartidos/vacunas_data/figuras/forest_icustay_infections_gam_filtered.jpeg",
-  device = "jpeg",
-  units = "px",
-  dpi = 300,
-  width = 4000,
-  height = 2000
-)
-```
-
-### GAM Plot
-
-#### Age
-
-```{r}
-gam_plot_hosp_stay_bin<-plot(gam_hosp_stay_bin, pages = 0)
-
-# Extract the data from gam_plot_hosp_stay_bin
-x <- gam_plot_hosp_stay_bin[[1]]$x
-fit <- gam_plot_hosp_stay_bin[[1]]$fit
-se <- gam_plot_hosp_stay_bin[[1]]$se
-
-# Convert odds ratio to percentage chance of Hospital Admission
-fit_chance <- (exp(fit) / (1 + exp(fit))) * 100
-lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) * 100
-upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) * 100
-
-# Create a data frame with x, fit_chance, and se
-df <- data.frame(x = x, fit_chance = fit_chance, lower_bound_chance = lower_bound_chance, upper_bound_chance = upper_bound_chance)
-
-# Create the plot
-ggplot(df, aes(x = x, y = fit_chance)) +
-  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), fill = "#2980b9", alpha = 0.3) +
-  geom_line() +
-  labs(x = "Age", y = "Probability of Hospital Admission (%)") +
-  ylim(0, 100) + 
-  xlim(14,120) +
-  theme_minimal()
-```
-#### Vaccines
-
-```{r}
-library(ggplot2)
-
-
-# Filter the coefficient data for the number of COVID vaccines
-number_of_vaccines <- coef_data[grep("Number of COVID Vaccines", coef_data$predictor), ]
-
-# Calculate the percentage chance of Hospital Admission
-number_of_vaccines_df$fit_chance <- 100 - ((1 - number_of_vaccines$OR) * 100)
-number_of_vaccines_df$lower_bound_chance <- 100 - ((1 - number_of_vaccines$OR_upper) * 100)
-number_of_vaccines_df$upper_bound_chance <- 100 - ((1 - number_of_vaccines$OR_lower) * 100)
-
-
-# Convert "number_of_vaccines" to factor with desired order
-number_of_vaccines_df$number_of_vaccines <- factor(number_of_vaccines_df$number_of_vaccines,
-                                                   levels = c("Number of COVID Vaccines (1)",
-                                                              "Number of COVID Vaccines (2)",
-                                                              "Number of COVID Vaccines (3)"))
-
-
-# Create the ggplot
-ggplot(number_of_vaccines_df, aes(x = number_of_vaccines, y = fit_chance, group = 1)) +
-  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), fill = "#16a085", alpha = 0.3) +
-  geom_line() +
-  geom_point() +
-  labs(
-       x = "Number of COVID Vaccines",
-       y = "Probability of Hospital Admission (%)") +
-  ylim(0, 100) + 
-  theme_minimal()
-```
-
-
-
-# Outcome: mortality30d
-
-
-
-## General Additive Modeling (GAM)
-
-The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
-
-### Fitting the model and addressing performance
-
-In this study, a generalized additive model (GAM) with a binomial family was employed to model binary outcomes, akin to logistic regression, in the context of public health. The objective was to estimate the relationship between the binary response variable, namely hospital stay (hosp_stay_bin), and a range of predictor variables, including age, sex (desc_sexo), asthma (asma), ischemic heart disease (cardiopatia_isquemica), hepatic cirrhosis (cirrosis_hepatica), diabetes, chronic obstructive pulmonary disease (epoc), chronic hepatopathy excluding cirrhosis (hepatopatia_cronica_excepto_cirrosis), hypertension, heart failure (insuficiencia_cardiaca), chronic renal insufficiency (insuficiencia_renal_cronica), HIV infection (vih), hematologic cancer, solid organ cancer, number of COVID-19 vaccines received (n_vacunas_covid), number of previous infections (n_prev_infecc), and a binary indicator of the most recent immunization or infection (ultima_inmun_infecc_bin).
-
-The GAM model utilized the gam function, fitting a smooth and flexible non-linear relationship between age (s(age, k = 3, bs = "cr")) and the binary outcome. Smooth functions and regression splines were employed for the remaining predictor variables, which were crucial in capturing potential non-linear associations with the hospital stay. 
-
-```{r}
-set.seed(123)
-
-# Split the data into training and testing sets with balanced outcome percentages
-split_ratio <- 0.9
-split_data <- balanced_split(estudio_vacunas_t_final_selected, "mortality30d", split_ratio)
-train_data <- split_data$train_data
-test_data <- split_data$test_data
-
-# Train the GAM model
-gam_mortality30d <- 
-  gam(
-    mortality30d ~ s(age, k = 6) + n_vacunas_covid + desc_sexo + variant_period + 
+logreg_icu_stay_bin <- 
+  glm(
+    icu_stay_bin ~ age + n_vacunas_covid + desc_sexo + variant_period + 
       asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +  hepatopatia_cronica_excepto_cirrosis + 
       hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + 
       cancer_organo_solido + n_prev_infecc + ultima_inmun_infecc_bin,
     data = train_data,
     family = binomial()
   )
-
-# Make predictions on the test data
-test_data$predicted <- predict(gam_mortality30d, newdata = test_data, type = "response")
-test_data$predicted_bin <- ifelse(test_data$predicted > 0.5, 1, 0)
-
-# Calculate precision, recall, and F1 score
-precision <- sum(test_data$predicted_bin == 1 & test_data$mortality30d == 1) / sum(test_data$predicted_bin == 1)
-recall <- sum(test_data$predicted_bin == 1 & test_data$mortality30d == 1) / sum(test_data$mortality30d == 1)
-f1 <- 2 * precision * recall / (precision + recall)
-
-# Print the results
-print(precision)
-print(recall)
-print(f1)
-```
-
-### Odds Ratio and forest plot
-
-The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
-
-```{r}
-# Extract the model coefficients and their confidence intervals
-coef_data <- data.frame(coef = coef(gam_mortality30d))
-se <- sqrt(diag(vcov(gam_icu_stay_bin)))
-z_value <- qnorm(0.975)  # 95% confidence level (two-sided)
-
-# Calculate the odds ratios and their respective lower and upper confidence limits
-coef_data$OR <- exp(coef_data$coef)
-coef_data$OR_lower <- exp(coef_data$coef - z_value * se)
-coef_data$OR_upper <- exp(coef_data$coef + z_value * se)
-
-# Calculate the p-values
-p_values <- 2 * (1 - pnorm(abs(coef_data$coef) / se))
-coef_data$p_value <- p_values
-
-# Create a variable to store the predictor names
-coef_data$predictor <- rownames(coef_data)
-
-variable_order <- 
-  rev(c(
-    "Gender (male)", "Age (group 1: 12-30)", "Age (group 2: 31-49)", "Age (group 3: 50-68)",
-    "Age (group 4: 69-87)", "Age (group 5: 88-120)", "Period before α predominance", "Period of α predominance",
-    "α-Δ transition period", "Period of Δ predominance", "Δ-Ό transition period", "Period of Ό predominance",
-    "Number of COVID Vaccines (1)", "Number of COVID Vaccines (2)", "Number of COVID Vaccines (3)",
-    "Number of Previous Infections (1)", "Number of Previous Infections (2)",
-    "Last vaccination/infection (<1 month ago)", "Last vaccination/infection (1-3 months ago)",
-    "Last vaccination/infection (3-6 months ago)", "Last vaccination/infection (>6 months ago)", "Asthma",
-    "Ischemic heart disease", "Hepatic cirrhosis", "Diabetes", "Chronic Obstructive Pulmonary Disease (COPD)",
-    "Chronic Hepatic Disease (except cirrhosis)", "Hypertension", "Heart failure", "Chronic kidney disease",
-    "HIV+", "Haematologic cancer", "Solid organ cancer"
-  ))
-
-
+summary(logreg_icu_stay_bin)
+aa <- extract_coef_pval_OR(logreg_icu_stay_bin)
 
 coef_data %<>% 
-filter(predictor != "(Intercept)") %>% 
+filter(predictor != "(Intercept)") %>%
+  # rename(
+    # predictor = term,
+    # asd
+    # asd
+    # ) %>% 
   mutate(
     predictor = case_when(
       # predictor == "(Intercept)" ~ "Intercept",
@@ -735,10 +540,304 @@ forest_plot <-
   ggplot(
     coef_data %>% 
       filter(
-        predictor != "Age (group 4: 69-87)"
-        & predictor != "Age (group 2: 31-49)"
-        & predictor != "Age (group 5: 88-120)"
-        & predictor != "Number of Previous Infections (2)"),
+        predictor != "Age (group 1: 12-30)"
+        & predictor != "Number of Previous Infections (2)"
+      ),
+    aes(
+      x = OR, xmin = OR_lower, xmax = OR_upper,
+      y = predictor
+      # y = reorder(predictor, -as.numeric(factor(predictor, levels = variable_order)))
+    )
+  ) +
+  geom_point(size = 2, color = "#2c3e50") +
+  geom_errorbarh(height = 0.2, color = "#2c3e50") +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(
+    x = "Odds Ratio", 
+    y = "Predictor", 
+    title = "Odds Ratios and Confidence Intervals for ICU Admission Prediction"
+  ) +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("#c0392b", "#27ae60"),
+    breaks = c("#c0392b", "#27ae60"),
+    labels = c("Adverse", "Protective"),
+    name = "Effect on Outcome"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50")
+  ) +
+  geom_linerange(
+    data = coef_data %>% 
+      filter(
+        predictor != "Age (group 1: 12-30)"
+        & predictor != "Number of Previous Infections (2)"
+        & OR_lower > 1
+        & OR_upper > 1
+      ),
+    aes(color = "#c0392b")) +
+  geom_linerange(
+    data = coef_data %>% 
+      filter(
+        predictor != "Age (group 1: 12-30)"
+        & predictor != "Number of Previous Infections (2)"
+        & OR_lower < 1 
+        & OR_upper < 1
+      ), 
+    aes(color = "#27ae60"))
+
+# Display the forest plot
+print(forest_plot)
+
+# Save the last forest plot rendered
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/forest_icustay_infections_gam3.jpeg",
+  device = "jpeg",
+  units = "px",
+  dpi = 300,
+  width = 4000,
+  height = 2000
+)
+```
+
+### GAM Plot
+
+#### Age
+
+```{r}
+gam_plot_icu_stay_bin <- plot(gam_icu_stay_bin, pages = 0)
+
+# Extract the data from gam_plot_hosp_stay_bin
+x <- gam_plot_icu_stay_bin[[1]]$x
+fit <- gam_plot_icu_stay_bin[[1]]$fit
+se <- gam_plot_icu_stay_bin[[1]]$se
+
+# Convert odds ratio to percentage chance of Hospital Admission
+fit_chance <- (exp(fit) / (1 + exp(fit))) * 100
+lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) * 100
+upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) * 100
+
+# Create a data frame with x, fit_chance, and se
+df <- data.frame(x = x, fit_chance = fit_chance, lower_bound_chance = lower_bound_chance, upper_bound_chance = upper_bound_chance)
+
+# Create the plot
+ggplot(df, aes(x = x, y = fit_chance)) +
+  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), fill = "#2980b9", alpha = 0.3) +
+  geom_line() +
+  labs(x = "Age", y = "Probability of ICU Admission (%)") +
+  ylim(0, 100) + 
+  xlim(14,120) +
+  theme_minimal()
+
+# Saving the plot
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/icu_stay_probability.jpeg",
+  device = "jpeg",
+  units = "px",
+  dpi = 300,
+  width = 4000,
+  height = 2000
+)
+```
+
+#### Vaccines
+
+```{r}
+library(ggplot2)
+
+
+# Filter the coefficient data for the number of COVID vaccines
+number_of_vaccines_df <- coef_data[grep("Number of COVID Vaccines", coef_data$predictor), ]
+
+# Calculate the percentage chance of Hospital Admission
+# number_of_vaccines_df$fit_chance <- 100 - ((1 - number_of_vaccines_df$OR) * 100)
+# number_of_vaccines_df$lower_bound_chance <- 100 - ((1 - number_of_vaccines_df$OR_upper) * 100)
+# number_of_vaccines_df$upper_bound_chance <- 100 - ((1 - number_of_vaccines_df$OR_lower) * 100)
+number_of_vaccines_df$fit_chance <- (1 - number_of_vaccines_df$OR) * 100
+number_of_vaccines_df$lower_bound_chance <- (1 - number_of_vaccines_df$OR_upper) * 100
+number_of_vaccines_df$upper_bound_chance <- (1 - number_of_vaccines_df$OR_lower) * 100
+
+
+
+# Convert "number_of_vaccines" to factor with desired order
+number_of_vaccines_df$predictor <- factor(number_of_vaccines_df$predictor,
+                                                   levels = c("Number of COVID Vaccines (1)",
+                                                              "Number of COVID Vaccines (2)",
+                                                              "Number of COVID Vaccines (3)"))
+
+
+# Create the ggplot
+ggplot(number_of_vaccines_df, aes(x = predictor, y = fit_chance, group = 1)) +
+  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), fill = "#16a085", alpha = 0.3) +
+  geom_line() +
+  geom_point() +
+  labs(
+       x = "Number of COVID Vaccines",
+       y = "Probability of Hospital Admission (%)") +
+  # ylim(0, 100) + 
+  theme_minimal()
+
+# Saving the plot
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/VE_icu_stay.jpeg",
+  device = "jpeg",
+  units = "px",
+  dpi = 300,
+  width = 4000,
+  height = 2000
+)
+```
+
+
+
+# Outcome: mortality30d
+
+
+
+## General Additive Modeling (GAM)
+
+The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+
+### Fitting the model and addressing performance
+
+In this study, a generalized additive model (GAM) with a binomial family was employed to model binary outcomes, akin to logistic regression, in the context of public health. The objective was to estimate the relationship between the binary response variable, namely hospital stay (hosp_stay_bin), and a range of predictor variables, including age, sex (desc_sexo), asthma (asma), ischemic heart disease (cardiopatia_isquemica), hepatic cirrhosis (cirrosis_hepatica), diabetes, chronic obstructive pulmonary disease (epoc), chronic hepatopathy excluding cirrhosis (hepatopatia_cronica_excepto_cirrosis), hypertension, heart failure (insuficiencia_cardiaca), chronic renal insufficiency (insuficiencia_renal_cronica), HIV infection (vih), hematologic cancer, solid organ cancer, number of COVID-19 vaccines received (n_vacunas_covid), number of previous infections (n_prev_infecc), and a binary indicator of the most recent immunization or infection (ultima_inmun_infecc_bin).
+
+The GAM model utilized the gam function, fitting a smooth and flexible non-linear relationship between age (s(age, k = 3, bs = "cr")) and the binary outcome. Smooth functions and regression splines were employed for the remaining predictor variables, which were crucial in capturing potential non-linear associations with the hospital stay. 
+
+```{r}
+set.seed(123)
+
+# Split the data into training and testing sets with balanced outcome percentages
+split_ratio <- 0.9
+split_data <- balanced_split(estudio_vacunas_t_final_selected, "mortality30d", split_ratio)
+train_data <- split_data$train_data
+test_data <- split_data$test_data
+
+# Train the GAM model
+gam_mortality30d <- 
+  gam(
+    mortality30d ~ s(age, k = 4) + n_vacunas_covid + desc_sexo + variant_period + 
+      asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +  hepatopatia_cronica_excepto_cirrosis + 
+      hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica + vih + cancer_hematologico + 
+      cancer_organo_solido + n_prev_infecc + ultima_inmun_infecc_bin,
+    data = train_data,
+    family = binomial()
+  )
+
+# Make predictions on the test data
+test_data$predicted <- predict(gam_mortality30d, newdata = test_data, type = "response")
+test_data$predicted_bin <- ifelse(test_data$predicted > 0.5, 1, 0)
+
+# Calculate precision, recall, and F1 score
+precision <- sum(test_data$predicted_bin == 1 & test_data$mortality30d == "Sí") / sum(test_data$predicted_bin == 1)
+recall <- sum(test_data$predicted_bin == 1 & test_data$mortality30d == "Sí") / sum(test_data$mortality30d == "Sí")
+f1 <- 2 * precision * recall / (precision + recall)
+
+# Print the results
+print(precision)
+print(recall)
+print(f1)
+```
+
+### Odds Ratio and forest plot
+
+The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+
+```{r}
+# Extract the model coefficients and their confidence intervals
+coef_data <- data.frame(coef = coef(gam_mortality30d))
+se <- sqrt(diag(vcov(gam_mortality30d)))
+z_value <- qnorm(0.975)  # 95% confidence level (two-sided)
+
+# Calculate the odds ratios and their respective lower and upper confidence limits
+coef_data$OR <- exp(coef_data$coef)
+coef_data$OR_lower <- exp(coef_data$coef - z_value * se)
+coef_data$OR_upper <- exp(coef_data$coef + z_value * se)
+
+# Calculate the p-values
+p_values <- 2 * (1 - pnorm(abs(coef_data$coef) / se))
+coef_data$p_value <- p_values
+
+# Create a variable to store the predictor names
+coef_data$predictor <- rownames(coef_data)
+
+variable_order <- 
+  rev(c(
+    "Gender (male)", "Age (group 1: 12-30)", "Age (group 2: 31-49)", "Age (group 3: 50-68)",
+    "Age (group 4: 69-87)", "Age (group 5: 88-120)", "Period before α predominance", "Period of α predominance",
+    "α-Δ transition period", "Period of Δ predominance", "Δ-Ό transition period", "Period of Ό predominance",
+    "Number of COVID Vaccines (1)", "Number of COVID Vaccines (2)", "Number of COVID Vaccines (3)",
+    "Number of Previous Infections (1)", "Number of Previous Infections (2)",
+    "Last vaccination/infection (<1 month ago)", "Last vaccination/infection (1-3 months ago)",
+    "Last vaccination/infection (3-6 months ago)", "Last vaccination/infection (>6 months ago)", "Asthma",
+    "Ischemic heart disease", "Hepatic cirrhosis", "Diabetes", "Chronic Obstructive Pulmonary Disease (COPD)",
+    "Chronic Hepatic Disease (except cirrhosis)", "Hypertension", "Heart failure", "Chronic kidney disease",
+    "HIV+", "Haematologic cancer", "Solid organ cancer"
+  ))
+
+
+
+coef_data %<>% 
+filter(predictor != "(Intercept)") %>% 
+  mutate(
+    predictor = case_when(
+      # predictor == "(Intercept)" ~ "Intercept",
+      predictor == "desc_sexoHombre" ~ "Gender (male)",
+      predictor == "s(age).1" ~ "Age (group 1: 12-30)",
+      predictor == "s(age).2" ~ "Age (group 2: 31-49)",
+      predictor == "s(age).3" ~ "Age (group 3: 50-68)",
+      predictor == "s(age).4" ~ "Age (group 4: 69-87)",
+      predictor == "s(age).5" ~ "Age (group 5: 88-120)",
+      predictor == "variant_periodBefore α" ~ "Period before α predominance",
+      predictor == "variant_periodα" ~ "Period of α predominance",
+      predictor == "variant_periodα/Δ transition" ~ "α-Δ transition period",
+      predictor == "variant_periodΔ" ~ "Period of Δ predominance",
+      predictor == "variant_periodΔ/Ό transition" ~ "Δ-Ό transition period",
+      predictor == "variant_periodΌ" ~ "Period of Ό predominance",
+      predictor == "n_vacunas_covidUna" ~ "Number of COVID Vaccines (1)",
+      predictor == "n_vacunas_covidDos" ~ "Number of COVID Vaccines (2)",
+      predictor == "n_vacunas_covidTres" ~ "Number of COVID Vaccines (3)",
+      predictor == "n_prev_infeccUno" ~ "Number of Previous Infections (1)",
+      predictor == "n_prev_infeccDos" ~ "Number of Previous Infections (2)",
+      predictor == "ultima_inmun_infecc_binLess than one month" ~ "Last vaccination/infection (<1 month ago)",
+      predictor == "ultima_inmun_infecc_binOne to three months" ~ "Last vaccination/infection (1-3 months ago)",
+      predictor == "ultima_inmun_infecc_binThree to six months" ~ "Last vaccination/infection (3-6 months ago)",
+      predictor == "ultima_inmun_infecc_binSix months or more" ~ "Last vaccination/infection (>6 months ago)",
+      predictor == "asmaSí" ~ "Asthma",
+      predictor == "cardiopatia_isquemicaSí" ~ "Ischemic heart disease",
+      predictor == "cirrosis_hepaticaSí" ~ "Hepatic cirrhosis",
+      predictor == "diabetesSí" ~ "Diabetes",
+      predictor == "epocSí" ~ "Chronic Obstructive Pulmonary Disease (COPD)",
+      predictor == "hepatopatia_cronica_excepto_cirrosisSí" ~ "Chronic Hepatic Disease (except cirrhosis)",
+      predictor == "hipertensionSí" ~ "Hypertension",
+      predictor == "insuficiencia_cardiacaSí" ~ "Heart failure",
+      predictor == "insuficiencia_renal_cronicaSí" ~ "Chronic kidney disease",
+      predictor == "vihSí" ~ "HIV+",
+      predictor == "cancer_hematologicoSí" ~ "Haematologic cancer",
+      predictor == "cancer_organo_solidoSí" ~ "Solid organ cancer"
+    ),
+    predictor = factor(predictor, levels = variable_order)
+  )
+
+# Order the dataset based on predictor column
+coef_data <- coef_data[order(coef_data$predictor), ]
+
+asd <- coef_data %>% filter(predictor != "Age (group 4: 69-87)")
+# Set up the forest plot using ggplot2
+forest_plot <- 
+  ggplot(
+    coef_data, 
+      # filter(
+        # predictor != "Age (group 4: 69-87)"
+        # & predictor != "Age (group 2: 31-49)"
+        # & predictor != "Age (group 5: 88-120)"
+        # & predictor != "Number of Previous Infections (2)"),
     aes(
       x = OR, xmin = OR_lower, xmax = OR_upper,
       y = predictor
@@ -768,16 +867,16 @@ forest_plot <-
     axis.ticks = element_blank(),
     axis.text.x = element_text(color = "#2c3e50"),
     axis.text.y = element_text(color = "#2c3e50")
-  )
-  # geom_linerange(data = subset(coef_data, OR_lower > 1 & OR_upper > 1), aes(color = "#c0392b")) +
-  # geom_linerange(data = subset(coef_data, OR_lower < 1 & OR_upper < 1), aes(color = "#27ae60"))
+  ) +
+  geom_linerange(data = subset(coef_data, OR_lower > 1 & OR_upper > 1), aes(color = "#c0392b")) +
+  geom_linerange(data = subset(coef_data, OR_lower < 1 & OR_upper < 1), aes(color = "#27ae60"))
 
 # Display the forest plot
 print(forest_plot)
 
 # Save the last forest plot rendered
 ggsave(
-  "/opt/datos_compartidos/vacunas_data/figuras/forest_mortality_infections_gam_filtered.jpeg",
+  "/opt/datos_compartidos/vacunas_data/figuras/forest_mortality_infections_gam.jpeg",
   device = "jpeg",
   units = "px",
   dpi = 300,
@@ -791,12 +890,12 @@ ggsave(
 #### Age
 
 ```{r}
-gam_plot_hosp_stay_bin<-plot(gam_hosp_stay_bin, pages = 0)
+gam_plot_mortality <- plot(gam_mortality30d, pages = 0)
 
 # Extract the data from gam_plot_hosp_stay_bin
-x <- gam_plot_hosp_stay_bin[[1]]$x
-fit <- gam_plot_hosp_stay_bin[[1]]$fit
-se <- gam_plot_hosp_stay_bin[[1]]$se
+x <- gam_plot_mortality[[1]]$x
+fit <- gam_plot_mortality[[1]]$fit
+se <- gam_plot_mortality[[1]]$se
 
 # Convert odds ratio to percentage chance of Hospital Admission
 fit_chance <- (exp(fit) / (1 + exp(fit))) * 100
@@ -810,10 +909,20 @@ df <- data.frame(x = x, fit_chance = fit_chance, lower_bound_chance = lower_boun
 ggplot(df, aes(x = x, y = fit_chance)) +
   geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), fill = "#2980b9", alpha = 0.3) +
   geom_line() +
-  labs(x = "Age", y = "Probability of Hospital Admission (%)") +
+  labs(x = "Age", y = "Probability of Mortality (%)") +
   ylim(0, 100) + 
   xlim(14,120) +
   theme_minimal()
+
+# Saving the plot
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/moratlity_probability.jpeg",
+  device = "jpeg",
+  units = "px",
+  dpi = 300,
+  width = 4000,
+  height = 2000
+)
 ```
 #### Vaccines
 
@@ -822,23 +931,27 @@ library(ggplot2)
 
 
 # Filter the coefficient data for the number of COVID vaccines
-number_of_vaccines <- coef_data[grep("Number of COVID Vaccines", coef_data$predictor), ]
+number_of_vaccines_df <- coef_data[grep("Number of COVID Vaccines", coef_data$predictor), ]
 
 # Calculate the percentage chance of Hospital Admission
-number_of_vaccines_df$fit_chance <- 100 - ((1 - number_of_vaccines$OR) * 100)
-number_of_vaccines_df$lower_bound_chance <- 100 - ((1 - number_of_vaccines$OR_upper) * 100)
-number_of_vaccines_df$upper_bound_chance <- 100 - ((1 - number_of_vaccines$OR_lower) * 100)
+# number_of_vaccines_df$fit_chance <- 100 - ((1 - number_of_vaccines_df$OR) * 100)
+# number_of_vaccines_df$lower_bound_chance <- 100 - ((1 - number_of_vaccines_df$OR_upper) * 100)
+# number_of_vaccines_df$upper_bound_chance <- 100 - ((1 - number_of_vaccines_df$OR_lower) * 100)
+number_of_vaccines_df$fit_chance <- (1 - number_of_vaccines_df$OR) * 100
+number_of_vaccines_df$lower_bound_chance <- (1 - number_of_vaccines_df$OR_upper) * 100
+number_of_vaccines_df$upper_bound_chance <- (1 - number_of_vaccines_df$OR_lower) * 100
+
 
 
 # Convert "number_of_vaccines" to factor with desired order
-number_of_vaccines_df$number_of_vaccines <- factor(number_of_vaccines_df$number_of_vaccines,
+number_of_vaccines_df$predictor <- factor(number_of_vaccines_df$predictor,
                                                    levels = c("Number of COVID Vaccines (1)",
                                                               "Number of COVID Vaccines (2)",
                                                               "Number of COVID Vaccines (3)"))
 
 
 # Create the ggplot
-ggplot(number_of_vaccines_df, aes(x = number_of_vaccines, y = fit_chance, group = 1)) +
+ggplot(number_of_vaccines_df, aes(x = predictor, y = fit_chance, group = 1)) +
   geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), fill = "#16a085", alpha = 0.3) +
   geom_line() +
   geom_point() +
@@ -847,4 +960,14 @@ ggplot(number_of_vaccines_df, aes(x = number_of_vaccines, y = fit_chance, group 
        y = "Probability of Hospital Admission (%)") +
   ylim(0, 100) + 
   theme_minimal()
+
+# Saving the plot
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/VE_mortality.jpeg",
+  device = "jpeg",
+  units = "px",
+  dpi = 300,
+  width = 4000,
+  height = 2000
+)
 ```
