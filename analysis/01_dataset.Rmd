@@ -64,8 +64,6 @@ resultados_pruebas_COVID %<>% distinct()
 
 ############################
 ############################
-############################
-############################
 # 
 # EXCLUSION CRITERIA 1:
 # PCR dates above/below
