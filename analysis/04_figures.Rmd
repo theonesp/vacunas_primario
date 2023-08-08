@@ -285,6 +285,372 @@ ggsave(
 )
 ```
 
+# Plots for sub-analysis
+
+```{r, include = FALSE}
+## Funciones y valores parametrizados
+
+
+
+# Función para leer archivos ""CSV"" (excel siempre dando problemas) y asignar nombres
+# hashtag grasiaschatgptporenseñarnosR
+leer_csv_carpeta <- function(ruta) {
+  rutas_archivos <- list.files(path = ruta, pattern = ".xls", full.names = TRUE)
+  lista <- list()
+  for (i in seq_along(rutas_archivos)) {
+    datos <- read_csv(rutas_archivos[i])
+    nombre <- str_remove(rutas_archivos[i], fixed(ruta))
+    datos <- datos %>% 
+      mutate(
+        outcome = if_else(
+          grepl("intensivecare_only_hosp", nombre),
+          "intensivecare_only_hosp",
+          str_extract(nombre, "(?<=_)[^_]+")
+        ),
+        veffec = (1 - OR)*100,
+        veffec_lower = (1 - OR_lower)*100,
+        veffec_upper = (1 - OR_upper)*100
+      ) %>% 
+      select(outcome, everything())
+    lista[[nombre]] <- datos
+  }
+  return(lista)
+}
+
+
+
+colours <- c("#FFD92F", "#8DA0CB", "#A6D854", "#E78AC3")
+```
+
+
+
+```{r, include = FALSE}
+
+# Carga de datos
+
+# Para el/la que quiera consultar el código: el nombre de los objetos obedece a
+# 
+# - en **minúscula**, los criterios para subdividir la base de datos;
+# - en **mayúscula**, el outcome principal incluido en las regresiones GAM empleadas por cada subgrupo. Son mutuamente excluyentes (si se incluyó el n_vacunas, se excluyó el tiempo desde inmunización y viceversa)
+
+
+
+
+
+var_agegr_VACCINES <- 
+  leer_csv_carpeta(ruta = "DATA/groups by variant & agegroup (logreg vaccines only)/") %>% 
+  bind_rows() %>% 
+  mutate(
+    agegroup = str_extract(original_model, "(?<=_)[^_]+$"),
+    agegroup = if_else(agegroup == "60", "60 years or older", "59 years or younger"),
+    variant = str_extract(original_model, "^[^_]+"),
+    variant = if_else(variant == "Before", "Before α", variant),
+    predictor = case_when(
+      predictor == "n_vacunas_covidUna" ~ "One",
+      predictor == "n_vacunas_covidDos" ~ "Two",
+      predictor == "n_vacunas_covidTres" ~ "Three"
+    ),
+    predictor = factor(
+      predictor, 
+      levels = c("One", "Two", "Three")
+    )
+  ) %>% 
+  filter(
+    (original_model == "Before_60" & predictor == "One")
+    | (original_model == "α_60" & predictor %in% c("One", "Two"))
+    | (original_model == "Δ_Menor" & predictor %in% c("One", "Two"))
+    | (original_model == "Δ_60" & predictor %in% c("One", "Two", "Three"))
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  select(outcome, predictor, variant, agegroup, everything(), -original_model)
+
+
+
+var_agegr_LASTIMMUN <- 
+  leer_csv_carpeta(ruta = "DATA/groups by variant & agegroup (logreg lastimmun only)/") %>% 
+  bind_rows() %>% 
+  mutate(
+    agegroup = str_extract(original_model, "(?<=_)[^_]+$"),
+    agegroup = if_else(agegroup == "60", "60 years or older", "59 years or younger"),
+    variant = str_extract(original_model, "^[^_]+"),
+    variant = if_else(variant == "Before", "Before α", variant),
+    predictor = case_when(
+      predictor == "ultima_inmun_infecc_binLess than one month" ~ "Less than\none month",
+      predictor == "ultima_inmun_infecc_binOne to three months" ~ "One to\nthree months",
+      predictor == "ultima_inmun_infecc_binThree to six months" ~ "Three to\nsix months",
+      predictor == "ultima_inmun_infecc_binSix months or more" ~ "More than\nsix months"
+    ),
+    predictor = factor(
+      predictor, 
+      levels = c("Less than\none month", "One to\nthree months", "Three to\nsix months", "More than\nsix months")
+    )
+  ) %>% 
+  filter(
+    (original_model == "Before_60" 
+     # & predictor == "n_vacunas_covidUna"
+    )
+    | (original_model == "α_60" 
+       # & predictor %in% c("One", "Two")
+      )
+    | (original_model == "Δ_Menor" 
+       # & predictor %in% c("One", "Two")
+      )
+    | (original_model == "Δ_60" 
+       # & predictor %in% c("One", "Two", "Three")
+      )
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  select(outcome, predictor, variant, agegroup, everything(), -original_model)
+
+
+
+nvacc_lastimmun_VACCINES <- 
+  leer_csv_carpeta(ruta = "DATA/groups by nvac & lastimmun (logreg vaccines only, & variant)") %>% 
+  bind_rows() %>% 
+  mutate(
+    timepast = str_extract(original_model, "(?<=_)[^_]+$"),
+    timepast = case_when(
+      timepast == "Less" ~ "Less than\none month",
+      timepast == "One" ~ "One to\nthree months",
+      timepast == "Three" ~ "Three to\nsix months",
+      timepast == "Six" ~ "More than\nsix months"
+    ),
+    timepast = factor(
+      timepast,
+      levels = c("Less than\none month", "One to\nthree months", "Three to\nsix months", "More than\nsix months")
+    ),
+    nvaccine = str_extract(original_model, "^[^_]+"),
+    nvaccine = factor(nvaccine, levels = c("Una", "Dos", "Tres")),
+    predictor = case_when(
+      predictor == "n_vacunas_covidUna" ~ "One",
+      predictor == "n_vacunas_covidDos" ~ "Two",
+      predictor == "n_vacunas_covidTres" ~ "Three"
+    )
+  ) %>% 
+  select(outcome, predictor, timepast, nvaccine, everything(), -original_model)
+```
+
+# Here they are {.tabset .tabset-fade .tabset-pills}
+
+## PREDICTOR: number of vaccine doses (subset by variant & age above/below 60yo) 
+
+```{r, echo = FALSE, out.width = "100%"}
+ggplot(
+  var_agegr_VACCINES %>% 
+    filter(outcome == "hospitalisation")
+) +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Vaccine doses",
+    colour = "Variant period",
+    title = "Outcome: hospitalisation"
+  )
+
+
+
+ggplot(
+  var_agegr_VACCINES %>% 
+    filter(outcome == "intensivecare")
+) +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Vaccine doses",
+    colour = "Variant period",
+    title = "Outcome: ICU admission"
+  )
+
+
+
+ggplot(
+  var_agegr_VACCINES %>% 
+    filter(outcome == "mortality")
+) +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Vaccine doses",
+    colour = "Variant period",
+    title = "Outcome: 30-days mortality"
+  )
+```
+
+## PREDICTOR: time since last exposure (subset by variant & age above/below 60yo)
+
+```{r, echo = FALSE, out.width = "100%"}
+ggplot(
+  var_agegr_LASTIMMUN %>% 
+    filter(outcome == "hospitalisation") %>% 
+    filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
+    filter(veffec_upper > 0 & veffec_upper <= 100) %>% 
+    filter(veffec > 0 & veffec < 100)
+) +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) + 
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last immunisation",
+    colour = "Variant period",
+    title = "Outcome: hospitalisation"
+  )
+
+
+
+ggplot(
+  var_agegr_LASTIMMUN %>% 
+    filter(outcome == "intensivecare") %>% 
+    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+    filter(veffec_upper > 0 & veffec_upper <= 100) %>% 
+    filter(veffec > 0 & veffec < 100)
+) +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) + 
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last immunisation",
+    colour = "Variant period",
+    title = "Outcome: hospitalisation"
+  )
+
+
+
+ggplot(
+  var_agegr_LASTIMMUN %>% 
+    filter(outcome == "intensivecare") %>% 
+    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+    filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+    filter(veffec > 0 & veffec < 100)
+) +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) + 
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last immunisation",
+    colour = "Variant period",
+    title = "Outcome: hospitalisation"
+  )
+```
+
+## PREDICTOR: time past since last exposure (subset by nº of doses)
+
+```{r, echo = FALSE, out.width = "100%"}
+ggplot(
+  nvacc_lastimmun_VACCINES %>% 
+    filter(outcome == "hospitalisation") %>% 
+    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+    filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+    filter(veffec > 0 & veffec < 100)
+) +
+  geom_errorbar(
+    aes(x = timepast, ymin = veffec_lower, ymax = veffec_upper, colour = nvaccine),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = timepast, y = veffec, colour = nvaccine), size = 3) + 
+  # facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) + 
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last immunisation",
+    colour = "Vaccine doses",
+    title = "Outcome: hospitalisation"
+  )
+```
+
+## ALTERNATIVE!! PREDICTOR: time past since last exposure (subset by nº of doses)
+
+```{r, echo = FALSE, out.width = "100%"}
+ggplot(
+  nvacc_lastimmun_VACCINES %>% 
+    mutate(
+      outcome = case_when(
+        outcome == "hospitalisation" ~ "Hospital admission",
+        outcome == "intensivecare" ~ "ICU admission",
+        outcome == "intensivecare_only_hosp" ~ "ICU admission, only inpatient cases",
+        outcome == "mortality" ~ "30-days mortality"
+      ),
+      outcome = factor(
+        outcome,
+        levels = rev(c("Hospital admission", "ICU admission", "ICU admission, only inpatient cases", "30-days mortality"))
+      )
+    ) %>% 
+    filter(outcome != "ICU admission, only inpatient cases") %>% 
+    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+    filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+    filter(veffec > 0 & veffec < 100)
+) +
+  geom_errorbar(
+    aes(x = timepast, ymin = veffec_lower, ymax = veffec_upper, colour = nvaccine),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = timepast, y = veffec, colour = nvaccine), size = 3) + 
+  facet_wrap(~outcome, nrow = 3, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) + 
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last immunisation",
+    colour = "Vaccine doses",
+    title = "Outcome: hospitalisation"
+  )
+```
+
+
+
+
 
 # Upset Plot for describing categories
 
