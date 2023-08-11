@@ -205,7 +205,7 @@ df_OR_hospitalisation_subgroups %<>%
 
 write_excel_csv(
   df_OR_hospitalisation_subgroups,
-  file = "/opt/datos_compartidos/vacunas_data/tablas/OR_hospitalisation_subgroups_timesincelastinmun.xls"
+  file = "/opt/datos_compartidos/vacunas_data/tablas/OR_hospitalisation_subgroups_timesincelastinmun2.xls"
 )
 ```
 
@@ -261,7 +261,7 @@ df_OR_intensivecare_subgroups %<>%
 
 write_excel_csv(
   df_OR_intensivecare_subgroups,
-  file = "/opt/datos_compartidos/vacunas_data/tablas/OR_intensivecare_subgroups_timesincelastinmun.xls"
+  file = "/opt/datos_compartidos/vacunas_data/tablas/OR_intensivecare_subgroups_timesincelastinmun2.xls"
 )
 ```
 
@@ -393,7 +393,7 @@ df_OR_mortality_subgroups %<>%
 
 write_excel_csv(
   df_OR_mortality_subgroups,
-  file = "/opt/datos_compartidos/vacunas_data/tablas/OR_mortality_subgroups_timesincelastinmun.xls"
+  file = "/opt/datos_compartidos/vacunas_data/tablas/OR_mortality_subgroups_timesincelastinmun2.xls"
 )
 ```
 

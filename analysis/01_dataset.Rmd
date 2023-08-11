@@ -722,7 +722,8 @@ vacunas3 <- setDT(vacunas2) %>%
     n_vacunas_covid = n(),
     n_prev_infecc = unique(orden_infeccion) - 1,
     ultima_vac_infecc_meses_quant = unique(ultima_vac_infecc_meses_quant2),
-    ultima_inmun_infecc_meses_quant = unique(ultima_inmun_infecc_meses_quant2)
+    ultima_inmun_infecc_meses_quant = unique(ultima_inmun_infecc_meses_quant2),
+    ultima_inmun_infecc_dias = unique(ultima_inmun_infecc_dias)
   ) %>% 
   ungroup() %>%
   mutate(n_exposi = n_vacunas_covid + n_prev_infecc) %>% 
@@ -839,10 +840,10 @@ estudio_vacunas_t_final_selected %<>%
   mutate(
     n_prev_infecc = if_else(n_vacunas_covid == 0, orden_infeccion - 1, n_prev_infecc),
     n_exposi = if_else(n_vacunas_covid == 0, n_prev_infecc, n_exposi),
-    ultima_inmun_infecc_dias = if_else(
-      n_vacunas_covid == 0 & !is.na(prev_infect_date),
-      as.numeric(infect_covid_first_date - prev_infect_date),
-      999 # problema en la resta q no contempla el NA
+    ultima_inmun_infecc_dias = case_when(
+      n_vacunas_covid == 0 & !is.na(prev_infect_date) ~ as.numeric(infect_covid_first_date - prev_infect_date),
+      n_vacunas_covid == 0 & is.na(prev_infect_date) ~ as.numeric(NA),
+      TRUE ~ ultima_inmun_infecc_dias
     ),
     ultima_inmun_infecc_meses_quant = if_else(
       n_vacunas_covid == 0 & !is.na(prev_infect_date),
@@ -866,8 +867,7 @@ estudio_vacunas_t_final_selected %<>%
       (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_meses_quant >= 6 ~
         "Six months or more"
     )
-  ) %>% 
-  select(-ultima_inmun_infecc_dias)
+  )
 
 
 
@@ -938,8 +938,19 @@ estudio_vacunas_t_final_selected %<>%
     num_dias_uci = as.numeric(num_dias_uci),
     ultima_vac_infecc_bin = as.factor(ultima_vac_infecc_bin),
     ultima_vac_infecc_bin = relevel(ultima_vac_infecc_bin, ref = "Less than one month"),
+    ultima_inmun_infecc_bin = case_when(
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias < 14 ~ "0-14",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias < 31 ~ "14-30",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias < 61 ~ "31-60",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias < 91 ~ "61-90",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias < 121 ~ "91-120",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias < 151 ~ "121-150",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias < 181 ~ "151-180",
+      (n_vacunas_covid != 0 |  !is.na(prev_infect_date)) & ultima_inmun_infecc_dias > 180 ~ ">180",
+      TRUE ~ NA
+    ),
     ultima_inmun_infecc_bin = as.factor(ultima_inmun_infecc_bin),
-    ultima_inmun_infecc_bin = relevel(ultima_inmun_infecc_bin, ref = "Less than one month")
+    ultima_inmun_infecc_bin = relevel(ultima_inmun_infecc_bin, ref = "14-30")
   )
 
 
@@ -1363,20 +1374,57 @@ estudio_vacunas_t_final_selected %<>%
 # Releveling factors
 
 ```{r}
-estudio_vacunas_t_final_selected$n_vacunas_covid <- factor(estudio_vacunas_t_final_selected$n_vacunas_covid, levels = c("Ninguna", "Una", "Dos", "Tres"))
-estudio_vacunas_t_final_selected$n_prev_infecc <- factor(estudio_vacunas_t_final_selected$n_prev_infecc, levels = c("Ninguna", "Uno", "Dos"))
-estudio_vacunas_t_final_selected$n_exposi <- factor(estudio_vacunas_t_final_selected$n_exposi, levels = c("Ninguna", "Una", "Dos", "Tres", "Cuatro", "Cinco"))
-estudio_vacunas_t_final_selected$orden_infeccion <- factor(estudio_vacunas_t_final_selected$orden_infeccion, levels = unique(estudio_vacunas_t_final_selected$orden_infeccion))
-estudio_vacunas_t_final_selected$age_fct_60years <- factor(estudio_vacunas_t_final_selected$age_fct_60years, levels = c("Menor de 60 años", "60 años o más"))
+estudio_vacunas_t_final_selected$n_vacunas_covid <- 
+  factor(
+    estudio_vacunas_t_final_selected$n_vacunas_covid, 
+    levels = c("Ninguna", "Una", "Dos", "Tres")
+  )
+estudio_vacunas_t_final_selected$n_prev_infecc <- 
+  factor(
+    estudio_vacunas_t_final_selected$n_prev_infecc, 
+    levels = c("Ninguna", "Uno", "Dos")
+  )
+estudio_vacunas_t_final_selected$n_exposi <- 
+  factor(
+    estudio_vacunas_t_final_selected$n_exposi, 
+    levels = c("Ninguna", "Una", "Dos", "Tres", "Cuatro", "Cinco")
+  )
+estudio_vacunas_t_final_selected$orden_infeccion <- 
+  factor(
+    estudio_vacunas_t_final_selected$orden_infeccion, 
+    levels = unique(estudio_vacunas_t_final_selected$orden_infeccion)
+  )
+estudio_vacunas_t_final_selected$age_fct_60years <- 
+  factor(
+    estudio_vacunas_t_final_selected$age_fct_60years, 
+    levels = c("Menor de 60 años", "60 años o más")
+  )
 estudio_vacunas_t_final_selected$variant_period <- as.factor(estudio_vacunas_t_final_selected$variant_period)
 estudio_vacunas_t_final_selected$variant_period <- relevel(estudio_vacunas_t_final_selected$variant_period, ref = "Before α")
 
 estudio_vacunas_t_final_selected$ultima_inmun_infecc_bin <- factor(
   estudio_vacunas_t_final_selected$ultima_inmun_infecc_bin,
-  levels = c(NA, "Less than one month", "One to three months", "Six months or more", "Three to six months" ),
-  labels = c("Ninguna", "Less than one month", "One to three months", "Six months or more", "Three to six months"),
+  levels = c(NA, "14-30", "31-60", "61-90", "91-120", "121-150", "151-180", ">180"),
+  labels = c("None", "14-30", "31-60", "61-90", "91-120", "121-150", "151-180", ">180"),
   exclude = NULL  # This ensures that <NA> is treated as a regular level
 )
+
+estudio_vacunas_t_final_selected %<>%
+  mutate(ultima_inmun_infecc_bin = relevel(ultima_inmun_infecc_bin, ref = "14-30"))
+
+estudio_vacunas_t_final_selected %<>%
+  mutate(
+    ultima_inmun_infecc_bin = if_else(
+      ultima_inmun_infecc_bin == "121-150" | ultima_inmun_infecc_bin == "151-180",
+      "121-180",
+      ultima_inmun_infecc_bin
+    ),
+    ultima_inmun_infecc_bin = factor(
+      ultima_inmun_infecc_bin,
+      levels = c("None", "14-30", "31-60", "61-90", "91-120", "121-180", ">180"),
+    ),
+    ultima_inmun_infecc_bin = relevel(ultima_inmun_infecc_bin, ref = "14-30")
+  )
 ```
 
 # Saving RDS

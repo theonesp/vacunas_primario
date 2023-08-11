@@ -1,24 +1,69 @@
 ---
-title: "04_figures_infections"
-output: html_document
+title: "Figures for the Andalusia COVID vaccines paper"
+author: "Á. Serrano-Ortiz & JL Romero-Cabrera; EPIDATA team"
+output: 
+  html_document:
+    theme: lumen
 ---
 
-# Environment
 
-```{r setup, include=FALSE}
-library(networkD3)
+
+```{r setup, include = FALSE}
 library(dplyr)
+library(magrittr)
 library(ggplot2)
 library(janitor)
 library(stringi)
+library(stringr)
 library(lubridate)
 library(rio)
-library(magrittr)
+library(readr)
+library(kableExtra)
+library(networkD3)
 ```
 
-#Variants distribution in Spain
+```{r, include = FALSE}
+##################################################################################
+####################### FUNCIONES Y VALORES PARAMETRIZADOS #######################
+##################################################################################
 
-```{r}
+
+
+# Función para leer archivos ""CSV"" (excel siempre dando problemas) y asignar nombres
+# hashtag grasiaschatgptporenseñarnosR
+
+leer_csv_carpeta <- function(ruta) {
+  rutas_archivos <- list.files(path = ruta, pattern = ".xls", full.names = TRUE)
+  lista <- list()
+  for (i in seq_along(rutas_archivos)) {
+    datos <- read_csv(rutas_archivos[i])
+    nombre <- str_remove(rutas_archivos[i], fixed(ruta))
+    datos <- datos %>% 
+      mutate(
+        outcome = if_else(
+          grepl("intensivecare_only_hosp", nombre),
+          "intensivecare_only_hosp",
+          str_extract(nombre, "(?<=_)[^_]+")
+        ),
+        veffec = (1 - OR)*100,
+        veffec_lower = (1 - OR_lower)*100,
+        veffec_upper = (1 - OR_upper)*100
+      ) %>% 
+      select(outcome, everything())
+    lista[[nombre]] <- datos
+  }
+  return(lista)
+}
+
+
+
+colours <- c("#FFD92F", "#8DA0CB", "#A6D854", "#E78AC3")
+colours_vaccines <- c("#D3BA68", "#D5695D", "#5D8CA8")
+```
+
+## Variants distribution in Spain {.tabset .tabset-fade .tabset-pills}
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
 ecdc_variants_history <- import("https://opendata.ecdc.europa.eu/covid19/virusvariant/csv/data.csv") %>% 
   filter(source == "GISAID" & country == "Spain")
 
@@ -182,9 +227,11 @@ variants_week_spain_labels2 <- variants_week_spain_labels %>%
 alpha_col <- "#CBD5E8"
 delta_col <- "#FDCDAC"
 omicron_col <- "#B3E2CD"
+```
 
+### Option A
 
-
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
 variants_week_spain_labels2 %>% 
   ggplot() +
   geom_rect(
@@ -218,13 +265,14 @@ variants_week_spain_labels2 %>%
     x = "Epi week",
     y = "Variants percent",
     title = "Weekly proportion of SARS-CoV-2 variants sequenced in Spain",
-    caption = "Source: GISAID, www.ecdc.europa.eu/en/publications-data/data-virus-variants-covid-19-eueea"
+    caption = "Source: GISAID, ECDC"
   )
+```
 
+### Option B
 
-
-
-variants_week_spain_labels %>% 
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+variants_week_spain_labels2 %>% 
   ggplot() +
   geom_col(
     mapping = aes(x = year_week, y = percent_variant2, fill = who_label_family),
@@ -239,26 +287,25 @@ variants_week_spain_labels %>%
   #   colour = "red", size = 4, linetype = "solid",
   #   arrow = arrow(length = unit(4, "mm"))
   # ) +
-  # geom_vline(xintercept = "2021-10", colour = "red", size = 0.5, linetype = "solid") +
+  geom_vline(xintercept = "2021-10", colour = "red", size = 0.5, linetype = "solid") +
   geom_text(
     x = "2021-10", y = 20, label = "Alpha variant in 75% of sequenced samples",
-    size = 3, colour = "red", angle = 90, 
-    # vjust = 1.2
+    size = 3, colour = "red", angle = 90, vjust = 1.2, hjust = 0.3
   ) +
   # Delta variant label and line
   geom_vline(xintercept = "2021-28", colour = "grey25", size = 0.5, linetype = "solid") +
   geom_text(
     x = "2021-28", y = 20, label = "Delta variant at least 75%",
-    size = 3, colour = "grey25", angle = 90, vjust = 1.2
+    size = 3, colour = "grey25", angle = 90, vjust = 1.2, hjust = 0.3
   ) +
   # Omicron variant label and line
   geom_vline(xintercept = "2021-52", colour = "grey25", size = 0.5, linetype = "solid") +
   geom_text(
     x = "2021-52", y = 20, label = "Omicron variant at least 75%",
-    size = 3, colour = "grey25", angle = 90, vjust = 1.2
+    size = 3, colour = "grey25", angle = 90, vjust = 1.2, hjust = 0.3
   ) +
   scale_y_continuous(expand = expansion(add = c(0, 0))) +
-  # scale_x_date(expand = expansion(add = c(days(0), days(0)))) +
+  scale_x_discrete(expand = expansion(add = c(days(0), days(0)))) +
   scale_fill_brewer(palette = "Set3") +
   theme_bw() + 
   theme(
@@ -270,76 +317,39 @@ variants_week_spain_labels %>%
     x = "Epi week",
     y = "Variants percent",
     title = "Weekly proportion of SARS-CoV-2 variants sequenced in Spain",
-    caption = "Source: GISAID, www.ecdc.europa.eu/en/publications-data/data-virus-variants-covid-19-eueea"
+    caption = "Source: GISAID, ECDC"
   )
 
 
 
-ggsave(
-  filename = "/opt/datos_compartidos/vacunas_data/figuras/variants_spain.png",
-  device = "png",
-  width = 8000,
-  height = 8000,
-  dpi = 700,
-  units = "px"
-)
+# ggsave(
+#   filename = "/opt/datos_compartidos/vacunas_data/figuras/variants_spain.png",
+#   device = "png",
+#   width = 8000,
+#   height = 8000,
+#   dpi = 700,
+#   units = "px"
+# )
 ```
 
-# Plots for sub-analysis
+## Plots for vaccine effectiveness sub-analyses {.tabset .tabset-fade .tabset-pills}
 
 ```{r, include = FALSE}
-## Funciones y valores parametrizados
-
-
-
-# Función para leer archivos ""CSV"" (excel siempre dando problemas) y asignar nombres
-# hashtag grasiaschatgptporenseñarnosR
-leer_csv_carpeta <- function(ruta) {
-  rutas_archivos <- list.files(path = ruta, pattern = ".xls", full.names = TRUE)
-  lista <- list()
-  for (i in seq_along(rutas_archivos)) {
-    datos <- read_csv(rutas_archivos[i])
-    nombre <- str_remove(rutas_archivos[i], fixed(ruta))
-    datos <- datos %>% 
-      mutate(
-        outcome = if_else(
-          grepl("intensivecare_only_hosp", nombre),
-          "intensivecare_only_hosp",
-          str_extract(nombre, "(?<=_)[^_]+")
-        ),
-        veffec = (1 - OR)*100,
-        veffec_lower = (1 - OR_lower)*100,
-        veffec_upper = (1 - OR_upper)*100
-      ) %>% 
-      select(outcome, everything())
-    lista[[nombre]] <- datos
-  }
-  return(lista)
-}
-
-
-
-colours <- c("#FFD92F", "#8DA0CB", "#A6D854", "#E78AC3")
-```
-
-
-
-```{r, include = FALSE}
-
-# Carga de datos
-
+# CARGA DE DATOS
+# 
 # Para el/la que quiera consultar el código: el nombre de los objetos obedece a
 # 
 # - en **minúscula**, los criterios para subdividir la base de datos;
-# - en **mayúscula**, el outcome principal incluido en las regresiones GAM empleadas por cada subgrupo. Son mutuamente excluyentes (si se incluyó el n_vacunas, se excluyó el tiempo desde inmunización y viceversa)
+# - en **mayúscula**, el outcome principal incluido en las regresiones GAM empleadas por cada subgrupo. 
+# Son mutuamente excluyentes (si se incluyó el n_vacunas, se excluyó el tiempo desde inmunización y viceversa)
 
 
 
-
-
-var_agegr_VACCINES <- 
-  leer_csv_carpeta(ruta = "DATA/groups by variant & agegroup (logreg vaccines only)/") %>% 
-  bind_rows() %>% 
+var_agegr_VACCINES <-
+  leer_csv_carpeta(
+    ruta = "/opt/datos_compartidos/vacunas_data/tablas/groups by variant & agegroup (logreg nvaccines only)"
+  ) %>%
+  bind_rows() %>%
   mutate(
     agegroup = str_extract(original_model, "(?<=_)[^_]+$"),
     agegroup = if_else(agegroup == "60", "60 years or older", "59 years or younger"),
@@ -350,11 +360,91 @@ var_agegr_VACCINES <-
       predictor == "n_vacunas_covidDos" ~ "Two",
       predictor == "n_vacunas_covidTres" ~ "Three"
     ),
+    predictor = factor(predictor, levels = c("One", "Two", "Three"))
+  ) %>%
+  select(outcome, predictor, variant, agegroup, everything())
+
+
+
+var_agegr_LASTIMMUN <-
+  leer_csv_carpeta(
+    ruta = "/opt/datos_compartidos/vacunas_data/tablas/groups2 by variant & agegroup (logreg lastimmun only)"
+  ) %>%
+  bind_rows() %>%
+  mutate(
+    agegroup = str_extract(original_model, "(?<=_)[^_]+$"),
+    agegroup = if_else(agegroup == "60", "60 years or older", "59 years or younger"),
+    variant = str_extract(original_model, "^[^_]+"),
+    variant = if_else(variant == "Before", "Before α", variant),
+    predictor = case_when(
+      predictor == "ultima_inmun_infecc_binNone" ~ "None",
+      predictor == "ultima_inmun_infecc_bin31-60" ~ "31-60",
+      predictor == "ultima_inmun_infecc_bin61-90" ~ "61-90",
+      predictor == "ultima_inmun_infecc_bin91-120" ~ "91-120",
+      predictor == "ultima_inmun_infecc_bin121-180" ~ "121-180",
+      predictor == "ultima_inmun_infecc_bin>180" ~ ">180"
+    ),
     predictor = factor(
-      predictor, 
-      levels = c("One", "Two", "Three")
-    )
-  ) %>% 
+      predictor,
+      levels = c("None", "31-60", "61-90", "91-120", "121-180", ">180"))
+  ) %>%
+  select(outcome, predictor, variant, agegroup, everything())
+
+
+
+vacc_agegroup_LASTIMMUN <-
+  leer_csv_carpeta(
+    ruta = "/opt/datos_compartidos/vacunas_data/tablas/groups2 by nvaccines & agegroup (logreg lastimmun only)"
+  ) %>%
+  bind_rows() %>%
+  mutate(
+    nvaccine = str_extract(original_model, "(?<=_)[^_]+$"),
+    nvaccine = case_when(
+      nvaccine == "Ninguna" ~ "None", 
+      nvaccine == "Una" ~ "1 dose", 
+      nvaccine == "Dos" ~ "2 doses", 
+      nvaccine == "Tres" ~ "3 doses"
+    ),
+    nvaccine = factor(nvaccine, levels = c("None", "1 dose", "2 doses", "3 doses")),
+    agegroup = str_extract(original_model, "^[^_]+"),
+    agegroup = if_else(agegroup == "60", "60 years or older", "59 years or younger"),
+    predictor = case_when(
+      predictor == "ultima_inmun_infecc_binNone" ~ "None",
+      predictor == "ultima_inmun_infecc_bin31-60" ~ "31-60",
+      predictor == "ultima_inmun_infecc_bin61-90" ~ "61-90",
+      predictor == "ultima_inmun_infecc_bin91-120" ~ "91-120",
+      predictor == "ultima_inmun_infecc_bin121-180" ~ "121-180",
+      predictor == "ultima_inmun_infecc_bin>180" ~ ">180"
+    ),
+    predictor = factor(
+      predictor,
+      levels = c("None", "31-60", "61-90", "91-120", "121-180", ">180"))
+  ) %>%
+  select(outcome, predictor, nvaccine, agegroup, everything())
+```
+
+### SUB-A1: Vaccine effectiveness by number of vaccine doses (segregated by variant period and age group) 
+
+Groups manually excluded:
+
+- Cases before alpha rise, 60 years old or above, with more than one vaccine dose.
+- All cases before alpha rise, younger than 60 years.
+- Cases during alpha predominance, 60 years old or above, with three vaccine doses.
+- All cases during alpha predominance, younger than 60 years.
+- Cases during delta predominance, younger than 60 years, with three vaccine doses.
+
+Groups automatically excluded:
+
+- Those with upper vaccine effectiveness estimation interval above 100%.
+- Those with lower vaccine effectiveness estimation interval below 0%.
+- Those with vaccine effectiveness point-estimate above 100% or below 0%.
+
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+# INITIAL FILTERS WERE INSERTED MANUALLY AFTER DISCUSSION BETWEEN MAIN AUTHORS
+
+var_agegr_VACCINES %>% 
+  filter(outcome == "hospitalisation") %>% 
   filter(
     (original_model == "Before_60" & predictor == "One")
     | (original_model == "α_60" & predictor %in% c("One", "Two"))
@@ -362,89 +452,16 @@ var_agegr_VACCINES <-
     | (original_model == "Δ_60" & predictor %in% c("One", "Two", "Three"))
     | original_model %in% c("Ό_60", "Ό_Menor")
   ) %>%
-  select(outcome, predictor, variant, agegroup, everything(), -original_model)
-
-
-
-var_agegr_LASTIMMUN <- 
-  leer_csv_carpeta(ruta = "DATA/groups by variant & agegroup (logreg lastimmun only)/") %>% 
-  bind_rows() %>% 
-  mutate(
-    agegroup = str_extract(original_model, "(?<=_)[^_]+$"),
-    agegroup = if_else(agegroup == "60", "60 years or older", "59 years or younger"),
-    variant = str_extract(original_model, "^[^_]+"),
-    variant = if_else(variant == "Before", "Before α", variant),
-    predictor = case_when(
-      predictor == "ultima_inmun_infecc_binLess than one month" ~ "Less than\none month",
-      predictor == "ultima_inmun_infecc_binOne to three months" ~ "One to\nthree months",
-      predictor == "ultima_inmun_infecc_binThree to six months" ~ "Three to\nsix months",
-      predictor == "ultima_inmun_infecc_binSix months or more" ~ "More than\nsix months"
-    ),
-    predictor = factor(
-      predictor, 
-      levels = c("Less than\none month", "One to\nthree months", "Three to\nsix months", "More than\nsix months")
-    )
-  ) %>% 
-  filter(
-    (original_model == "Before_60" 
-     # & predictor == "n_vacunas_covidUna"
-    )
-    | (original_model == "α_60" 
-       # & predictor %in% c("One", "Two")
-      )
-    | (original_model == "Δ_Menor" 
-       # & predictor %in% c("One", "Two")
-      )
-    | (original_model == "Δ_60" 
-       # & predictor %in% c("One", "Two", "Three")
-      )
-    | original_model %in% c("Ό_60", "Ό_Menor")
-  ) %>%
-  select(outcome, predictor, variant, agegroup, everything(), -original_model)
-
-
-
-nvacc_lastimmun_VACCINES <- 
-  leer_csv_carpeta(ruta = "DATA/groups by nvac & lastimmun (logreg vaccines only, & variant)") %>% 
-  bind_rows() %>% 
-  mutate(
-    timepast = str_extract(original_model, "(?<=_)[^_]+$"),
-    timepast = case_when(
-      timepast == "Less" ~ "Less than\none month",
-      timepast == "One" ~ "One to\nthree months",
-      timepast == "Three" ~ "Three to\nsix months",
-      timepast == "Six" ~ "More than\nsix months"
-    ),
-    timepast = factor(
-      timepast,
-      levels = c("Less than\none month", "One to\nthree months", "Three to\nsix months", "More than\nsix months")
-    ),
-    nvaccine = str_extract(original_model, "^[^_]+"),
-    nvaccine = factor(nvaccine, levels = c("Una", "Dos", "Tres")),
-    predictor = case_when(
-      predictor == "n_vacunas_covidUna" ~ "One",
-      predictor == "n_vacunas_covidDos" ~ "Two",
-      predictor == "n_vacunas_covidTres" ~ "Three"
-    )
-  ) %>% 
-  select(outcome, predictor, timepast, nvaccine, everything(), -original_model)
-```
-
-# Here they are {.tabset .tabset-fade .tabset-pills}
-
-## PREDICTOR: number of vaccine doses (subset by variant & age above/below 60yo) 
-
-```{r, echo = FALSE, out.width = "100%"}
-ggplot(
-  var_agegr_VACCINES %>% 
-    filter(outcome == "hospitalisation")
-) +
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
   geom_errorbar(
     aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
   facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
   scale_y_continuous(limits = c(0, 100)) +
@@ -457,16 +474,25 @@ ggplot(
 
 
 
-ggplot(
-  var_agegr_VACCINES %>% 
-    filter(outcome == "intensivecare")
-) +
+var_agegr_VACCINES %>% 
+  filter(outcome == "intensivecare") %>% 
+  filter(
+    (original_model == "Before_60" & predictor == "One")
+    | (original_model == "α_60" & predictor %in% c("One", "Two"))
+    | (original_model == "Δ_Menor" & predictor %in% c("One", "Two"))
+    | (original_model == "Δ_60" & predictor %in% c("One", "Two", "Three"))
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
   geom_errorbar(
     aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
   facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
   scale_y_continuous(limits = c(0, 100)) +
@@ -479,16 +505,25 @@ ggplot(
 
 
 
-ggplot(
-  var_agegr_VACCINES %>% 
-    filter(outcome == "mortality")
-) +
+var_agegr_VACCINES %>%
+  filter(outcome == "mortality") %>% 
+  filter(
+  (original_model == "Before_60" & predictor == "One")
+  | (original_model == "α_60" & predictor %in% c("One", "Two"))
+  | (original_model == "Δ_Menor" & predictor %in% c("One", "Two"))
+  | (original_model == "Δ_60" & predictor %in% c("One", "Two", "Three"))
+  | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
   geom_errorbar(
     aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
   facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
   scale_y_continuous(limits = c(0, 100)) +
@@ -500,151 +535,655 @@ ggplot(
   )
 ```
 
-## PREDICTOR: time since last exposure (subset by variant & age above/below 60yo)
+### SUB-A2: NO MANUAL FILTERS Vaccine effectiveness by number of vaccine doses (segregated by variant period and age group) 
 
-```{r, echo = FALSE, out.width = "100%"}
-ggplot(
-  var_agegr_LASTIMMUN %>% 
-    filter(outcome == "hospitalisation") %>% 
-    filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
-    filter(veffec_upper > 0 & veffec_upper <= 100) %>% 
-    filter(veffec > 0 & veffec < 100)
-) +
+Groups automatically excluded:
+
+- Those with upper vaccine effectiveness estimation interval above 100%.
+- Those with lower vaccine effectiveness estimation interval below 0%.
+- Those with vaccine effectiveness point-estimate above 100% or below 0%.
+
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+# INITIAL FILTERS WERE INSERTED MANUALLY AFTER DISCUSSION BETWEEN MAIN AUTHORS
+
+var_agegr_VACCINES %>% 
+  filter(outcome == "hospitalisation") %>% 
+  # filter(
+  #   (original_model == "Before_60" & predictor == "One")
+  #   | (original_model == "α_60" & predictor %in% c("One", "Two"))
+  #   | (original_model == "Δ_Menor" & predictor %in% c("One", "Two"))
+  #   | (original_model == "Δ_60" & predictor %in% c("One", "Two", "Three"))
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
   geom_errorbar(
     aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
   facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
   scale_y_continuous(limits = c(0, 100)) +
-  theme(axis.text.x = element_text(vjust = 0.5)) + 
   labs(
     y = "Vaccine effectiveness",
-    x = "Time past since last immunisation",
+    x = "Vaccine doses",
     colour = "Variant period",
     title = "Outcome: hospitalisation"
   )
 
 
 
-ggplot(
-  var_agegr_LASTIMMUN %>% 
-    filter(outcome == "intensivecare") %>% 
-    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
-    filter(veffec_upper > 0 & veffec_upper <= 100) %>% 
-    filter(veffec > 0 & veffec < 100)
-) +
+var_agegr_VACCINES %>% 
+  filter(outcome == "intensivecare") %>% 
+  # filter(
+  #   (original_model == "Before_60" & predictor == "One")
+  #   | (original_model == "α_60" & predictor %in% c("One", "Two"))
+  #   | (original_model == "Δ_Menor" & predictor %in% c("One", "Two"))
+  #   | (original_model == "Δ_60" & predictor %in% c("One", "Two", "Three"))
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
   geom_errorbar(
     aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
   facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
   scale_y_continuous(limits = c(0, 100)) +
-  theme(axis.text.x = element_text(vjust = 0.5)) + 
   labs(
     y = "Vaccine effectiveness",
-    x = "Time past since last immunisation",
+    x = "Vaccine doses",
     colour = "Variant period",
-    title = "Outcome: hospitalisation"
+    title = "Outcome: ICU admission"
   )
 
 
 
-ggplot(
-  var_agegr_LASTIMMUN %>% 
-    filter(outcome == "intensivecare") %>% 
-    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
-    filter(veffec_upper > 0 & veffec_upper <= 100) %>%
-    filter(veffec > 0 & veffec < 100)
-) +
+var_agegr_VACCINES %>%
+  filter(outcome == "mortality") %>% 
+  # filter(
+  # (original_model == "Before_60" & predictor == "One")
+  # | (original_model == "α_60" & predictor %in% c("One", "Two"))
+  # | (original_model == "Δ_Menor" & predictor %in% c("One", "Two"))
+  # | (original_model == "Δ_60" & predictor %in% c("One", "Two", "Three"))
+  # | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>% 
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
   geom_errorbar(
     aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) + 
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
   facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
   scale_y_continuous(limits = c(0, 100)) +
-  theme(axis.text.x = element_text(vjust = 0.5)) + 
   labs(
     y = "Vaccine effectiveness",
-    x = "Time past since last immunisation",
+    x = "Vaccine doses",
     colour = "Variant period",
-    title = "Outcome: hospitalisation"
+    title = "Outcome: 30-days mortality"
   )
 ```
 
-## PREDICTOR: time past since last exposure (subset by nº of doses)
+### SUB-B1: Vaccine effectiveness by time since last exposure: infection/vaccination (segregated by variant period and age group)
 
-```{r, echo = FALSE, out.width = "100%"}
-ggplot(
-  nvacc_lastimmun_VACCINES %>% 
-    filter(outcome == "hospitalisation") %>% 
-    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
-    filter(veffec_upper > 0 & veffec_upper <= 100) %>%
-    filter(veffec > 0 & veffec < 100)
-) +
+Groups manually excluded:
+
+- All cases before alpha rise, younger than 60 years.
+- All cases during alpha predominance, younger than 60 years.
+
+Groups automatically excluded:
+
+- Those with upper vaccine effectiveness estimation interval above 100%.
+- Those with lower vaccine effectiveness estimation interval below 0%.
+- Those with vaccine effectiveness point-estimate above 100% or below 0%.
+
+**These analysis and plots are not suitable, since they are trying to portray vaccine effectiveness parametres that have been calculated on variables related to risk, not protection (as opposite to vaccine doses).**
+
+```{r, eval = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "hospitalisation") %>%
+  filter(
+    (original_model == "Before_60")
+    | (original_model == "α_60")
+    | (original_model == "Δ_Menor")
+    | (original_model == "Δ_60")
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>%
+  ggplot() +
   geom_errorbar(
-    aes(x = timepast, ymin = veffec_lower, ymax = veffec_upper, colour = nvaccine),
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = timepast, y = veffec, colour = nvaccine), size = 3) + 
-  # facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
-  scale_y_continuous(limits = c(0, 100)) +
-  theme(axis.text.x = element_text(vjust = 0.5)) + 
+  # scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
     y = "Vaccine effectiveness",
-    x = "Time past since last immunisation",
-    colour = "Vaccine doses",
+    x = "Time past since last exposure",
+    colour = "Variant period",
     title = "Outcome: hospitalisation"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "intensivecare") %>%
+  filter(
+    (original_model == "Before_60")
+    | (original_model == "α_60")
+    | (original_model == "Δ_Menor")
+    | (original_model == "Δ_60")
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last exposure",
+    colour = "Variant period",
+    title = "Outcome: ICU admission"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "mortality") %>%
+  filter(
+    (original_model == "Before_60")
+    | (original_model == "α_60")
+    | (original_model == "Δ_Menor")
+    | (original_model == "Δ_60")
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last exposure",
+    colour = "Variant period",
+    title = "Outcome: 30-days mortality"
   )
 ```
 
-## ALTERNATIVE!! PREDICTOR: time past since last exposure (subset by nº of doses)
+### SUB-B2: NO MANUAL FILTERS Vaccine effectiveness by time since last exposure: infection/vaccination (segregated by variant period and age group)
 
-```{r, echo = FALSE, out.width = "100%"}
-ggplot(
-  nvacc_lastimmun_VACCINES %>% 
-    mutate(
-      outcome = case_when(
-        outcome == "hospitalisation" ~ "Hospital admission",
-        outcome == "intensivecare" ~ "ICU admission",
-        outcome == "intensivecare_only_hosp" ~ "ICU admission, only inpatient cases",
-        outcome == "mortality" ~ "30-days mortality"
-      ),
-      outcome = factor(
-        outcome,
-        levels = rev(c("Hospital admission", "ICU admission", "ICU admission, only inpatient cases", "30-days mortality"))
-      )
-    ) %>% 
-    filter(outcome != "ICU admission, only inpatient cases") %>% 
-    filter(veffec_lower > 0 & veffec_lower <= 100) %>%
-    filter(veffec_upper > 0 & veffec_upper <= 100) %>%
-    filter(veffec > 0 & veffec < 100)
-) +
+Groups automatically excluded:
+
+- Those with upper vaccine effectiveness estimation interval above 100%.
+- Those with lower vaccine effectiveness estimation interval below 0%.
+- Those with vaccine effectiveness point-estimate above 100% or below 0%.
+
+**These analysis and plots are not suitable, since they are trying to portray vaccine effectiveness parametres that have been calculated on variables related to risk, not protection (as opposite to vaccine doses).**
+
+```{r, eval = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "hospitalisation") %>%
+  # filter(
+  #   (original_model == "Before_60")
+  #   | (original_model == "α_60")
+  #   | (original_model == "Δ_Menor")
+  #   | (original_model == "Δ_60")
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
   geom_errorbar(
-    aes(x = timepast, ymin = veffec_lower, ymax = veffec_upper, colour = nvaccine),
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
     linewidth = 1,
     width = 0.2
   ) +
-  geom_point(aes(x = timepast, y = veffec, colour = nvaccine), size = 3) + 
-  facet_wrap(~outcome, nrow = 3, strip.position = "left") +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
   scale_colour_manual(values = colours) +
   scale_y_continuous(limits = c(0, 100)) +
-  theme(axis.text.x = element_text(vjust = 0.5)) + 
+  theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
     y = "Vaccine effectiveness",
-    x = "Time past since last immunisation",
-    colour = "Vaccine doses",
+    x = "Time past since last exposure",
+    colour = "Variant period",
     title = "Outcome: hospitalisation"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "intensivecare") %>%
+  # filter(
+  #   (original_model == "Before_60")
+  #   | (original_model == "α_60")
+  #   | (original_model == "Δ_Menor")
+  #   | (original_model == "Δ_60")
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last exposure",
+    colour = "Variant period",
+    title = "Outcome: ICU admission"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "mortality") %>%
+  # filter(
+  #   (original_model == "Before_60")
+  #   | (original_model == "α_60")
+  #   | (original_model == "Δ_Menor")
+  #   | (original_model == "Δ_60")
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(veffec_upper > 0 & veffec_upper <= 100) %>%
+  filter(veffec > 0 & veffec < 100) %>%
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = veffec_lower, ymax = veffec_upper, colour = variant),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = veffec, colour = variant), size = 3) +
+  facet_wrap(~agegroup, nrow = 2, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Vaccine effectiveness",
+    x = "Time past since last exposure",
+    colour = "Variant period",
+    title = "Outcome: 30-days mortality"
+  )
+```
+
+### SUB-B1 v2!: *Risk of infection* by time since last exposure: infection/vaccination (segregated by variant period and age group)
+
+Groups manually excluded:
+
+- All cases before alpha rise, younger than 60 years.
+- All cases during alpha predominance, younger than 60 years.
+
+Groups automatically excluded:
+
+- Those with OR point-estimate above 10.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "hospitalisation") %>%
+  filter(
+    (original_model == "Before_60")
+    | (original_model == "α_60")
+    | (original_model == "Δ_Menor")
+    | (original_model == "Δ_60")
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~variant, nrow = 4, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: hospitalisation"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "intensivecare") %>%
+  filter(
+    (original_model == "Before_60")
+    | (original_model == "α_60")
+    | (original_model == "Δ_Menor")
+    | (original_model == "Δ_60")
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~variant, nrow = 4, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: ICU admission"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "mortality") %>%
+  filter(
+    (original_model == "Before_60")
+    | (original_model == "α_60")
+    | (original_model == "Δ_Menor")
+    | (original_model == "Δ_60")
+    | original_model %in% c("Ό_60", "Ό_Menor")
+  ) %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~variant, nrow = 4, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: 30-days mortality"
+  )
+```
+
+### SUB-B2 v2!: NO MANUAL FILTERS *Risk of infection* by time since last exposure: infection/vaccination (segregated by variant period and age groups)
+
+Groups automatically excluded:
+
+- Those with OR point-estimate above 10.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "hospitalisation") %>%
+  # filter(
+  #   (original_model == "Before_60")
+  #   | (original_model == "α_60")
+  #   | (original_model == "Δ_Menor")
+  #   | (original_model == "Δ_60")
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~variant, nrow = 4, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: hospitalisation"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "intensivecare") %>%
+  # filter(
+  #   (original_model == "Before_60")
+  #   | (original_model == "α_60")
+  #   | (original_model == "Δ_Menor")
+  #   | (original_model == "Δ_60")
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~variant, nrow = 4, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: ICU admission"
+  )
+
+
+
+var_agegr_LASTIMMUN %>%
+  filter(outcome == "mortality") %>%
+  # filter(
+  #   (original_model == "Before_60")
+  #   | (original_model == "α_60")
+  #   | (original_model == "Δ_Menor")
+  #   | (original_model == "Δ_60")
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~variant, nrow = 4, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: 30-days mortality"
+  )
+```
+
+### Risk of infection by time since last exposure (segregated by number of vaccine doses and age groups)
+
+Groups automatically excluded:
+
+- Those with OR point-estimate above 10.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+vacc_agegroup_LASTIMMUN %>%
+  filter(outcome == "hospitalisation") %>% 
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~nvaccine, nrow = 4, strip.position = "left") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure (days)",
+    colour = "Age group",
+    title = "Outcome: hospitalisation"
+  )
+
+
+
+vacc_agegroup_LASTIMMUN %>%
+  filter(outcome == "intensivecare") %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~nvaccine, ncol = 4, strip.position = "top") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure (days)",
+    colour = "Age group",
+    title = "Outcome: ICU admission"
+  )
+
+
+
+vacc_agegroup_LASTIMMUN %>%
+  filter(outcome == "mortality") %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_wrap(~nvaccine, ncol = 4, strip.position = "top") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure (days)",
+    colour = "Age group",
+    title = "Outcome: 30-days mortality"
+  )
+```
+
+### ALTERNATIVE!! PREDICTOR: time past since last exposure (subset by nº of doses)
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+vacc_agegroup_LASTIMMUN %>%
+  mutate(
+    outcome = case_when(
+      outcome == "hospitalisation" ~ "Hospital admission",
+      outcome == "intensivecare" ~ "ICU admission",
+      outcome == "intensivecare_only_hosp" ~ "ICU admission, only inpatient cases",
+      outcome == "mortality" ~ "30-days mortality"
+    ),
+    outcome = factor(
+      outcome,
+      levels = rev(c(
+        "Hospital admission", "ICU admission", "ICU admission, only inpatient cases", "30-days mortality"
+      ))
+    )
+  ) %>%
+  filter(outcome != "ICU admission, only inpatient cases") %>%
+  # filter(veffec_lower > 0 & veffec_lower <= 100) %>%
+  filter(OR_upper < 10) %>%
+  # filter(veffec > 0 & veffec < 100) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
+    linewidth = 1,
+    width = 0.2
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  facet_grid(rows = vars(outcome), cols = vars(nvaccine), switch = "y") +
+  scale_colour_manual(values = colours) +
+  scale_y_continuous(limits = c(0, 10.1)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk of infection (Odds Ratio)",
+    x = "Time past since last exposure (days)",
+    colour = "Age group"
+    # title = "Outcome: hospitalisation"
   )
 ```
 
@@ -655,7 +1194,7 @@ ggplot(
 # Upset Plot for describing categories
 
 ```{r cars}
-upset(data=vacunas, intersections = NOM_VACUNA,group.by = COD_NUHSA_ENCRIPTADO, order.by = "freq")
+# upset(data=vacunas, intersections = NOM_VACUNA,group.by = COD_NUHSA_ENCRIPTADO, order.by = "freq")
 ```
 
 # Sankey Plots
@@ -668,113 +1207,113 @@ You can also embed plots, for example:
 
 
 # Read final dataset file 
-estudio_vacunas_t_final_selected <-
-  readRDS(file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
-nrow(estudio_vacunas_t_final_selected)
-summary(estudio_vacunas_t_final_selected$pautas_covid)
+# estudio_vacunas_t_final_selected <-
+#   readRDS(file = "/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected.rds")
+# nrow(estudio_vacunas_t_final_selected)
+# summary(estudio_vacunas_t_final_selected$pautas_covid)
 
 
 # Vaccinated and unvaccinated population before positive CODIV-19 infection by RT-PCR
-vacunados <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("1", "2", "3", "4")) %>%
-  nrow()
-vacunados
+# vacunados <-
+#   estudio_vacunas_t_final_selected %>%
+#   filter(pautas_covid %in% c("1", "2", "3", "4")) %>%
+#   nrow()
+# vacunados
 
-no_vacunados <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("0")) %>%
-  nrow()
-no_vacunados
+# no_vacunados <-
+#   estudio_vacunas_t_final_selected %>%
+#   filter(pautas_covid %in% c("0")) %>%
+#   nrow()
+# no_vacunados
 
 # Hospital admission data
-vacunados_ingresados <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("1", "2", "3", "4")
-         & hosp_stay_bin == 1) %>%
-  nrow()
-vacunados_ingresados
+# vacunados_ingresados <-
+#   estudio_vacunas_t_final_selected %>%
+#   filter(pautas_covid %in% c("1", "2", "3", "4")
+#          & hosp_stay_bin == 1) %>%
+#   nrow()
+# vacunados_ingresados
 
-vacunados_no_ingresados <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("1", "2", "3", "4")
-         & hosp_stay_bin == 0) %>%
-  nrow()
-vacunados_no_ingresados
+# vacunados_no_ingresados <-
+#   estudio_vacunas_t_final_selected %>%
+#   filter(pautas_covid %in% c("1", "2", "3", "4")
+#          & hosp_stay_bin == 0) %>%
+#   nrow()
+# vacunados_no_ingresados
 
-no_vacunados_ingresados <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("0")
-         & hosp_stay_bin == 1) %>%
-  nrow()
-no_vacunados_ingresados
+# no_vacunados_ingresados <-
+#   estudio_vacunas_t_final_selected %>%
+#   filter(pautas_covid %in% c("0")
+#          & hosp_stay_bin == 1) %>%
+#   nrow()
+# no_vacunados_ingresados
 
-no_vacunados_no_ingresados <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("0")
-         & hosp_stay_bin == 0) %>%
-  nrow()
-no_vacunados_no_ingresados
+# no_vacunados_no_ingresados <-
+#   estudio_vacunas_t_final_selected %>%
+#   filter(pautas_covid %in% c("0")
+#          & hosp_stay_bin == 0) %>%
+#   nrow()
+# no_vacunados_no_ingresados
 
 
 # UCI admission data
-vacunados_ingresados_uci <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("1", "2", "3", "4")
-         & icu_stay_bin == 1) %>%
-  nrow()
-vacunados_ingresados_uci
+# vacunados_ingresados_uci <-
+#   estudio_vacunas_t_final_selected %>%
+#   filter(pautas_covid %in% c("1", "2", "3", "4")
+#          & icu_stay_bin == 1) %>%
+#   nrow()
+# vacunados_ingresados_uci
 
-vacunados_no_ingresados_uci <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("1", "2", "3", "4")
-         & icu_stay_bin == 0) %>%
-  nrow()
-vacunados_no_ingresados_uci
+# vacunados_no_ingresados_uci <-
+  # estudio_vacunas_t_final_selected %>%
+  # filter(pautas_covid %in% c("1", "2", "3", "4")
+         # & icu_stay_bin == 0) %>%
+  # nrow()
+# vacunados_no_ingresados_uci
 
-no_vacunados_ingresados_uci <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("0")
-         & icu_stay_bin == 1) %>%
-  nrow()
-no_vacunados_ingresados_uci
+# no_vacunados_ingresados_uci <-
+  # estudio_vacunas_t_final_selected %>%
+  # filter(pautas_covid %in% c("0")
+         # & icu_stay_bin == 1) %>%
+  # nrow()
+# no_vacunados_ingresados_uci
 
-no_vacunados_no_ingresados_uci <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("0")
-         & icu_stay_bin == 0) %>%
-  nrow()
-no_vacunados_no_ingresados_uci
+# no_vacunados_no_ingresados_uci <-
+  # estudio_vacunas_t_final_selected %>%
+  # filter(pautas_covid %in% c("0")
+         # & icu_sta/opt/datos_compartidos/vacunas_data/tablas/groups by nvac & lastimmun (logreg vaccines only, & variant)y_bin == 0) %>%
+  # nrow()
+# no_vacunados_no_ingresados_uci
 
 
 # Mortality data
-vacunados_muertos <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("1", "2", "3", "4")
-         & mortality30d == 1) %>%
-  nrow()
-vacunados_muertos
+# vacunados_muertos <-
+  # estudio_vacunas_t_final_selected %>%
+  # filter(pautas_covid %in% c("1", "2", "3", "4")
+         # & mortality30d == 1) %>%
+  # nrow()
+# vacunados_muertos
 
-vacunados_vivos <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("1", "2", "3", "4")
-         & mortality30d == 0) %>%
-  nrow()
-vacunados_vivos
+# vacunados_vivos <-
+  # estudio_vacunas_t_final_selected %>%
+  # filter(pautas_covid %in% c("1", "2", "3", "4")
+         # & mortality30d == 0) %>%
+  # nrow()
+# vacunados_vivos
 
-no_vacunados_muertos <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("0")
-         & mortality30d == 1) %>%
-  nrow()
-no_vacunados_muertos
+# no_vacunados_muertos <-
+  # estudio_vacunas_t_final_selected %>%
+  # filter(pautas_covid %in% c("0")
+         # & mortality30d == 1) %>%
+  # nrow()
+# no_vacunados_muertos
 
-no_vacunados_vivos <-
-  estudio_vacunas_t_final_selected %>%
-  filter(pautas_covid %in% c("0")
-         & mortality30d == 0) %>%
-  nrow()
-no_vacunados_vivos
+# no_vacunados_vivos <-
+  # estudio_vacunas_t_final_selected %>%
+  # filter(pautas_covid %in% c("0")
+         # & mortality30d == 0) %>%
+  # nrow()
+# no_vacunados_vivos
 
 ```
 ## Sankey Plot for Hospital Admission
@@ -782,83 +1321,83 @@ no_vacunados_vivos
 
 ```{r}
 #Name of nodes
-A <- "Población de estudio"
-B <- "Vacunados"
-C <- "No Vacunados"
-D <- "No Hospitalizados"
-E <- "Hospitalizados"
+# A <- "Población de estudio"
+# B <- "Vacunados"
+# C <- "No Vacunados"
+# D <- "No Hospitalizados"
+# E <- "Hospitalizados"
 
 # Make a connection data frame
-source <- c(A, A, B, B, C, C)
-target <- c(B, C, D, E, D, E)
-value <- c(vacunados, no_vacunados, vacunados_no_ingresados, vacunados_ingresados, no_vacunados_no_ingresados, no_vacunados_ingresados)
-data <- data.frame(source, target, value)
+# source <- c(A, A, B, B, C, C)
+# target <- c(B, C, D, E, D, E)
+# value <- c(vacunados, no_vacunados, vacunados_no_ingresados, vacunados_ingresados, no_vacunados_no_ingresados, no_vacunados_ingresados)
+# data <- data.frame(source, target, value)
 
 # From these flows we need to create a node data frame: it lists every entities involved in the flow
-nodes <-
-  data.frame("name" = c(
-    as.character(data$source),
-    as.character(data$target)
-    %>% unique()
-  ))
+# nodes <-
+#   data.frame("name" = c(
+#     as.character(data$source),
+#     as.character(data$target)
+#     %>% unique()
+#   ))
 
 # With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
-data$IDsource <- match(data$source, nodes$name) - 1
-data$IDtarget <- match(data$target, nodes$name) - 1
+# data$IDsource <- match(data$source, nodes$name) - 1
+# data$IDtarget <- match(data$target, nodes$name) - 1
 
 
 ## Add link types for coloring purpose
-data$group = as.factor(c("type_0",
-                         "type_0",
-                         "type_1",
-                         "type_2",
-                         "type_1",
-                         "type_2"))
+# data$group = as.factor(c("type_0",
+#                          "type_0",
+#                          "type_1",
+#                          "type_2",
+#                          "type_1",
+#                          "type_2"))
 
 # Add a 'group' column to each node.
-nodes$group <-
-  as.factor(
-    c(
-      "node1",
-      "node1",
-      "node2",
-      "node2",
-      "node3",
-      "node3",
-      "node2",
-      "node3",
-      "node4",
-      "node5"
-    )
-  )
+# nodes$group <-
+#   as.factor(
+#     c(
+#       "node1",
+#       "node1",
+#       "node2",
+#       "node2",
+#       "node3",
+#       "node3",
+#       "node2",
+#       "node3",
+#       "node4",
+#       "node5"
+#     )
+#   )
 
 # Give a color for each group
-my_color <-
-  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+# my_color <-
+#   'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
 
 # Create the Sankey diagram
-SankeyDiagram <- sankeyNetwork(
-  Links = data,
-  Nodes = nodes,
-  Source = "IDsource",
-  Target = "IDtarget",
-  Value = "value",
-  NodeID = "name",
-  colourScale = my_color,
-  LinkGroup = "group",
-  NodeGroup = "group",
-  fontSize = 16,
-  fontFamily = 34,
-  nodeWidth = 100,
-  nodePadding = 20,
-  height = 400,
-  width = 1100,
-  iterations = 32,
-  sinksRight = FALSE
-)
+# SankeyDiagram <- sankeyNetwork(
+#   Links = data,
+#   Nodes = nodes,
+#   Source = "IDsource",
+#   Target = "IDtarget",
+#   Value = "value",
+#   NodeID = "name",
+#   colourScale = my_color,
+#   LinkGroup = "group",
+#   NodeGroup = "group",
+#   fontSize = 16,
+#   fontFamily = 34,
+#   nodeWidth = 100,
+#   nodePadding = 20,
+#   height = 400,
+#   width = 1100,
+#   iterations = 32,
+#   sinksRight = FALSE
+# )
 
 # Print the Sankey diagram
-SankeyDiagram
+# SankeyDiagram
 
 
 ```
@@ -868,83 +1407,83 @@ SankeyDiagram
 
 ```{r}
 #Name of nodes
-A <- "Población de estudio"
-B <- "Vacunados"
-C <- "No Vacunados"
-G <- "No Ingresados en UCI"
-H <- "Ingresados en UCI"
+# A <- "Población de estudio"
+# B <- "Vacunados"
+# C <- "No Vacunados"
+# G <- "No Ingresados en UCI"
+# H <- "Ingresados en UCI"
 
 # Make a connection data frame
-source <- c(A, A, B, B, C, C)
-target <- c(B, C, G, H, G, H)
-value <- c(vacunados, no_vacunados, vacunados_no_ingresados_uci, vacunados_ingresados_uci, no_vacunados_no_ingresados_uci, no_vacunados_ingresados_uci)
-data <- data.frame(source, target, value)
+# source <- c(A, A, B, B, C, C)
+# target <- c(B, C, G, H, G, H)
+# value <- c(vacunados, no_vacunados, vacunados_no_ingresados_uci, vacunados_ingresados_uci, no_vacunados_no_ingresados_uci, no_vacunados_ingresados_uci)
+# data <- data.frame(source, target, value)
 
 # From these flows we need to create a node data frame: it lists every entities involved in the flow
-nodes <-
-  data.frame("name" = c(
-    as.character(data$source),
-    as.character(data$target)
-    %>% unique()
-  ))
+# nodes <-
+#   data.frame("name" = c(
+#     as.character(data$source),
+#     as.character(data$target)
+#     %>% unique()
+#   ))
 
 # With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
-data$IDsource <- match(data$source, nodes$name) - 1
-data$IDtarget <- match(data$target, nodes$name) - 1
+# data$IDsource <- match(data$source, nodes$name) - 1
+# data$IDtarget <- match(data$target, nodes$name) - 1
 
 
 ## Add link types for coloring purpose
-data$group = as.factor(c("type_0",
-                         "type_0",
-                         "type_1",
-                         "type_2",
-                         "type_1",
-                         "type_2"))
+# data$group = as.factor(c("type_0",
+#                          "type_0",
+#                          "type_1",
+#                          "type_2",
+#                          "type_1",
+#                          "type_2"))
 
 # Add a 'group' column to each node.
-nodes$group <-
-  as.factor(
-    c(
-      "node1",
-      "node1",
-      "node2",
-      "node2",
-      "node3",
-      "node3",
-      "node2",
-      "node3",
-      "node4",
-      "node5"
-    )
-  )
+# nodes$group <-
+#   as.factor(
+#     c(
+#       "node1",
+#       "node1",
+#       "node2",
+#       "node2",
+#       "node3",
+#       "node3",
+#       "node2",
+#       "node3",
+#       "node4",
+#       "node5"
+#     )
+#   )
 
 # Give a color for each group
-my_color <-
-  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+# my_color <-
+#   'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
 
 # Create the Sankey diagram
-SankeyDiagram <- sankeyNetwork(
-  Links = data,
-  Nodes = nodes,
-  Source = "IDsource",
-  Target = "IDtarget",
-  Value = "value",
-  NodeID = "name",
-  colourScale = my_color,
-  LinkGroup = "group",
-  NodeGroup = "group",
-  fontSize = 16,
-  fontFamily = 34,
-  nodeWidth = 100,
-  nodePadding = 20,
-  height = 400,
-  width = 1100,
-  iterations = 32,
-  sinksRight = FALSE
-)
+# SankeyDiagram <- sankeyNetwork(
+#   Links = data,
+#   Nodes = nodes,
+#   Source = "IDsource",
+#   Target = "IDtarget",
+#   Value = "value",
+#   NodeID = "name",
+#   colourScale = my_color,
+#   LinkGroup = "group",
+#   NodeGroup = "group",
+#   fontSize = 16,
+#   fontFamily = 34,
+#   nodeWidth = 100,
+#   nodePadding = 20,
+#   height = 400,
+#   width = 1100,
+#   iterations = 32,
+#   sinksRight = FALSE
+# )
 
 # Print the Sankey diagram
-SankeyDiagram
+# SankeyDiagram
 
 ```
 
@@ -953,83 +1492,83 @@ SankeyDiagram
 
 ```{r}
 #Name of nodes
-A <- "Población de estudio"
-B <- "Vacunados"
-C <- "No Vacunados"
-I <- "Supervivientes"
-J <- "Fallecidos"
+# A <- "Población de estudio"
+# B <- "Vacunados"
+# C <- "No Vacunados"
+# I <- "Supervivientes"
+# J <- "Fallecidos"
 
 # Make a connection data frame
-source <- c(A, A, B, B, C, C)
-target <- c(B, C, I, J, I, J)
-value <- c(vacunados, no_vacunados, vacunados_vivos, vacunados_muertos, no_vacunados_vivos, no_vacunados_muertos)
-data <- data.frame(source, target, value)
+# source <- c(A, A, B, B, C, C)
+# target <- c(B, C, I, J, I, J)
+# value <- c(vacunados, no_vacunados, vacunados_vivos, vacunados_muertos, no_vacunados_vivos, no_vacunados_muertos)
+# data <- data.frame(source, target, value)
 
 # From these flows we need to create a node data frame: it lists every entities involved in the flow
-nodes <-
-  data.frame("name" = c(
-    as.character(data$source),
-    as.character(data$target)
-    %>% unique()
-  ))
+# nodes <-
+#   data.frame("name" = c(
+#     as.character(data$source),
+#     as.character(data$target)
+#     %>% unique()
+#   ))
 
 # With networkD3, connection must be provided using id, not using real name like in the links dataframe. So we need to reformat it.
-data$IDsource <- match(data$source, nodes$name) - 1
-data$IDtarget <- match(data$target, nodes$name) - 1
+# data$IDsource <- match(data$source, nodes$name) - 1
+# data$IDtarget <- match(data$target, nodes$name) - 1
 
 
 ## Add link types for coloring purpose
-data$group = as.factor(c("type_0",
-                         "type_0",
-                         "type_1",
-                         "type_2",
-                         "type_1",
-                         "type_2"))
+# data$group = as.factor(c("type_0",
+#                          "type_0",
+#                          "type_1",
+#                          "type_2",
+#                          "type_1",
+#                          "type_2"))
 
 # Add a 'group' column to each node.
-nodes$group <-
-  as.factor(
-    c(
-      "node1",
-      "node1",
-      "node2",
-      "node2",
-      "node3",
-      "node3",
-      "node2",
-      "node3",
-      "node4",
-      "node5"
-    )
-  )
+# nodes$group <-
+#   as.factor(
+#     c(
+#       "node1",
+#       "node1",
+#       "node2",
+#       "node2",
+#       "node3",
+#       "node3",
+#       "node2",
+#       "node3",
+#       "node4",
+#       "node5"
+#     )
+#   )
 
 # Give a color for each group
-my_color <-
-  'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
+# my_color <-
+#   'd3.scaleOrdinal() .domain(["type_0", "type_1", "type_2", "node1", "node2", "node3", "node4", "node5"]) .range(["#a4b0be", "#7bed9f", "#ff6b81", "#747d8c", "#70a1ff", "#eccc68", "#2ed573", "#ff4757"])'
 
 # Create the Sankey diagram
-SankeyDiagram <- sankeyNetwork(
-  Links = data,
-  Nodes = nodes,
-  Source = "IDsource",
-  Target = "IDtarget",
-  Value = "value",
-  NodeID = "name",
-  colourScale = my_color,
-  LinkGroup = "group",
-  NodeGroup = "group",
-  fontSize = 16,
-  fontFamily = 34,
-  nodeWidth = 100,
-  nodePadding = 20,
-  height = 400,
-  width = 1100,
-  iterations = 32,
-  sinksRight = FALSE
-)
+# SankeyDiagram <- sankeyNetwork(
+#   Links = data,
+#   Nodes = nodes,
+#   Source = "IDsource",
+#   Target = "IDtarget",
+#   Value = "value",
+#   NodeID = "name",
+#   colourScale = my_color,
+#   LinkGroup = "group",
+#   NodeGroup = "group",
+#   fontSize = 16,
+#   fontFamily = 34,
+#   nodeWidth = 100,
+#   nodePadding = 20,
+#   height = 400,
+#   width = 1100,
+#   iterations = 32,
+#   sinksRight = FALSE
+# )
 
 # Print the Sankey diagram
-SankeyDiagram
+# SankeyDiagram
 ```
 
 
@@ -1037,20 +1576,20 @@ SankeyDiagram
 
 ```{r}
 # Definir los parámetros
-costo_hospitalizacion <- 4612.76
-precio_vacuna <- 31
-dosis_equiv <- 148
-nnt <- 148
-red_abs_riesgo <- 0.0068
+# costo_hospitalizacion <- 4612.76
+# precio_vacuna <- 31
+# dosis_equiv <- 148
+# nnt <- 148
+# red_abs_riesgo <- 0.0068
 
 # Definir un vector de edades de 18 a 120
-edades <- 18:120
+# edades <- 18:120
 
 # Calcular la rentabilidad para cada edad
-rentabilidad <- (costo_hospitalizacion/dosis_equiv) / nnt / (1 - red_abs_riesgo)
+# rentabilidad <- (costo_hospitalizacion/dosis_equiv) / nnt / (1 - red_abs_riesgo)
 
 # Crear un dataframe con los resultados
-df <- data.frame(edad = edades, rentabilidad = rentabilidad)
+# df <- data.frame(edad = edades, rentabilidad = rentabilidad)
 
 ```
 
