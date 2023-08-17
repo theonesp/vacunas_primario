@@ -1,0 +1,119 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r}
+
+library(magrittr)
+library(tableone)
+library(kableExtra)
+library(summarytools)
+library(vroom)
+library(stringr)
+library(stringi)
+library(tidyr)
+library(mgcv)
+library(parglm)
+library(tibble)
+library(tidyverse)
+library(lme4)
+library(boot)
+library(caTools)
+library(caret)
+library(pROC)
+
+
+estudio_vacunas_t_final_selected <- 
+  readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds")
+
+
+
+formula_gam_hosp <- 
+  hosp_stay_bin ~ age + 
+  desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +
+  hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica +
+  vih + cancer_hematologico + cancer_organo_solido + 
+  variant_period + n_vacunas_covid + s(ultima_inmun_infecc_dias, k = 4)
+
+x <- estudio_vacunas_t_final_selected %>% 
+  filter(n_vacunas_covid != "Ninguna") %>% 
+  mutate(n_vacunas_covid = droplevels(n_vacunas_covid))
+
+
+
+formula_gam_hosp2 <- 
+  hosp_stay_bin ~ age + 
+  desc_sexo + asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc +
+  hepatopatia_cronica_excepto_cirrosis + hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica +
+  vih + cancer_hematologico + cancer_organo_solido + 
+  variant_period + n_vacunas_covid + s(ultima_inmun_infecc_bin, k = 4)
+
+x2 <- estudio_vacunas_t_final_selected %>% 
+  filter(n_vacunas_covid != "Ninguna") %>% 
+  mutate(
+    n_vacunas_covid = droplevels(n_vacunas_covid),
+    ultima_inmun_infecc_bin = droplevels(ultima_inmun_infecc_bin),
+    ultima_inmun_infecc_bin = case_when(
+      ultima_inmun_infecc_bin
+    )
+  )
+
+
+gamgam <- gam(formula_gam_hosp2, data = x2, family = binomial())
+
+
+gamgam_plot <- plot(gamgam, pages = 0)
+
+# Extract the data from gam_plot_hosp_stay_bin
+x <- gamgam_plot[[1]]$x
+fit <- gamgam_plot[[1]]$fit
+se <- gamgam_plot[[1]]$se
+
+# Convert odds ratio to percentage chance of Hospital Admission
+fit_chance <- (exp(fit) / (1 + exp(fit))) * 100
+lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) * 100
+upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) * 100
+
+# Create a data frame with x, fit_chance, and se
+df <- 
+  data.frame(
+    x = x, fit_chance = fit_chance, 
+    lower_bound_chance = lower_bound_chance, upper_bound_chance = upper_bound_chance
+  )
+
+# Create the plot
+ggplot(df, aes(x = x, y = fit_chance)) +
+  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), fill = "#2980b9", alpha = 0.3) +
+  geom_line() +
+  labs(x = "Age", y = "Probability of Hospital Admission (%)") +
+  ylim(0, 100) + 
+  xlim(14,120) +
+  theme_minimal() + 
+  theme(plot.background = element_rect(fill = "white"))
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
