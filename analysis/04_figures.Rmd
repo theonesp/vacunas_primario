@@ -76,6 +76,10 @@ colours_variants <- c("#FFD92F", "#8DA0CB", "#A6D854", "#E78AC3")
 colours_vaccines <- c("#D3BA68", "#D5695D", "#5D8CA8")
 colours_2agegroups <- c("#C72E29", "#016392")
 colours_3agegroups <- c("#C72E29", "#016392", "#BE9C2E")
+blue <- "#3D6EEA"
+lightblue <- "#B1BBEA"
+yellow <- "#EBD17F"
+orange <- "#EB9021"
 
 ```
 
@@ -774,6 +778,15 @@ box_c_up_name <-
 
 plot_my_sankey()
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/new_sankey_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 
 
 # Sieeeeeemmpre al final de cada sankey hay que borrar los objetos, para que al
@@ -821,6 +834,15 @@ box_c_up_name <-
 
 plot_my_sankey()
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/new_sankey_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 
 
 # Sieeeeeemmpre al final de cada sankey hay que borrar los objetos, para que al
@@ -866,6 +888,15 @@ box_c_up_name <-
 ##########################################
 
 plot_my_sankey()
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/new_sankey_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 
 
@@ -943,6 +974,14 @@ SankeyDiagram <- sankeyNetwork(
 # Print the Sankey diagram
 SankeyDiagram
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/old_sankey_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 ```
 
@@ -1029,6 +1068,15 @@ SankeyDiagram <- sankeyNetwork(
 # Print the Sankey diagram
 SankeyDiagram
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/old_sankey_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 ```
 
 ### Sankey Plot for Mortality
@@ -1113,6 +1161,16 @@ SankeyDiagram <- sankeyNetwork(
 
 # Print the Sankey diagram
 SankeyDiagram
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/old_sankey_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 ```
 
 
@@ -1130,7 +1188,8 @@ coef_data_hosp <-
       "Period of Ό predominance", "Δ-Ό transition period", "Period of Δ predominance",
       "α-Δ transition period", "Period of α predominance"
     )
-  )
+  ) %>% 
+  mutate(predictor = if_else(predictor == "Gender (male)", "Sex (male)", predictor))
 
 # Set up the forest plot using ggplot2
 ggplot(coef_data_hosp, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor)) +
@@ -1163,6 +1222,17 @@ ggplot(coef_data_hosp, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predict
     legend.position = "top"
   )
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/OR_general_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+
+
 rownames(coef_data_hosp) <- NULL
 
 coef_data_hosp %>%
@@ -1193,7 +1263,8 @@ coef_data_icu <-
       "Period of Ό predominance", "Δ-Ό transition period", "Period of Δ predominance",
       "α-Δ transition period", "Period of α predominance"
     )
-  )
+  ) %>% 
+  mutate(predictor = if_else(predictor == "Gender (male)", "Sex (male)", predictor))
 
 # Set up the forest plot using ggplot2
 ggplot(coef_data_icu, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor)) +
@@ -1226,6 +1297,17 @@ ggplot(coef_data_icu, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predicto
     legend.position = "top"
   )
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/OR_general_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+
+
 rownames(coef_data_icu) <- NULL
 
 coef_data_icu %>%
@@ -1256,7 +1338,8 @@ coef_data_mortality <-
       "Period of Ό predominance", "Δ-Ό transition period", "Period of Δ predominance",
       "α-Δ transition period", "Period of α predominance"
     )
-  )
+  ) %>% 
+  mutate(predictor = if_else(predictor == "Gender (male)", "Sex (male)", predictor))
 
 # Set up the forest plot using ggplot2
 ggplot(coef_data_mortality, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor)) +
@@ -1288,6 +1371,17 @@ ggplot(coef_data_mortality, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = pr
     axis.text.y = element_text(color = "#2c3e50"),
     legend.position = "top"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/OR_general_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+
 
 rownames(coef_data_mortality) <- NULL
 
@@ -1339,6 +1433,15 @@ ggplot(age_gam_outcomes, aes(x = x, y = fit_chance)) +
     panel.border = element_rect(color = "black", fill = NA, size = 0.6),
     legend.position = "none"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/outcomes_probability_by_age.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 ```
 
@@ -1583,7 +1686,7 @@ variants_week_spain_labels2 %>%
     axis.ticks.length = unit(1, "mm"),
     panel.border = element_rect(color = "black", fill = NA, size = 0.6),
     panel.grid.major.x = element_blank(),
-    axis.text.x = element_text(angle = 90, size = 4, hjust = 0, vjust = 0.5),
+    axis.text.x = element_text(angle = 90, size = 5, hjust = 0, vjust = 0.5),
     legend.title = element_blank()
   ) +
   labs(
@@ -1592,6 +1695,15 @@ variants_week_spain_labels2 %>%
     title = "Weekly proportion of SARS-CoV-2 variants sequenced in Spain",
     caption = "Source: GISAID, ECDC"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/variants_option_a.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 ```
 
@@ -1669,7 +1781,7 @@ ggplot() +
     axis.ticks = element_line(size = 0.5, colour = "black"),
     axis.ticks.length = unit(1, "mm"),
     panel.grid.major.x = element_blank(),
-    axis.text.x = element_text(angle = 90, size = 4, hjust = 1, vjust = 0.5),
+    axis.text.x = element_text(angle = 90, size = 5, hjust = 1, vjust = 0.5),
     legend.title = element_blank()
   ) +
   labs(
@@ -1682,12 +1794,12 @@ ggplot() +
 
 
 # ggsave(
-#   filename = "/opt/datos_compartidos/vacunas_data/figuras/variants_spain.png",
-#   device = "png",
-#   width = 8000,
-#   height = 8000,
-#   dpi = 700,
-#   units = "px"
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/variants_option_b.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
 # )
 
 ```
@@ -1703,21 +1815,24 @@ hosp_or_beforeafter <-
   filter(!predictor %in% c(
     "Period of Ό predominance", "Δ-Ό transition period", "Period of Δ predominance",
     "α-Δ transition period", "Period of α predominance"
-  ))
+  )) %>% 
+  mutate(predictor = if_else(predictor == "Gender (male)", "Sex (male)", predictor))
 
 icu_or_beforeafter <- 
   readRDS("/opt/datos_compartidos/vacunas_data/tablas/before vaccines VS after 75% coverage/OR_icu.rds") %>% 
   filter(!predictor %in% c(
     "Period of Ό predominance", "Δ-Ό transition period", "Period of Δ predominance",
     "α-Δ transition period", "Period of α predominance"
-  ))
+  )) %>% 
+  mutate(predictor = if_else(predictor == "Gender (male)", "Sex (male)", predictor))
 
 mortality_or_beforeafter <- 
   readRDS("/opt/datos_compartidos/vacunas_data/tablas/before vaccines VS after 75% coverage/OR_mortality.rds") %>% 
   filter(!predictor %in% c(
     "Period of Ό predominance", "Δ-Ό transition period", "Period of Δ predominance",
     "α-Δ transition period", "Period of α predominance"
-  ))
+  )) %>% 
+  mutate(predictor = if_else(predictor == "Gender (male)", "Sex (male)", predictor))
 
 # variable_order <- 
 #   rev(c(
@@ -1740,37 +1855,44 @@ mortality_or_beforeafter <-
 
 
 
-### Hospital Admission, before vs after vaccines
+### Hospital Admission, before VS after vaccines
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
 
 ggplot(hosp_or_beforeafter, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor, shape = data_origin)) +
-  geom_point(
-    size = 2,
-    aes(color = adverse_protective)
-  ) +
-  geom_errorbarh(
-    height = 0.2, aes(color = adverse_protective)
-  ) +
+  geom_point(aes(color = data_origin, size = data_origin, alpha = data_origin)) +
+  geom_errorbarh(height = 0.4, aes(color = data_origin, linewidth = data_origin, alpha = data_origin)) +
   geom_vline(xintercept = 1, linetype = "dashed") +
   labs(
-    x = "Odds Ratio", 
-    # y = "Predictor",
+    x = "Odds Ratio",
     y = "",
     title = "Odds Ratios and Confidence Intervals for\nHospital Admission-Associated Factors"
   ) +
   theme_minimal() +
-  # scale_y_discrete(limits = rev(levels(coef_data2$predictor))) +
   scale_shape_manual(
-    values = c(15, 19),
+    values = c(16, 17),
     labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
     name = "Sample subset:"
   ) + 
   scale_color_manual(
-    values = c("#c0392b", "#27ae60", "gray70"),
-    # breaks = c("#c0392b", "#27ae60", "gray90"),
-    labels = c("Adverse", "Protective", "Inconclusive"),
-    name = "Effect on Outcome:"
+    values = c("#EB4F76", lightblue),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_alpha_manual(
+    values = c(1, 0.1),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 1.5),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_size_manual(
+    values = c(1.5, 3),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
   ) +
   theme(
     # plot.background = element_rect(fill = "white"),
@@ -1785,6 +1907,15 @@ ggplot(hosp_or_beforeafter, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = pr
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/OR_before_after_vac_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 
 
@@ -1819,32 +1950,39 @@ hosp_or_beforeafter %>%
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
 
 ggplot(icu_or_beforeafter, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor, shape = data_origin)) +
-  geom_point(
-    size = 2,
-    aes(color = adverse_protective)
-  ) +
-  geom_errorbarh(
-    height = 0.2, aes(color = adverse_protective)
-  ) +
+  geom_point(aes(color = data_origin, size = data_origin, alpha = data_origin)) +
+  geom_errorbarh(height = 0.4, aes(color = data_origin, linewidth = data_origin, alpha = data_origin)) +
   geom_vline(xintercept = 1, linetype = "dashed") +
   labs(
-    x = "Odds Ratio", 
-    # y = "Predictor", 
+    x = "Odds Ratio",
     y = "",
-    title = "Odds Ratios and Confidence Intervals for\nICU Admission-Associated Factors"
+    title = "Odds Ratios and Confidence Intervals for\nHospital Admission-Associated Factors"
   ) +
   theme_minimal() +
-  # scale_y_discrete(limits = rev(levels(coef_data2$predictor))) +
   scale_shape_manual(
-    values = c(15, 19),
+    values = c(16, 17),
     labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
     name = "Sample subset:"
   ) + 
   scale_color_manual(
-    values = c("#c0392b", "#27ae60", "gray70"),
-    # breaks = c("#c0392b", "#27ae60", "gray90"),
-    labels = c("Adverse", "Protective", "Inconclusive"),
-    name = "Effect on Outcome:"
+    values = c("#EB4F76", lightblue),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_alpha_manual(
+    values = c(1, 0.1),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 1.5),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_size_manual(
+    values = c(1.5, 3),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
   ) +
   scale_x_continuous(limits = c(0, 8)) +
   theme(
@@ -1860,6 +1998,15 @@ ggplot(icu_or_beforeafter, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = pre
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/OR_before_after_vac_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 
 
@@ -1894,32 +2041,39 @@ icu_or_beforeafter %>%
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
 
 ggplot(mortality_or_beforeafter, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = predictor, shape = data_origin)) +
-  geom_point(
-    size = 2,
-    aes(color = adverse_protective)
-  ) +
-  geom_errorbarh(
-    height = 0.2, aes(color = adverse_protective)
-  ) +
+  geom_point(aes(color = data_origin, size = data_origin, alpha = data_origin)) +
+  geom_errorbarh(height = 0.4, aes(color = data_origin, linewidth = data_origin, alpha = data_origin)) +
   geom_vline(xintercept = 1, linetype = "dashed") +
   labs(
-    x = "Odds Ratio", 
-    # y = "Predictor", 
+    x = "Odds Ratio",
     y = "",
-    title = "Odds Ratios and Confidence Intervals for\nMortality-Associated Factors"
+    title = "Odds Ratios and Confidence Intervals for\nHospital Admission-Associated Factors"
   ) +
   theme_minimal() +
-  # scale_y_discrete(limits = rev(levels(coef_data2$predictor))) +
   scale_shape_manual(
-    values = c(15, 19),
+    values = c(16, 17),
     labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
     name = "Sample subset:"
   ) + 
   scale_color_manual(
-    values = c("#c0392b", "#27ae60", "gray70"),
-    # breaks = c("#c0392b", "#27ae60", "gray90"),
-    labels = c("Adverse", "Protective", "Inconclusive"),
-    name = "Effect on Outcome:"
+    values = c("#EB4F76", lightblue),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_alpha_manual(
+    values = c(1, 0.1),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 1.5),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
+  ) +
+  scale_size_manual(
+    values = c(1.5, 3),
+    labels = c("Cases after reaching 75% vaccine coverage", "Cases before vaccine introduction"),
+    name = "Sample subset:"
   ) +
   scale_x_continuous(limits = c(0, 8)) +
   theme(
@@ -1935,6 +2089,15 @@ ggplot(mortality_or_beforeafter, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/OR_before_after_vac_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 
 
@@ -2190,6 +2353,41 @@ vacc_agegr_LASTIMMUN <-
 
 
 
+vacc_agegr_LASTIMMUN2 <-
+  leer_csv_carpeta(
+    ruta = "/opt/datos_compartidos/vacunas_data/tablas/groups3 by nvaccines & agegroup (logreg lastimmun only)"
+  ) %>%
+  bind_rows() %>%
+  mutate(
+    nvaccine = str_extract(original_model, "(?<=_)[^_]+$"),
+    nvaccine = case_when(
+      nvaccine == "Ninguna" ~ "None",
+      nvaccine == "Una" ~ "1 dose",
+      nvaccine == "Dos" ~ "2 doses",
+      nvaccine == "Tres" ~ "3 doses"
+    ),
+    nvaccine = factor(nvaccine, levels = c("None", "1 dose", "2 doses", "3 doses")),
+    agegroup = str_extract(original_model, "^[^_]+"),
+    agegroup = case_when(
+      agegroup == "12-43" ~ "12-43 years old",
+      agegroup == "44-74" ~ "44-74 years old",
+      agegroup == "Over" ~ "More than 74 years old"
+    ),
+    predictor = case_when(
+      predictor == "ultima_inmun_infecc_bin2None" ~ "None",
+      predictor == "ultima_inmun_infecc_bin231-90" ~ "31-90",
+      predictor == "ultima_inmun_infecc_bin291-180" ~ "91-180",
+      predictor == "ultima_inmun_infecc_bin2>180" ~ ">180"
+    ),
+    predictor = factor(
+      predictor,
+      levels = c("None", "31-90", "91-180", ">180"))
+  ) %>%
+  filter(predictor != "None") %>%
+  select(outcome, predictor, nvaccine, agegroup, everything())
+
+
+
 vacc_agegr_LASTVAC <-
   leer_csv_carpeta(
     ruta = "/opt/datos_compartidos/vacunas_data/tablas/groups by nvaccines & agegroup (logreg lastvac only)"
@@ -2305,7 +2503,7 @@ var_agegr_VACCINES_adapted %>%
   scale_colour_manual(values = colours_variants) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(
-    y = "Vaccine effectiveness",
+    y = "Vaccine effectiveness (%)",
     x = "Vaccine doses",
     colour = "Variant period",
     title = "Outcome: hospital admission"
@@ -2325,6 +2523,15 @@ var_agegr_VACCINES_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/VE_variants_2agegroups_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_VACCINES_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -2362,7 +2569,7 @@ var_agegr_VACCINES_adapted %>%
   scale_colour_manual(values = colours_variants) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(
-    y = "Vaccine effectiveness",
+    y = "Vaccine effectiveness (%)",
     x = "Vaccine doses",
     colour = "Variant period",
     title = "Outcome: ICU admission"
@@ -2382,6 +2589,15 @@ var_agegr_VACCINES_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/VE_variants_2agegroups_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_VACCINES_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -2419,7 +2635,7 @@ var_agegr_VACCINES_adapted %>%
   scale_colour_manual(values = colours_variants) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(
-    y = "Vaccine effectiveness",
+    y = "Vaccine effectiveness (%)",
     x = "Vaccine doses",
     colour = "Variant period",
     title = "Outcome: 30-days mortality"
@@ -2439,6 +2655,15 @@ var_agegr_VACCINES_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/VE_variants_2agegroups_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_VACCINES_adapted %>%
   filter(outcome == "mortality") %>%
@@ -2533,6 +2758,15 @@ var_agegr_VACCINES2_adapted %>%
     legend.direction = "vertical"
   )
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/VE_variants_3agegroups_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 var_agegr_VACCINES2_adapted %>%
   filter(outcome == "hospitalisation") %>%
   mutate(
@@ -2589,6 +2823,15 @@ var_agegr_VACCINES2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/VE_variants_3agegroups_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_VACCINES2_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -2647,6 +2890,15 @@ var_agegr_VACCINES2_adapted %>%
     legend.direction = "vertical"
   )
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/VE_variants_3agegroups_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 var_agegr_VACCINES2_adapted %>%
   filter(outcome == "mortality") %>%
   mutate(
@@ -2700,16 +2952,40 @@ var_agegr_LASTIMMUN2_adapted %>%
   filter(outcome == "hospitalisation") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
-    width = 0.7
-    # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(
+    aes(x = predictor, y = OR, colour = agegroup, shape = agegroup, size = agegroup, alpha = agegroup)
+  ) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -2733,6 +3009,15 @@ var_agegr_LASTIMMUN2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_2agegroups_exposure_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTIMMUN2_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -2761,22 +3046,47 @@ var_agegr_LASTIMMUN2_adapted %>%
   filter(outcome == "intensivecare") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
-    width = 0.2
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(
+    aes(x = predictor, y = OR, colour = agegroup, shape = agegroup, size = agegroup, alpha = agegroup)
+  ) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
     y = "Risk (Odds Ratio)",
     x = "Time past since last exposure",
     colour = "Age group",
-    title = "Outcome: ICU admission"
+    title = "Outcome: hospital admission"
   ) +
   theme_minimal() +
   theme(
@@ -2793,6 +3103,15 @@ var_agegr_LASTIMMUN2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_2agegroups_exposure_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTIMMUN2_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -2821,22 +3140,45 @@ var_agegr_LASTIMMUN2_adapted %>%
   filter(outcome == "mortality") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
-    width = 0.2
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, shape = agegroup, size = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
     y = "Risk (Odds Ratio)",
     x = "Time past since last exposure",
     colour = "Age group",
-    title = "Outcome: 30-days mortality"
+    title = "Outcome: hospital admission"
   ) +
   theme_minimal() +
   theme(
@@ -2853,6 +3195,15 @@ var_agegr_LASTIMMUN2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_2agegroups_exposure_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTIMMUN2_adapted %>%
   filter(outcome == "mortality") %>%
@@ -2909,16 +3260,39 @@ var_agegr_LASTIMMUN3_adapted %>%
   filter(outcome == "hospitalisation") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
-    width = 0.7
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
     # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -2942,6 +3316,15 @@ var_agegr_LASTIMMUN3_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_3agegroups_exposure_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTIMMUN3_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -2970,15 +3353,38 @@ var_agegr_LASTIMMUN3_adapted %>%
   filter(outcome == "intensivecare") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
-    width = 0.2
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 0.7, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3002,6 +3408,15 @@ var_agegr_LASTIMMUN3_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_3agegroups_exposure_intensivecare.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTIMMUN3_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -3030,15 +3445,38 @@ var_agegr_LASTIMMUN3_adapted %>%
   filter(outcome == "mortality") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
-    width = 0.2
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, shape = agegroup, size = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3062,6 +3500,15 @@ var_agegr_LASTIMMUN3_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_3agegroups_exposure_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTIMMUN3_adapted %>%
   filter(outcome == "mortality") %>%
@@ -3116,16 +3563,38 @@ var_agegr_LASTVAC_adapted %>%
   filter(outcome == "hospitalisation") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
-    # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3149,6 +3618,15 @@ var_agegr_LASTVAC_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_2agegroups_vaccination_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTVAC_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -3177,16 +3655,38 @@ var_agegr_LASTVAC_adapted %>%
   filter(outcome == "intensivecare") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
-    # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3210,6 +3710,15 @@ var_agegr_LASTVAC_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_2agegroups_vaccination_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTVAC_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -3238,16 +3747,38 @@ var_agegr_LASTVAC_adapted %>%
   filter(outcome == "mortality") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
-    # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3271,6 +3802,15 @@ var_agegr_LASTVAC_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_2agegroups_vaccination_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTVAC_adapted %>%
   filter(outcome == "mortality") %>%
@@ -3327,16 +3867,38 @@ var_agegr_LASTVAC2_adapted %>%
   filter(outcome == "hospitalisation") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
-    # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3360,6 +3922,15 @@ var_agegr_LASTVAC2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_3agegroups_vaccination_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTVAC2_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -3388,16 +3959,38 @@ var_agegr_LASTVAC2_adapted %>%
   filter(outcome == "intensivecare") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
-    # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 0.7, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3421,6 +4014,15 @@ var_agegr_LASTVAC2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_3agegroups_vaccination_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTVAC2_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -3449,16 +4051,38 @@ var_agegr_LASTVAC2_adapted %>%
   filter(outcome == "mortality") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
-    # TODO corregir este ancho de barra para que se vea aunque se pisen los limites con los puntos!!
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~variant, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   # scale_y_continuous(limits = c(0, 10.1)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3482,6 +4106,15 @@ var_agegr_LASTVAC2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_variants_3agegroups_vaccination_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 var_agegr_LASTVAC2_adapted %>%
   filter(outcome == "mortality") %>%
@@ -3532,15 +4165,38 @@ vacc_agegr_LASTIMMUN_adapted %>%
   filter(outcome == "hospitalisation") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   # TODO el squish!!!!!! explicar qué pasa con ese borde
   labs(
@@ -3564,6 +4220,15 @@ vacc_agegr_LASTIMMUN_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+ggsave(
+  "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_2agegroups_exposure_hosp.tiff",
+  width = 3000,
+  height = 1500,
+  units = "px",
+  dpi = 300,
+  device = "tiff"
+)
 
 vacc_agegr_LASTIMMUN_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -3592,15 +4257,38 @@ vacc_agegr_LASTIMMUN_adapted %>%
   filter(outcome == "intensivecare") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   labs(
     y = "Risk (Odds Ratio)",
@@ -3623,6 +4311,15 @@ vacc_agegr_LASTIMMUN_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_2agegroups_exposure_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 vacc_agegr_LASTIMMUN_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -3652,15 +4349,38 @@ vacc_agegr_LASTIMMUN_adapted %>%
   filter(OR_upper < 20) %>% 
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3685,6 +4405,15 @@ vacc_agegr_LASTIMMUN_adapted %>%
     legend.direction = "vertical"
   )
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_2agegroups_exposure_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 vacc_agegr_LASTIMMUN_adapted %>%
   filter(outcome == "mortality") %>%
   mutate(
@@ -3707,6 +4436,306 @@ vacc_agegr_LASTIMMUN_adapted %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 
 ```
+
+
+
+### D3agegroups: **Risk of infection** by time since **last EXPOSURE** (segregated by number of vaccine doses and **3 age groups**)
+
+Groups automatically excluded:
+
+- Those with infinite OR upper CI limit.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+
+vacc_agegr_LASTIMMUN2_adapted <- vacc_agegr_LASTIMMUN2 %>% 
+  # filter(
+  #   (original_model == "Before_60")
+  #   | (original_model == "α_60")
+  #   | (original_model == "Δ_Menor")
+  #   | (original_model == "Δ_60")
+  #   | original_model %in% c("Ό_60", "Ό_Menor")
+  # ) %>%
+  filter(!is.infinite(OR_upper))
+
+
+
+vacc_agegr_LASTIMMUN2_adapted %>%
+  filter(outcome == "hospitalisation") %>%
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  coord_flip() +
+  facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_y_continuous(limits = c(0, 6)) +
+  # TODO el squish!!!!!! explicar qué pasa con ese borde
+  labs(
+    y = "Risk (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: hospital admission"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    strip.background = element_rect(colour = "black", fill = "gray80", linewidth = 0.6),
+    plot.title = element_text(hjust = 0.5),
+    axis.line.x = element_line(linewidth = 0.6),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"),
+    legend.position = "right",
+    legend.box = "horizontal",
+    legend.direction = "vertical"
+  )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_3agegroups_exposure_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+vacc_agegr_LASTIMMUN2_adapted %>%
+  filter(outcome == "hospitalisation") %>%
+  mutate(
+    predictor = if_else(
+      predictor == "None",
+      predictor,
+      paste0(predictor, " days")
+    )
+  ) %>%
+  select(
+    "Number of vaccine doses" = nvaccine,
+    "Age group" = agegroup,
+    "Time past since exposure" = predictor,
+    "OR" = OR,
+    "OR lower CI limit" = OR_lower,
+    "OR upper CI limit" = OR_upper,
+    "p value" = p_value
+  ) %>%
+  kable(caption = "Risk (Odds Ratio) for hospital admission by time since last exposure. Data stratification by number of vaccine doses and age group") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+
+
+vacc_agegr_LASTIMMUN2_adapted %>%
+  filter(outcome == "intensivecare") %>%
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  coord_flip() +
+  facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 0.7, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_y_continuous(limits = c(0, 6)) +
+  labs(
+    y = "Risk (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: ICU admission"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    strip.background = element_rect(colour = "black", fill = "gray80", linewidth = 0.6),
+    plot.title = element_text(hjust = 0.5),
+    axis.line.x = element_line(linewidth = 0.6),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"),
+    legend.position = "right",
+    legend.box = "horizontal",
+    legend.direction = "vertical"
+  )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_3agegroups_exposure_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+vacc_agegr_LASTIMMUN2_adapted %>%
+  filter(outcome == "intensivecare") %>%
+  mutate(
+    predictor = if_else(
+      predictor == "None",
+      predictor,
+      paste0(predictor, " days")
+    )
+  ) %>%
+  select(
+    "Number of vaccine doses" = nvaccine,
+    "Age group" = agegroup,
+    "Time past since last exposure" = predictor,
+    "OR" = OR,
+    "OR lower CI limit" = OR_lower,
+    "OR upper CI limit" = OR_upper,
+    "p value" = p_value
+  ) %>%
+  kable(caption = "Risk (Odds Ratio) for ICU admission by time since last exposure. Data stratification by number of vaccine doses and age group") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+
+
+vacc_agegr_LASTIMMUN2_adapted %>%
+  filter(outcome == "mortality") %>%
+  filter(OR_upper < 20) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
+    width = 0.5
+  ) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  coord_flip() +
+  facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_y_continuous(limits = c(0, 6)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk (Odds Ratio)",
+    x = "Time past since last exposure",
+    colour = "Age group",
+    title = "Outcome: 30-days mortality"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    strip.background = element_rect(colour = "black", fill = "gray80", linewidth = 0.6),
+    plot.title = element_text(hjust = 0.5),
+    axis.line.x = element_line(linewidth = 0.6),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"),
+    legend.position = "right",
+    legend.box = "horizontal",
+    legend.direction = "vertical"
+  )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_3agegroups_exposure_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+vacc_agegr_LASTIMMUN2_adapted %>%
+  filter(outcome == "mortality") %>%
+  mutate(
+    predictor = if_else(
+      predictor == "None",
+      predictor,
+      paste0(predictor, " days")
+    )
+  ) %>%
+  select(
+    "Number of vaccine doses" = nvaccine,
+    "Age group" = agegroup,
+    "Time past since last exposure" = predictor,
+    "OR" = OR,
+    "OR lower CI limit" = OR_lower,
+    "OR upper CI limit" = OR_upper,
+    "p value" = p_value
+  ) %>%
+  kable(caption = "Risk (Odds Ratio) for mortality by time since last exposure. Data stratification by number of vaccine doses and age group") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+```
+
+
 
 ### E2agegroups: **Risk of infection** by time since **last VACCINATION** (segregated by number of vaccine doses and **2 age groups**)
 
@@ -3732,15 +4761,38 @@ vacc_agegr_LASTVAC_adapted %>%
   filter(outcome == "hospitalisation") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   # TODO el squish!!!!!! explicar qué pasa con ese borde
   labs(
@@ -3764,6 +4816,15 @@ vacc_agegr_LASTVAC_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_2agegroups_vaccination_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 vacc_agegr_LASTVAC_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -3792,15 +4853,38 @@ vacc_agegr_LASTVAC_adapted %>%
   filter(outcome == "intensivecare") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   labs(
     y = "Risk (Odds Ratio)",
@@ -3823,6 +4907,15 @@ vacc_agegr_LASTVAC_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_2agegroups_vaccination_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 vacc_agegr_LASTVAC_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -3852,15 +4945,38 @@ vacc_agegr_LASTVAC_adapted %>%
   filter(OR_upper < 20) %>% 
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, orange),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 16),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 1),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 3),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(2.3, 0.7),
+    labels = c("59 years or younger", "60 years or older"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -3884,6 +5000,15 @@ vacc_agegr_LASTVAC_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_2agegroups_vaccination_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 vacc_agegr_LASTVAC_adapted %>%
   filter(outcome == "mortality") %>%
@@ -3934,15 +5059,38 @@ vacc_agegr_LASTVAC2_adapted %>%
   filter(outcome == "hospitalisation") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   # TODO el squish!!!!!! explicar qué pasa con ese borde
   labs(
@@ -3966,6 +5114,15 @@ vacc_agegr_LASTVAC2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_3agegroups_vaccination_hosp.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 vacc_agegr_LASTVAC2_adapted %>%
   filter(outcome == "hospitalisation") %>%
@@ -3994,15 +5151,38 @@ vacc_agegr_LASTVAC2_adapted %>%
   filter(outcome == "intensivecare") %>%
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   labs(
     y = "Risk (Odds Ratio)",
@@ -4025,6 +5205,15 @@ vacc_agegr_LASTVAC2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_3agegroups_vaccination_icu.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 vacc_agegr_LASTVAC2_adapted %>%
   filter(outcome == "intensivecare") %>%
@@ -4054,15 +5243,38 @@ vacc_agegr_LASTVAC2_adapted %>%
   filter(OR_upper < 20) %>% 
   ggplot() +
   geom_errorbar(
-    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup),
-    linewidth = 1,
+    aes(x = predictor, ymin = OR_lower, ymax = OR_upper, colour = agegroup, linewidth = agegroup, alpha = agegroup),
     width = 0.5
   ) +
-  geom_point(aes(x = predictor, y = OR, colour = agegroup), size = 3) +
+  geom_point(aes(x = predictor, y = OR, colour = agegroup, size = agegroup, shape = agegroup, alpha = agegroup)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   coord_flip() +
   facet_wrap(~nvaccine, nrow = 4, strip.position = "right") +
-  scale_colour_manual(values = colours_3agegroups) +
+  scale_colour_manual(
+    values = c(lightblue, lightblue, orange),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(17, 15, 16),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(0.2, 0.2, 1),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(4, 4, 3),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3, 0.7),
+    labels = c("12-43 years old", "44-74 years old", "More than 74 years old"),
+    name = "Age group"
+  ) +
   scale_y_continuous(limits = c(0, 6)) +
   theme(axis.text.x = element_text(vjust = 0.5)) +
   labs(
@@ -4086,6 +5298,15 @@ vacc_agegr_LASTVAC2_adapted %>%
     legend.box = "horizontal",
     legend.direction = "vertical"
   )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_vaccdoses_3agegroups_vaccination_mortality.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
 
 vacc_agegr_LASTVAC2_adapted %>%
   filter(outcome == "mortality") %>%
@@ -4136,10 +5357,10 @@ data <-
     )
   ) %>% 
   mutate(
-    outcome = if_else(is.na(outcome), "30-day mortality", outcome),
+    outcome = if_else(is.na(outcome), "30-days mortality", outcome),
     across(coef:p_value, as.character),
     across(coef:p_value, as.numeric),
-    outcome = factor(outcome, levels = c("Hospital admission", "ICU admission", "30-day mortality"))
+    outcome = factor(outcome, levels = c("Hospital admission", "ICU admission", "30-days mortality"))
   ) %>% 
   filter(str_detect(predictor, "Last vaccine"))
 
@@ -4184,6 +5405,15 @@ data %>%
     # legend.direction = "vertical"
   )
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_general_3outcomes_vaccination.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 
 
 data %>%
@@ -4198,6 +5428,139 @@ data %>%
     # "Number of vaccine doses" = nvaccine,
     # "Age group" = agegroup,
     "Outcome of interest" = outcome,
+    "Time past since last vaccine dose" = predictor,
+    "OR" = OR,
+    "OR lower CI limit" = OR_lower,
+    "OR upper CI limit" = OR_upper,
+    "p value" = p_value
+  ) %>%
+  kable(caption = "Risk (Odds Ratio) for the outcomes of interest by time since last vaccine dose.") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+```
+
+## General analysis of the **infection risk** by time since **last VACCINATION** (2 age groups)
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+
+data <- 
+  read.csv2(
+    "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastvac/OR_hospitalisation_subgroups_nvacc_PREDICTORtimesincelastvac2.xls",
+    sep = ","
+  ) %>% 
+  mutate(outcome = "Hospital admission") %>% 
+  bind_rows(
+    read.csv2(
+      "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastvac/OR_icu_subgroups_nvacc_PREDICTORtimesincelastvac2.xls",
+      sep = ","
+    )
+  ) %>% 
+  mutate(outcome = if_else(is.na(outcome), "ICU admission", outcome)) %>% 
+  bind_rows(
+    read.csv2(
+      "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastvac/OR_mortality_subgroups_nvacc_PREDICTORtimesincelastvac2.xls",
+      sep = ","
+    )
+  ) %>% 
+  mutate(
+    outcome = if_else(is.na(outcome), "30-days mortality", outcome),
+    across(coef:p_value, as.character),
+    across(coef:p_value, as.numeric),
+    outcome = factor(outcome, levels = c("Hospital admission", "ICU admission", "30-days mortality"))
+  )
+
+
+
+data %>%
+  # filter(outcome == "hospital admission") %>%
+  # filter(OR_upper < 20) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(
+      x = predictor, ymin = OR_lower, ymax = OR_upper, 
+      colour = original_model, linewidth = original_model, alpha = original_model
+    ),
+    width = 0.5
+  ) +
+  geom_point(
+    aes(x = predictor, y = OR, colour = original_model, shape = original_model, size = original_model, alpha = original_model)
+  )+
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  coord_flip() +
+  facet_wrap(~outcome, nrow = 4, strip.position = "top") +
+  scale_colour_manual(
+    values = c(orange, lightblue),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(1, 0.2),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(3, 4),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(16, 17),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  # scale_colour_manual(values = colours_3agegroups) +
+  # scale_y_continuous(limits = c(0, 6)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk (Odds Ratio)",
+    x = NULL,
+    shape = "Age group:",
+    alpha = "Age group:",
+    title = "Infection risk (OR) by time since last vaccination"
+  ) +
+  guides(color = "none") + 
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "italic"),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    # strip.background = element_rect(colour = "black", fill = "gray80", linewidth = 0.6),
+    plot.title = element_text(hjust = 0.5),
+    axis.line.x = element_line(linewidth = 0.6),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"),
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.direction = "horizontal"
+  )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_general_3outcomes_vaccination_2agegroups.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+
+
+data %>%
+  mutate(
+    original_model = if_else(original_model == "menores", "Younger than 60 years", "60 years or older")
+  ) %>% 
+  select(
+    # "Number of vaccine doses" = nvaccine,
+    # "Age group" = agegroup,
+    "Outcome of interest" = outcome,
+    "Age group" = original_model,
     "Time past since last vaccine dose" = predictor,
     "OR" = OR,
     "OR lower CI limit" = OR_lower,
@@ -4235,10 +5598,10 @@ data <-
     )
   ) %>% 
   mutate(
-    outcome = if_else(is.na(outcome), "30-day mortality", outcome),
+    outcome = if_else(is.na(outcome), "30-days mortality", outcome),
     across(coef:p_value, as.character),
     across(coef:p_value, as.numeric),
-    outcome = factor(outcome, levels = c("Hospital admission", "ICU admission", "30-day mortality"))
+    outcome = factor(outcome, levels = c("Hospital admission", "ICU admission", "30-days mortality"))
   ) %>% 
   filter(str_detect(predictor, "Last exposed"))
 
@@ -4283,6 +5646,15 @@ data %>%
     # legend.direction = "vertical"
   )
 
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_general_3outcomes_exposure.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
 
 
 data %>%
@@ -4308,7 +5680,141 @@ data %>%
 
 ```
 
+## General analysis of the **infection risk** by time since **last EXPOSURE** (2 age groups)
 
+```{r, echo = FALSE, message = FALSE, warning = FALSE, out.width = "100%"}
+
+data <- 
+  read.csv2(
+    "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastimmun/OR_hospitalisation_subgroups_nvacc_PREDICTORtimesincelastvac2.xls",
+    sep = ","
+  ) %>% 
+  mutate(outcome = "Hospital admission") %>% 
+  bind_rows(
+    read.csv2(
+      "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastimmun/OR_icu_subgroups_nvacc_PREDICTORtimesincelastvac2.xls",
+      sep = ","
+    )
+  ) %>% 
+  mutate(outcome = if_else(is.na(outcome), "ICU admission", outcome)) %>% 
+  bind_rows(
+    read.csv2(
+      "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastimmun/OR_mortality_subgroups_nvacc_PREDICTORtimesincelastvac2.xls",
+      sep = ","
+    )
+  ) %>% 
+  mutate(
+    outcome = if_else(is.na(outcome), "30-days mortality", outcome),
+    across(coef:p_value, as.character),
+    across(coef:p_value, as.numeric),
+    outcome = factor(outcome, levels = c("Hospital admission", "ICU admission", "30-days mortality"))
+  )
+
+
+
+data %>%
+  # filter(outcome == "hospital admission") %>%
+  # filter(OR_upper < 20) %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(
+      x = predictor, ymin = OR_lower, ymax = OR_upper, 
+      colour = original_model, linewidth = original_model, alpha = original_model
+    ),
+    width = 0.5
+  ) +
+  geom_point(
+    aes(
+      x = predictor, y = OR, colour = original_model, shape = original_model, 
+      size = original_model, alpha = original_model
+    )
+  ) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  coord_flip() +
+  facet_wrap(~outcome, nrow = 4, strip.position = "top") +
+  scale_colour_manual(
+    values = c(orange, lightblue),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_linewidth_manual(
+    values = c(0.7, 2.3),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_size_manual(
+    values = c(3, 4),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_alpha_manual(
+    values = c(1, 0.2),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  scale_shape_manual(
+    values = c(16, 17),
+    labels = c("60 years or older", "Younger than 60 years"),
+    name = "Age group"
+  ) +
+  # scale_colour_manual(values = colours_3agegroups) +
+  # scale_y_continuous(limits = c(0, 6)) +
+  theme(axis.text.x = element_text(vjust = 0.5)) +
+  labs(
+    y = "Risk (Odds Ratio)",
+    x = NULL,
+    shape = "Age group:",
+    alpha = "Age group:",
+    title = "Infection risk (OR) by time since last exposure"
+  ) +
+  guides(color = "none") + 
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "italic"),
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    # strip.background = element_rect(colour = "black", fill = "gray80", linewidth = 0.6),
+    plot.title = element_text(hjust = 0.5),
+    axis.line.x = element_line(linewidth = 0.6),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"),
+    legend.position = "top",
+    legend.box = "horizontal",
+    legend.direction = "horizontal"
+  )
+
+# ggsave(
+#   "/opt/datos_compartidos/vacunas_data/figuras/final_plots/risk_general_3outcomes_exposure_2agegroups.tiff",
+#   width = 3000,
+#   height = 1500,
+#   units = "px",
+#   dpi = 300,
+#   device = "tiff"
+# )
+
+
+
+data %>%
+  mutate(
+    original_model = if_else(original_model == "menores", "Younger than 60 years", "60 years or older")
+  ) %>% 
+  select(
+    # "Number of vaccine doses" = nvaccine,
+    # "Age group" = agegroup,
+    "Outcome of interest" = outcome,
+    "Age group" = original_model,
+    "Time past since last vaccine dose" = predictor,
+    "OR" = OR,
+    "OR lower CI limit" = OR_lower,
+    "OR upper CI limit" = OR_upper,
+    "p value" = p_value
+  ) %>%
+  kable(caption = "Risk (Odds Ratio) for the outcomes of interest by time since last exposure.") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+```
 
 
 

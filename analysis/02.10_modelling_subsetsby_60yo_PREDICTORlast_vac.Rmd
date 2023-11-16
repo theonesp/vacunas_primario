@@ -1,0 +1,372 @@
+---
+title: "02b_modelling_subsets"
+# output: html_document
+---
+
+# Environment
+
+```{r}
+
+library(magrittr)
+library(tableone)
+library(kableExtra)
+library(summarytools)
+library(vroom)
+library(stringr)
+library(stringi)
+library(tidyr)
+library(mgcv)
+library(parglm)
+library(tibble)
+library(tidyverse)
+# library(lme4)
+library(boot)
+library(caTools)
+library(caret)
+library(pROC)
+# install.packages("car")
+# library(car)
+# install.packages("corrplot")
+# library(corrplot)
+
+```
+
+# Load Data
+
+```{r}
+
+estudio_vacunas_t_final_selected <- 
+  readRDS("/opt/datos_compartidos/vacunas_data/Rfiles/estudio_vacunas_t_final_selected_manuscript.rds") %>% 
+  mutate(
+    age_fct_3groups = case_when(
+      age < 44 ~ "12-43 years old",
+      age < 75 ~ "44-74 years old",
+      age > 74 ~ "Over 74 years old",
+      TRUE ~ NA_character_
+    ),
+    age_fct_3groups = factor(age_fct_3groups)
+  )
+
+```
+
+# Creating functions
+
+```{r}
+
+# metric performance
+precision <- function(matrix) {
+  # True positive
+  tp <- matrix[2, 2]
+  # false positive
+  fp <- matrix[1, 2]
+  return (tp / (tp + fp))
+}
+
+recall <- function(matrix) {
+  # true positive
+  tp <- matrix[2, 2]
+  # false negative
+  fn <- matrix[2, 1]
+  return (tp / (tp + fn))
+}
+
+extract_coef_pval_OR <- function(model) {
+  as.data.frame(tibble(
+    term = names(model$coefficients),
+    estimate = model$coefficients,
+    std.error = sqrt(diag(vcov(model))),
+    statistic = model$coefficients / sqrt(diag(vcov(model))),
+    p.value = 2 * (1 - pnorm(abs(statistic))),
+    OR = round(exp(estimate), 2),
+    OR_CI_lower = round(exp(estimate - 1.96 * std.error), 2),
+    OR_CI_upper = round(exp(estimate + 1.96 * std.error), 2)
+  ))
+}
+
+set.seed(123)
+
+# Create a function to split the data with balanced outcome percentages
+balanced_split <- function(data, outcome_var, split_ratio) {
+  unique_outcomes <- unique(data[[outcome_var]])
+  train_data <- data.frame()
+  test_data <- data.frame()
+  
+  # Iterate over each unique outcome and split the data
+  for (outcome in unique_outcomes) {
+    subset_data <- data[data[[outcome_var]] == outcome, ]
+    split <- sample(nrow(subset_data), size = round(nrow(subset_data) * split_ratio))
+    train_subset <- subset_data[split, ]
+    test_subset <- subset_data[-split, ]
+    train_data <- rbind(train_data, train_subset)
+    test_data <- rbind(test_data, test_subset)
+  }
+  
+  return(list(train_data = train_data, test_data = test_data))
+}
+
+# Define the evaluation metric
+f1_score <- function(data, lev = NULL, model = NULL) {
+  predictions <- factor(ifelse(data$obs == lev[1], lev[1], lev[2]), levels = lev)
+  reference <- factor(data$obs, levels = lev)
+  
+  f1 <- F_meas(predictions, reference, beta = 1)$F
+  return(f1)
+}
+
+```
+
+# Names transformation
+
+```{r}
+
+predictor_pairs <-
+  tribble(
+    ~good_names, ~predictor,
+    "Gender (male)", "desc_sexoHombre",
+    "Age (group 1: 12-43)", "s(age).1",
+    "Age (group 2: 44-74)", "s(age).2",
+    "Age (group 3: >74)", "s(age).3",
+    "Asthma", "asmaSí",
+    "Ischemic heart disease", "cardiopatia_isquemicaSí",
+    "Hepatic cirrhosis", "cirrosis_hepaticaSí",
+    "Diabetes", "diabetesSí",
+    "Chronic Obstructive Pulmonary Disease (COPD)", "epocSí",
+    "Chronic Hepatic Disease (except cirrhosis)", "hepatopatia_cronica_excepto_cirrosisSí",
+    "Hypertension", "hipertensionSí",
+    "Heart failure", "insuficiencia_cardiacaSí",
+    "Chronic kidney disease", "insuficiencia_renal_cronicaSí",
+    "HIV+", "vihSí",
+    "Solid organ cancer", "cancer_organo_solidoSí",
+    "Haematologic cancer", "cancer_hematologicoSí",
+    "No vaccine received", "ultima_vac_infecc_binNone",
+    "Last vaccine received 31-90 days ago", "ultima_vac_infecc_bin31-90",
+    "Last vaccine received 91-180 days ago", "ultima_vac_infecc_bin91-180",
+    "Last vaccine received more than 180 days ago", "ultima_vac_infecc_bin>180",
+    "One vaccine dose", "n_vacunas_covidUna",
+    "Two vaccine doses", "n_vacunas_covidDos",
+    "Three vaccine doses", "n_vacunas_covidTres",
+    "Period before α predominance", "variant_periodBefore α",
+    "Period of α predominance", "variant_periodα",
+    "α-Δ transition period", "variant_periodα/Δ transition",
+    "Period of Δ predominance", "variant_periodΔ",
+    "Δ-Ό transition period", "variant_periodΔ/Ό transition",
+    "Period of Ό predominance", "variant_periodΌ"
+  )
+
+# goodnames <- predictor_pairs$good_names
+# badnames <- predictor_pairs$bad_names
+# names(goodnames) <- badnames
+
+```
+
+# SUB-ANALYSIS
+
+```{r}
+
+menores <- estudio_vacunas_t_final_selected %>% 
+  filter(age_fct_60years == "Menor de 60 años") %>%
+  mutate(age_fct_60years = droplevels(age_fct_60years))
+
+mayores <- estudio_vacunas_t_final_selected %>% 
+  filter(age_fct_60years == "60 años o más") %>%
+  mutate(age_fct_60years = droplevels(age_fct_60years))
+
+subset_list <- list()
+
+subset_list[["menores"]] <- menores
+subset_list[["mayores"]] <- mayores
+
+```
+
+### Sub-analysis for hospital stay
+
+```{r}
+
+# Creating a formula for GAM models
+formula_gam_hosp <- 
+  hosp_stay_bin ~ 
+  # s(age, k = 4) + 
+  desc_sexo + 
+  asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + 
+  hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica +
+  vih + cancer_hematologico + cancer_organo_solido +
+  ultima_vac_infecc_bin + n_vacunas_covid +
+  variant_period
+
+# Creating a list for storing GAM results
+sub_hosp_list <- list()
+
+# FOR LOOP: modelling GAMS for each sub-dataframe
+for (i in seq_along(subset_list)) {
+  # Adjusting the GAM model
+  model <- glm(formula_gam_hosp, data = subset_list[[i]], family = binomial())
+  # Extracting coefficients, confidence intervals and p-values
+  coef_data <- data.frame(
+    coef = coef(model),
+    se = sqrt(diag(vcov(model)))
+  ) %>% 
+  rownames_to_column(var = "predictor") %>% 
+  mutate(
+    z_value = qnorm(0.975), # 95% confidence level (two-sided)
+    OR = exp(coef),
+    OR_lower = exp(coef - z_value * se),
+    OR_upper = exp(coef + z_value * se),
+    p_value = 2 * (1 - pnorm(abs(coef) / se))
+  ) %>% 
+  filter(predictor != "(Intercept)") %>% 
+  left_join(predictor_pairs, by = "predictor") %>% 
+  select(-c(predictor, z_value)) %>% 
+  select(predictor = good_names, everything())
+  # 
+  coef_data$original_model <- names(subset_list)[[i]]
+  # Storing each results dataframe to our list
+  result_dataframe_name <- names(subset_list)[[i]]
+  assign(result_dataframe_name, coef_data)
+  sub_hosp_list[[result_dataframe_name]] <- coef_data
+}
+
+df_OR_hospitalisation_subgroups <- data.frame()
+
+for (i in seq_along(sub_hosp_list)) {
+  output <- sub_hosp_list[[i]] %>%
+    filter(str_detect(predictor, "Last vaccine"))
+  df_OR_hospitalisation_subgroups <- bind_rows(df_OR_hospitalisation_subgroups, output)
+}
+
+
+
+# write_excel_csv(
+#   df_OR_hospitalisation_subgroups,
+#   file = "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastvac/OR_hospitalisation_subgroups_nvacc_PREDICTORtimesincelastvac2.xls"
+# )
+
+```
+
+### Sub-analysis for ICU stay
+
+```{r}
+
+# Creating a formula for GAM models
+formula_gam_icu <- 
+  icu_stay_bin ~ 
+  # s(age, k = 3) + 
+  desc_sexo + 
+  asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + 
+  hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica +
+  vih + cancer_hematologico + cancer_organo_solido +
+  ultima_vac_infecc_bin + n_vacunas_covid +
+  variant_period
+
+# Creating a list for storing GAM results
+sub_icu_list <- list()
+
+# FOR LOOP: modelling GAMS for each sub-dataframe
+for (i in seq_along(subset_list)) {
+  # Adjusting the GAM model
+  model <- glm(formula_gam_icu, data = subset_list[[i]], family = binomial())
+  # Extracting coefficients, confidence intervals and p-values
+  coef_data <- data.frame(
+    coef = coef(model),
+    se = sqrt(diag(vcov(model)))
+  ) %>% 
+  rownames_to_column(var = "predictor") %>% 
+  mutate(
+    z_value = qnorm(0.975), # 95% confidence level (two-sided)
+    OR = exp(coef),
+    OR_lower = exp(coef - z_value * se),
+    OR_upper = exp(coef + z_value * se),
+    p_value = 2 * (1 - pnorm(abs(coef) / se))
+  ) %>% 
+  filter(predictor != "(Intercept)") %>% 
+  left_join(predictor_pairs, by = "predictor") %>% 
+  select(-c(predictor, z_value)) %>% 
+  select(predictor = good_names, everything())
+  # 
+  coef_data$original_model <- names(subset_list)[[i]]
+  # Storing each results dataframe to our list
+  result_dataframe_name <- names(subset_list)[[i]]
+  assign(result_dataframe_name, coef_data)
+  sub_icu_list[[result_dataframe_name]] <- coef_data
+}
+
+df_OR_intensivecare_subgroups <- data.frame()
+
+for (i in seq_along(sub_icu_list)) {
+  output <- sub_icu_list[[i]] %>%
+    filter(str_detect(predictor, "Last vaccine"))
+  df_OR_intensivecare_subgroups <- bind_rows(df_OR_intensivecare_subgroups, output)
+}
+
+
+
+# write_excel_csv(
+#   df_OR_intensivecare_subgroups,
+#   file = "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastvac/OR_icu_subgroups_nvacc_PREDICTORtimesincelastvac2.xls"
+# )
+
+```
+
+### Sub-analysis for mortality
+
+```{r}
+
+# Creating a formula for GAM models
+formula_gam_mortality <- 
+  mortality30d ~ 
+  # s(age, k = 4) + 
+  desc_sexo + 
+  asma + cardiopatia_isquemica + cirrosis_hepatica + diabetes + epoc + hepatopatia_cronica_excepto_cirrosis + 
+  hipertension + insuficiencia_cardiaca + insuficiencia_renal_cronica +
+  vih + cancer_hematologico + cancer_organo_solido +
+  ultima_vac_infecc_bin + n_vacunas_covid +
+  variant_period
+
+# Creating a list for storing GAM results
+sub_mortality_list <- list()
+
+# FOR LOOP: modelling GAMS for each sub-dataframe
+for (i in seq_along(subset_list)) {
+  # Adjusting the GAM model
+  model <- glm(formula_gam_mortality, data = subset_list[[i]], family = binomial())
+  # Extracting coefficients, confidence intervals and p-values
+  coef_data <- data.frame(
+    coef = coef(model),
+    se = sqrt(diag(vcov(model)))
+  ) %>% 
+  rownames_to_column(var = "predictor") %>% 
+  mutate(
+    z_value = qnorm(0.975), # 95% confidence level (two-sided)
+    OR = exp(coef),
+    OR_lower = exp(coef - z_value * se),
+    OR_upper = exp(coef + z_value * se),
+    p_value = 2 * (1 - pnorm(abs(coef) / se))
+  ) %>% 
+  filter(predictor != "(Intercept)") %>% 
+  left_join(predictor_pairs, by = "predictor") %>% 
+  select(-c(predictor, z_value)) %>% 
+  select(predictor = good_names, everything())
+  # 
+  coef_data$original_model <- names(subset_list)[[i]]
+  # Storing each results dataframe to our list
+  result_dataframe_name <- names(subset_list)[[i]]
+  assign(result_dataframe_name, coef_data)
+  sub_mortality_list[[result_dataframe_name]] <- coef_data
+}
+
+df_OR_mortality_subgroups <- data.frame()
+
+for (i in seq_along(sub_mortality_list)) {
+  output <- sub_mortality_list[[i]] %>%
+    filter(str_detect(predictor, "Last vaccine"))
+  df_OR_mortality_subgroups <- bind_rows(df_OR_mortality_subgroups, output)
+}
+
+
+
+# write_excel_csv(
+#   df_OR_mortality_subgroups,
+#   file = "/opt/datos_compartidos/vacunas_data/tablas/general subgroups2agegroups by timesincelastvac/OR_mortality_subgroups_nvacc_PREDICTORtimesincelastvac2.xls"
+# )
+
+```
+
